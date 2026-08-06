@@ -1,0 +1,17 @@
+﻿Livrable,Statut,Localisation
+**Business Plan & Executive Summary**,✅,`BlediGo_Documentation.md` §1
+**Business Model Canvas**,✅,`BlediGo_Documentation.md` §2
+**Cahier des Charges Complet**,✅,`BlediGo_Documentation.md` §3
+**Architecture Logicielle**,✅,`BlediGo_Documentation.md` §4
+**Schéma Base de Données (Prisma)**,✅,`schema.prisma`
+**Spécifications API REST**,✅,`BlediGo_Documentation.md` §6
+**Maquettes UX/UI Interactives**,✅,Widget ci-dessus (6 interfaces)
+**Design System**,✅,`BlediGo_Documentation.md` §7 + `globals.css`
+**Roadmap MVP & Plan 24 Mois**,✅,`BlediGo_Documentation.md` §8
+**Plan Financier (3 ans)**,✅,`BlediGo_Documentation.md` §9
+**Plan Marketing & Lancement**,✅,`BlediGo_Documentation.md` §10
+**Analyse des Risques**,✅,`BlediGo_Documentation.md` §11
+**Documentation Technique**,✅,`BlediGo_Documentation.md` §12
+**Documentation Utilisateur**,✅,`BlediGo_Documentation.md` §13
+**Code Source Backend (NestJS)**,✅,`bledigo-api/` (20 fichiers)
+**Code Source Frontend (Next.js)**,✅,`bledigo-web/` (14 fichiers)

@@ -1,0 +1,51 @@
+import { Controller, Get, Post, Param, Body, Query, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { BookingsService } from './bookings.service';
+import { CreateBookingDto, ValidateBookingDto } from './dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+
+@ApiTags('bookings')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
+@Controller('api/v1/bookings')
+export class BookingsController {
+  constructor(private readonly bookingsService: BookingsService) {}
+
+  @Post()
+  create(@CurrentUser('id') me: string, @Body() dto: CreateBookingDto) {
+    return this.bookingsService.create(me, dto);
+  }
+
+  @Get()
+  findMine(@CurrentUser('id') me: string, @Query('as') as: 'traveler' | 'owner' = 'traveler') {
+    return this.bookingsService.findMine(me, as);
+  }
+
+  @Get(':id')
+  findOne(@CurrentUser('id') me: string, @Param('id') id: string) {
+    return this.bookingsService.findOne(me, id);
+  }
+
+  @Post(':id/confirm')
+  confirm(@CurrentUser('id') me: string, @Param('id') id: string) {
+    return this.bookingsService.confirm(me, id);
+  }
+
+  @Post(':id/cancel')
+  cancel(@CurrentUser('id') me: string, @Param('id') id: string) {
+    return this.bookingsService.cancel(me, id);
+  }
+
+  @Post(':id/check-in')
+  @ApiOperation({ summary: 'Check-in (proprietaire) : ouvre la fenetre de validation de 30 min' })
+  checkIn(@CurrentUser('id') me: string, @Param('id') id: string) {
+    return this.bookingsService.checkIn(me, id);
+  }
+
+  @Post(':id/validate')
+  @ApiOperation({ summary: 'Validation du sejour (voyageur) : libere le paiement ou ouvre un litige' })
+  validate(@CurrentUser('id') me: string, @Param('id') id: string, @Body() dto: ValidateBookingDto) {
+    return this.bookingsService.validate(me, id, dto);
+  }
+}

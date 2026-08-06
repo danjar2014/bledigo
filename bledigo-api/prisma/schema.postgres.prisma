@@ -1,0 +1,696 @@
+// BlediGo - Prisma Schema
+// Database: PostgreSQL 16
+// Generated: 2026-08-05
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== ENUMS ====================
+
+enum UserRole {
+  traveler
+  owner
+  agency
+  admin
+  agent
+  support
+}
+
+enum UserStatus {
+  active
+  watched
+  limited
+  suspended
+  banned
+}
+
+enum PropertyType {
+  apartment
+  villa
+  house
+  studio
+  riad
+  bungalow
+  penthouse
+  chalet
+}
+
+enum ListingStatus {
+  draft
+  pending
+  active
+  inactive
+  suspended
+}
+
+enum CertificationLevel {
+  none
+  bronze
+  silver
+  gold
+  diamond
+}
+
+enum BookingStatus {
+  pending
+  confirmed
+  checked_in
+  validated
+  completed
+  cancelled
+  disputed
+}
+
+enum PaymentStatus {
+  pending
+  held
+  captured
+  refunded
+  partial_refund
+  failed
+}
+
+enum ValidationStatus {
+  pending
+  validated
+  auto_validated
+  disputed
+}
+
+enum DisputeType {
+  non_conform
+  dirty
+  missing_amenities
+  false_location
+  damage
+  payment
+  other
+}
+
+enum DisputeStatus {
+  pending
+  analysis
+  missing_docs
+  amicable
+  bledigo_decision
+  refunded
+  rejected
+}
+
+enum EvidenceType {
+  photo
+  video
+  document
+  screenshot
+  message
+  invoice
+}
+
+enum ReviewType {
+  traveler_to_listing
+  traveler_to_owner
+  owner_to_traveler
+}
+
+enum MessageType {
+  text
+  photo
+  video
+  document
+  voice
+}
+
+enum SubscriptionType {
+  owner_pro
+  owner_premium
+  agency
+}
+
+enum SubscriptionStatus {
+  active
+  cancelled
+  expired
+}
+
+enum InsuranceType {
+  cancellation
+  damage
+  theft
+  assistance
+  liability
+}
+
+enum InsuranceProvider {
+  internal
+  axa
+  allianz
+  groupama
+}
+
+enum InsuranceStatus {
+  active
+  claimed
+  settled
+  expired
+}
+
+enum SanctionType {
+  watch
+  limit
+  suspend
+  ban
+}
+
+enum ReverseSearchStatus {
+  active
+  fulfilled
+  expired
+  cancelled
+}
+
+enum ReverseOfferStatus {
+  pending
+  accepted
+  rejected
+  expired
+}
+
+enum Currency {
+  EUR
+  TND
+  USD
+}
+
+// ==================== MODELS ====================
+
+model User {
+  id                String     @id @default(uuid())
+  email             String     @unique
+  passwordHash      String     @map("password_hash")
+  firstName         String     @map("first_name")
+  lastName          String     @map("last_name")
+  phone             String?    @unique
+  avatarUrl         String?    @map("avatar_url")
+  role              UserRole
+  status            UserStatus @default(active)
+  emailVerified     Boolean    @default(false) @map("email_verified")
+  phoneVerified     Boolean    @default(false) @map("phone_verified")
+  identityVerified  Boolean    @default(false) @map("identity_verified")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+  deletedAt         DateTime?  @map("deleted_at")
+
+  // Relations
+  travelerPassport  TravelerPassport?
+  ownerPassport     OwnerPassport?
+  listings          Listing[]       @relation("OwnerListings")
+  agencyListings    Listing[]       @relation("AgencyListings")
+  bookingsAsTraveler Booking[]      @relation("TravelerBookings")
+  bookingsAsOwner   Booking[]       @relation("OwnerBookings")
+  reviewsAsReviewer Review[]        @relation("ReviewerReviews")
+  reviewsAsReviewee Review[]        @relation("RevieweeReviews")
+  messages          Message[]
+  conversations     Conversation[]
+  reverseSearches   ReverseSearch[]
+  reverseOffers     ReverseOffer[]
+  subscriptions     Subscription[]
+  sanctionsApplied  Sanction[]      @relation("SanctionAppliedBy")
+  sanctionsReceived Sanction[]      @relation("SanctionUser")
+  controlVisits     ControlVisit[]  @relation("AgentVisits")
+  auditLogs         AuditLog[]
+
+  @@index([email])
+  @@index([role])
+  @@index([status])
+  @@map("users")
+}
+
+model TravelerPassport {
+  id                  String   @id @default(uuid())
+  userId              String   @unique @map("user_id")
+  trustScore          Int      @default(50) @map("trust_score")
+  totalStays          Int      @default(0) @map("total_stays")
+  totalNights         Int      @default(0) @map("total_nights")
+  cancellationRate    Decimal  @default(0) @map("cancellation_rate")
+  recommendationCount Int      @default(0) @map("recommendation_count")
+  incidentCount       Int      @default(0) @map("incident_count")
+  disputeCount        Int      @default(0) @map("dispute_count")
+  badges              Json     @default("[]")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("traveler_passports")
+}
+
+model OwnerPassport {
+  id                String   @id @default(uuid())
+  userId            String   @unique @map("user_id")
+  trustScore        Int      @default(50) @map("trust_score")
+  totalListings     Int      @default(0) @map("total_listings")
+  totalBookings     Int      @default(0) @map("total_bookings")
+  totalRevenue      Decimal  @default(0) @map("total_revenue")
+  responseRate      Decimal  @default(0) @map("response_rate")
+  acceptanceRate    Decimal  @default(0) @map("acceptance_rate")
+  incidentCount     Int      @default(0) @map("incident_count")
+  disputeCount      Int      @default(0) @map("dispute_count")
+  badges            Json     @default("[]")
+  subscriptionTier  String   @default("free") @map("subscription_tier")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("owner_passports")
+}
+
+model Listing {
+  id                    String            @id @default(uuid())
+  ownerId               String            @map("owner_id")
+  agencyId              String?           @map("agency_id")
+  title                 String
+  description           String            @db.Text
+  slug                  String            @unique
+  address               String
+  city                  String
+  region                String
+  country               String            @default("Tunisia")
+  postalCode            String?           @map("postal_code")
+  latitude              Decimal
+  longitude             Decimal
+  propertyType          PropertyType      @map("property_type")
+  maxGuests             Int               @map("max_guests")
+  bedrooms              Int
+  bathrooms             Int
+  pricePerNight         Decimal           @map("price_per_night")
+  cleaningFee           Decimal           @default(0) @map("cleaning_fee")
+  serviceFee            Decimal           @default(0) @map("service_fee")
+  currency              Currency          @default(TND)
+  status                ListingStatus     @default(draft)
+  trustScore            Int               @default(50) @map("trust_score")
+  qualityScore          Int               @default(0) @map("quality_score")
+  cleanlinessScore      Int               @default(0) @map("cleanliness_score")
+  complianceScore       Int               @default(0) @map("compliance_score")
+  safetyScore           Int               @default(0) @map("safety_score")
+  certificationLevel    CertificationLevel @default(none) @map("certification_level")
+  certificationExpiresAt DateTime?        @map("certification_expires_at")
+  totalBookings         Int               @default(0) @map("total_bookings")
+  totalReviews          Int               @default(0) @map("total_reviews")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+  deletedAt             DateTime?         @map("deleted_at")
+
+  // Relations
+  owner           User              @relation("OwnerListings", fields: [ownerId], references: [id])
+  agency          User?             @relation("AgencyListings", fields: [agencyId], references: [id])
+  photos          ListingPhoto[]
+  passport        ListingPassport?
+  bookings        Booking[]
+  reviews         Review[]
+  certifications  Certification[]
+  controlVisits   ControlVisit[]
+  reverseOffers   ReverseOffer[]
+  conversations   Conversation[]
+
+  @@index([ownerId])
+  @@index([status])
+  @@index([certificationLevel])
+  @@index([latitude, longitude])
+  @@index([city])
+  @@map("listings")
+}
+
+model ListingPhoto {
+  id                String    @id @default(uuid())
+  listingId         String    @map("listing_id")
+  url               String
+  thumbnailUrl      String?   @map("thumbnail_url")
+  isPrimary         Boolean   @default(false) @map("is_primary")
+  isCertified       Boolean   @default(false) @map("is_certified")
+  certificationDate DateTime? @map("certification_date")
+  metadata          Json      @default("{}")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@map("listing_photos")
+}
+
+model ListingPassport {
+  id                    String   @id @default(uuid())
+  listingId             String   @unique @map("listing_id")
+  stayCount             Int      @default(0) @map("stay_count")
+  guestCount            Int      @default(0) @map("guest_count")
+  ageDays               Int      @default(0) @map("age_days")
+  certificationsHistory Json     @default("[]") @map("certifications_history")
+  certifiedPhotosCount  Int      @default(0) @map("certified_photos_count")
+  videosCount           Int      @default(0) @map("videos_count")
+  controlVisitsCount    Int      @default(0) @map("control_visits_count")
+  incidents             Json     @default("[]")
+  disputes              Json     @default("[]")
+  disputeResolutions    Json     @default("[]") @map("dispute_resolutions")
+  scoresHistory         Json     @default("[]") @map("scores_history")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@map("listing_passports")
+}
+
+model Booking {
+  id                String           @id @default(uuid())
+  listingId         String           @map("listing_id")
+  travelerId        String           @map("traveler_id")
+  ownerId           String           @map("owner_id")
+  checkIn           DateTime         @map("check_in")
+  checkOut          DateTime         @map("check_out")
+  guestsCount       Int              @map("guests_count")
+  totalNights       Int              @map("total_nights")
+  basePrice         Decimal          @map("base_price")
+  cleaningFee       Decimal          @map("cleaning_fee")
+  serviceFee        Decimal          @map("service_fee")
+  insuranceFee      Decimal          @default(0) @map("insurance_fee")
+  totalPrice        Decimal          @map("total_price")
+  currency          Currency
+  status            BookingStatus    @default(pending)
+  paymentStatus     PaymentStatus    @default(pending) @map("payment_status")
+  validationStatus  ValidationStatus @default(pending) @map("validation_status")
+  validationDeadline DateTime?       @map("validation_deadline")
+  disputeId         String?          @map("dispute_id")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  listing   Listing    @relation(fields: [listingId], references: [id])
+  traveler  User       @relation("TravelerBookings", fields: [travelerId], references: [id])
+  owner     User       @relation("OwnerBookings", fields: [ownerId], references: [id])
+  payment   Payment?
+  disputeRecord Dispute?
+  review    Review?
+  conversation Conversation?
+
+  @@index([listingId])
+  @@index([travelerId])
+  @@index([status])
+  @@index([checkIn, checkOut])
+  @@map("bookings")
+}
+
+model Payment {
+  id                    String        @id @default(uuid())
+  bookingId             String        @unique @map("booking_id")
+  stripePaymentIntentId String        @map("stripe_payment_intent_id")
+  amount                Decimal
+  currency              Currency
+  status                PaymentStatus @default(pending)
+  heldAt                DateTime?     @map("held_at")
+  capturedAt            DateTime?     @map("captured_at")
+  refundedAt            DateTime?     @map("refunded_at")
+  refundAmount          Decimal?      @map("refund_amount")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+model Dispute {
+  id              String       @id @default(uuid())
+  bookingId       String       @unique @map("booking_id")
+  initiatedBy     String       @map("initiated_by")
+  type            DisputeType
+  status          DisputeStatus @default(pending)
+  description     String       @db.Text
+  resolutionNotes String?      @map("resolution_notes")
+  decidedBy       String?      @map("decided_by")
+  decidedAt       DateTime?    @map("decided_at")
+  refundAmount    Decimal?     @map("refund_amount")
+  sanctions       Json         @default("[]")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  booking   Booking          @relation(fields: [bookingId], references: [id])
+  evidence  DisputeEvidence[]
+
+  @@index([status])
+  @@map("disputes")
+}
+
+model DisputeEvidence {
+  id          String       @id @default(uuid())
+  disputeId   String       @map("dispute_id")
+  uploadedBy  String       @map("uploaded_by")
+  type        EvidenceType
+  url         String
+  description String?
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  dispute Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+
+  @@index([disputeId])
+  @@map("dispute_evidence")
+}
+
+model Review {
+  id          String    @id @default(uuid())
+  bookingId   String    @unique @map("booking_id")
+  listingId   String    @map("listing_id")
+  reviewerId  String    @map("reviewer_id")
+  revieweeId  String    @map("reviewee_id")
+  type        ReviewType
+  rating      Int
+  cleanliness Int
+  accuracy    Int
+  checkIn     Int       @map("check_in")
+  communication Int
+  location    Int
+  value       Int
+  comment     String    @db.Text
+  isVerified  Boolean   @default(false) @map("is_verified")
+  isFlagged   Boolean   @default(false) @map("is_flagged")
+  flagReason  String?   @map("flag_reason")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  booking  Booking  @relation(fields: [bookingId], references: [id])
+  listing  Listing  @relation(fields: [listingId], references: [id])
+  reviewer User     @relation("ReviewerReviews", fields: [reviewerId], references: [id])
+  reviewee User     @relation("RevieweeReviews", fields: [revieweeId], references: [id])
+
+  @@index([listingId])
+  @@index([reviewerId])
+  @@index([revieweeId])
+  @@map("reviews")
+}
+
+model Conversation {
+  id            String    @id @default(uuid())
+  bookingId     String?   @unique @map("booking_id")
+  participantIds String[] @map("participant_ids")
+  listingId     String?   @map("listing_id")
+  isBlocked     Boolean   @default(false) @map("is_blocked")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  booking  Booking?  @relation(fields: [bookingId], references: [id])
+  listing  Listing?  @relation(fields: [listingId], references: [id])
+  messages Message[]
+  users    User[]
+
+  @@index([listingId])
+  @@map("conversations")
+}
+
+model Message {
+  id              String      @id @default(uuid())
+  conversationId  String      @map("conversation_id")
+  senderId        String      @map("sender_id")
+  type            MessageType @default(text)
+  content         String      @db.Text
+  metadata        Json        @default("{}")
+  isFlagged       Boolean     @default(false) @map("is_flagged")
+  flagReason      String?     @map("flag_reason")
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User        @relation(fields: [senderId], references: [id])
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@map("messages")
+}
+
+model Certification {
+  id          String             @id @default(uuid())
+  listingId   String             @map("listing_id")
+  level       CertificationLevel
+  status      String             @default("pending")
+  requestedAt DateTime           @default(now()) @map("requested_at")
+  validatedAt DateTime?          @map("validated_at")
+  expiresAt   DateTime?          @map("expires_at")
+  validatedBy String?            @map("validated_by")
+  report      Json               @default("{}")
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@map("certifications")
+}
+
+model ControlVisit {
+  id            String    @id @default(uuid())
+  listingId     String    @map("listing_id")
+  agentId       String    @map("agent_id")
+  scheduledAt   DateTime  @map("scheduled_at")
+  completedAt   DateTime? @map("completed_at")
+  status        String    @default("scheduled")
+  checklist     Json      @default("{}")
+  photos        Json      @default("[]")
+  notes         String?   @db.Text
+  gpsCoordinates String?  @map("gps_coordinates")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  listing Listing @relation(fields: [listingId], references: [id])
+  agent   User    @relation("AgentVisits", fields: [agentId], references: [id])
+
+  @@index([listingId])
+  @@index([agentId])
+  @@map("control_visits")
+}
+
+model Sanction {
+  id           String       @id @default(uuid())
+  userId       String       @map("user_id")
+  type         SanctionType
+  reason       String
+  evidence     Json         @default("{}")
+  durationDays Int?         @map("duration_days")
+  expiresAt    DateTime?    @map("expires_at")
+  appliedBy    String       @map("applied_by")
+  appliedAt    DateTime     @default(now()) @map("applied_at")
+  revokedBy    String?      @map("revoked_by")
+  revokedAt    DateTime?    @map("revoked_at")
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  user      User @relation("SanctionUser", fields: [userId], references: [id])
+  appliedByUser User @relation("SanctionAppliedBy", fields: [appliedBy], references: [id])
+
+  @@index([userId])
+  @@index([type])
+  @@map("sanctions")
+}
+
+model ReverseSearch {
+  id           String              @id @default(uuid())
+  travelerId   String              @map("traveler_id")
+  title        String
+  description  String              @db.Text
+  destination  String
+  checkIn      DateTime            @map("check_in")
+  checkOut     DateTime            @map("check_out")
+  guestsCount  Int                 @map("guests_count")
+  bedrooms     Int?
+  budgetMin    Decimal?            @map("budget_min")
+  budgetMax    Decimal?            @map("budget_max")
+  requirements Json                @default("{}")
+  status       ReverseSearchStatus @default(active)
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @updatedAt @map("updated_at")
+
+  traveler User          @relation(fields: [travelerId], references: [id])
+  offers   ReverseOffer[]
+
+  @@index([travelerId])
+  @@index([status])
+  @@map("reverse_searches")
+}
+
+model ReverseOffer {
+  id              String            @id @default(uuid())
+  reverseSearchId String            @map("reverse_search_id")
+  listingId       String            @map("listing_id")
+  ownerId         String            @map("owner_id")
+  proposedPrice   Decimal           @map("proposed_price")
+  message         String?           @db.Text
+  status          ReverseOfferStatus @default(pending)
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  reverseSearch ReverseSearch @relation(fields: [reverseSearchId], references: [id])
+  listing       Listing       @relation(fields: [listingId], references: [id])
+  owner         User          @relation(fields: [ownerId], references: [id])
+
+  @@index([reverseSearchId])
+  @@index([listingId])
+  @@map("reverse_offers")
+}
+
+model Subscription {
+  id                   String             @id @default(uuid())
+  userId               String             @map("user_id")
+  type                 SubscriptionType
+  status               SubscriptionStatus @default(active)
+  price                Decimal
+  currency             Currency
+  interval             String
+  stripeSubscriptionId String             @map("stripe_subscription_id")
+  currentPeriodStart   DateTime           @map("current_period_start")
+  currentPeriodEnd     DateTime           @map("current_period_end")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("subscriptions")
+}
+
+model InsurancePolicy {
+  id             String           @id @default(uuid())
+  bookingId      String           @map("booking_id")
+  type           InsuranceType
+  provider       InsuranceProvider @default(internal)
+  premiumAmount  Decimal          @map("premium_amount")
+  coverageAmount Decimal          @map("coverage_amount")
+  status         InsuranceStatus  @default(active)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  @@index([bookingId])
+  @@map("insurance_policies")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?  @map("user_id")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  details    Json     @default("{}")
+  ipAddress  String   @map("ip_address")
+  userAgent  String   @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
