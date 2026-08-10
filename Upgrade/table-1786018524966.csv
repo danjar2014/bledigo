@@ -1,5 +1,0 @@
-﻿Fichier,Contenu,Téléchargement
-**Documentation + DB**,Business Plan + Schéma Prisma v2 (30 tables),**[BlediGo\_Documentation\_v2.zip](sandbox:///mnt/agents/output/BlediGo_Documentation_v2.zip)**
-**Backend API**,"NestJS complet (Auth, Bookings, Payments, Disputes, **Reverse Search, Reviews, Anti-Fraude, Listings modifiables**)",**[bledigo-api-v2.zip](sandbox:///mnt/agents/output/bledigo-api-v2.zip)**
-**Frontend Web**,"Next.js 14 (Hero, Search, Cards, **Reviews, Reverse Search, Listing Edit, Credits Owner**)",**[bledigo-web-v2.zip](sandbox:///mnt/agents/output/bledigo-web-v2.zip)**
-**Projet Complet**,**Tout** (Docs + API + Web),**[BlediGo\_Projet\_Complet\_v2.zip](sandbox:///mnt/agents/output/BlediGo_Projet_Complet_v2.zip)**
