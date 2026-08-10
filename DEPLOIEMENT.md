@@ -48,10 +48,21 @@ npx prisma db seed
 **Les données locales ne sont pas transférées.** Le SQLite de développement
 reste sur votre poste. Annonces, demandes et comptes sont à recréer.
 
-**Le développement local reste en SQLite.** Deux schémas coexistent :
-`schema.prisma` pour votre poste, `schema.postgres.prisma` pour la production.
-Toute modification du modèle doit être portée dans les deux, sinon la
-production divergera silencieusement.
+**Le développement local reste en SQLite.** Deux schémas coexistent, mais
+`schema.postgres.prisma` est désormais une **copie stricte** de
+`schema.prisma` : seule la ligne `provider` diffère. Pour faire évoluer le
+modèle, modifiez `schema.prisma` puis recopiez-le en changeant le provider.
+
+Cette contrainte n'est pas cosmétique. Les deux schémas avaient divergé —
+`Decimal` et enums natifs côté PostgreSQL, `Float` et `String` côté SQLite —
+sur 94 champs. Le code compilait en local et cassait au déploiement avec des
+dizaines d'erreurs de type. Un typage identique supprime cette classe entière
+de pannes.
+
+En contrepartie, la production stocke les montants en `DOUBLE PRECISION` et
+les statuts en `TEXT`. Les valeurs autorisées sont contrôlées par les DTO de
+l'API, non par la base. Passer à `Decimal` et aux enums natifs reste possible,
+mais suppose de convertir explicitement chaque lecture côté service.
 
 **Les variables `NEXT_PUBLIC_` sont figées à la compilation.** Changer l'URL de
 l'API impose de reconstruire le front, pas seulement de le redémarrer.

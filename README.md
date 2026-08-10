@@ -20,8 +20,9 @@ PostgreSQL `BlediGo_DB`. Marche à suivre et limites connues : [DEPLOIEMENT.md](
 
 **Deux schémas Prisma coexistent.** `schema.prisma` cible SQLite pour le
 développement local sans installation ; `schema.postgres.prisma` cible la
-production. Toute évolution du modèle doit être portée dans les deux, sinon la
-production diverge sans que rien ne le signale.
+production et en est une **copie stricte**, à la ligne `provider` près. Faire
+diverger les deux fait compiler le code en local et échouer le déploiement :
+c'est déjà arrivé sur 94 champs. Modifiez `schema.prisma`, puis recopiez-le.
 
 ## Développement local
 
