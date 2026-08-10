@@ -1,47 +1,35 @@
 # Déploiement de BlediGo sur Render
 
-Trois ressources : une base PostgreSQL managée, l'API NestJS, le front Next.js.
-Tout est décrit dans `render.yaml` — Render lit ce fichier et crée l'ensemble
+Deux services — l'API NestJS et le front Next.js — raccordés à la base
+PostgreSQL **BlediGo_DB** déjà créée dans l'espace de travail Render.
+Tout est décrit dans `render.yaml` : Render lit ce fichier et monte l'ensemble
 en une fois.
+
+Le code est sur GitHub, la migration initiale est générée et commitée. Il ne
+reste que l'étape 1 ci-dessous.
 
 ---
 
-## 1. Générer la migration PostgreSQL (une seule fois, en local)
+## 1. Créer le blueprint sur Render
 
-Render applique les migrations au démarrage avec `prisma migrate deploy`, qui
-exige un dossier `prisma/migrations`. Le projet n'en avait pas : on travaillait
-en `db push`, pratique en développement mais dangereux en production, où chaque
-mise en ligne risquerait d'effacer des données.
+Dans Render : **New → Blueprint**, choisir le dépôt `danjar2014/bledigo`,
+puis **Apply**.
 
-Double-clic sur **`preparer-migration.bat`**. Il crée
-`bledigo-api/prisma/migrations/0_init/migration.sql` à partir du schéma
-PostgreSQL. Le compte rendu s'écrit dans `preparer-migration.log`.
+Render détecte `render.yaml` et crée les deux services. Au premier déploiement :
 
-Ce dossier **doit être commité** : c'est lui qui construit la base en production.
-
-## 2. Pousser sur GitHub
-
-```
-git add -A
-git commit -m "Preparation du deploiement Render"
-git remote add origin <URL de votre depot>
-git push -u origin main
-```
-
-## 3. Créer le blueprint sur Render
-
-Dans Render : **New → Blueprint**, sélectionner le dépôt. Render détecte
-`render.yaml` et propose les trois ressources. Valider.
-
-Au premier déploiement :
-
-- la base PostgreSQL est créée et son URL injectée dans l'API ;
+- l'URL de connexion de **BlediGo_DB** est injectée dans l'API ;
 - les deux secrets JWT sont générés par Render, ils ne transitent jamais par le dépôt ;
-- l'API reçoit l'URL du front pour CORS, le front reçoit celle de l'API.
+- l'API reçoit l'URL du front pour CORS, le front reçoit celle de l'API ;
+- `prisma migrate deploy` crée les 27 tables au démarrage de l'API.
 
 L'ordre compte peu : Render résout les dépendances entre services.
 
-## 4. Après le premier déploiement
+**Prérequis unique :** la base doit s'appeler exactement `BlediGo_DB`. Le
+blueprint la référence par son nom sans la déclarer — sinon il en créerait une
+seconde. Si le nom diffère, corriger `render.yaml` (clé `fromDatabase.name`),
+faute de quoi la synchronisation échoue avec une erreur de référence.
+
+## 2. Après le premier déploiement
 
 L'API répond sur `/health` et expose sa documentation sur `/api/docs`.
 

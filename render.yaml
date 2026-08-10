@@ -1,16 +1,17 @@
 # Blueprint Render pour BlediGo
 #
-# Trois ressources : une base PostgreSQL managee, l API NestJS et le front Next.js.
+# Deux services : l API NestJS et le front Next.js. Ils se raccordent a la base
+# PostgreSQL BlediGo_DB, creee a la main dans l espace de travail Render.
+#
+# La base n est volontairement PAS declaree ici : un blueprint peut referencer
+# une ressource existante de l espace de travail, mais s il la declarait il
+# tenterait d en creer une seconde. En contrepartie, BlediGo_DB doit exister
+# avant la premiere synchronisation, sinon le blueprint echoue.
+#
 # Les URL publiques sont injectees automatiquement d un service a l autre, ce qui
 # evite de coder en dur des adresses qui changent a chaque environnement.
 #
 # Mise en place : Render > New > Blueprint, puis pointer sur ce depot.
-
-databases:
-  - name: bledigo-db
-    databaseName: bledigo
-    user: bledigo
-    plan: free
 
 services:
   # ---------------------------------------------------------------- API
@@ -28,9 +29,11 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # Base existante dans l espace de travail : le nom doit correspondre
+      # exactement a celui affiche dans Render.
       - key: DATABASE_URL
         fromDatabase:
-          name: bledigo-db
+          name: BlediGo_DB
           property: connectionString
       # Secrets generes par Render, jamais commites
       - key: JWT_ACCESS_SECRET
