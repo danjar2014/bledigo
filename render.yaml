@@ -21,9 +21,13 @@ services:
     rootDir: bledigo-api
     plan: free
     healthCheckPath: /health
+    # --include=dev est indispensable : NODE_ENV=production fait sauter les
+    # devDependencies a npm ci, or nest, prisma et typescript en font partie.
+    # Sans cela le build echoue faute d outils, pas faute de code.
+    #
     # Le client Prisma est genere depuis le schema PostgreSQL, pas depuis
     # schema.prisma qui reste en SQLite pour le developpement local.
-    buildCommand: npm ci && npx prisma generate --schema=prisma/schema.postgres.prisma && npm run build
+    buildCommand: npm ci --include=dev && npx prisma generate --schema=prisma/schema.postgres.prisma && npm run build
     # migrate deploy est idempotent : il n applique que les migrations manquantes.
     startCommand: npx prisma migrate deploy --schema=prisma/schema.postgres.prisma && node dist/main
     envVars:
@@ -64,7 +68,10 @@ services:
     runtime: node
     rootDir: bledigo-web
     plan: free
-    buildCommand: npm ci && npm run build
+    # Meme raison que pour l API : sans --include=dev, ni TypeScript ni Tailwind
+    # ne sont installes, et Next.js cesse alors de resoudre l alias @/ declare
+    # dans tsconfig.json — le build casse sur des modules pourtant presents.
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_ENV

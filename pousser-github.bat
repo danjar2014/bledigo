@@ -1,11 +1,31 @@
 @echo off
 chcp 65001 >nul
-cd /d "%~dp0bledigo-api"
-set LOG=%~dp0preparer-migration.log
+cd /d "%~dp0"
+set LOG=%~dp0pousser-github.log
 
-echo === Generation de la migration PostgreSQL initiale === > "%LOG%"
+echo === Envoi vers GitHub === > "%LOG%"
 echo Date: %DATE% %TIME% >> "%LOG%"
 echo. >> "%LOG%"
+
+REM Authentification via Git Credential Manager, deja configure sur ce poste.
+echo [1/3] Etat local >> "%LOG%"
+call git branch --show-current >> "%LOG%" 2>&1
+call git log --oneline -3 >> "%LOG%" 2>&1
+call git remote -v >> "%LOG%" 2>&1
+echo. >> "%LOG%"
+
+echo [2/3] Envoi de la branche main >> "%LOG%"
+call git push -u origin main >> "%LOG%" 2>&1
+
+echo. >> "%LOG%"
+echo [3/3] Etat du distant >> "%LOG%"
+call git ls-remote --heads origin >> "%LOG%" 2>&1
+echo. >> "%LOG%"
+echo TERMINE >> "%LOG%"
+exit /b 0
+
+REM ---------------- ancien contenu, conserve pour reference ----------------
+cd /d "%~dp0bledigo-api"
 
 REM Render applique les migrations avec `prisma migrate deploy`, qui exige un
 REM dossier prisma/migrations. On le cree une fois, a partir du schema Postgres.
