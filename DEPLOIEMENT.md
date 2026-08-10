@@ -1,12 +1,8 @@
 # Déploiement de BlediGo sur Render
 
-Deux services — l'API NestJS et le front Next.js — raccordés à la base
-PostgreSQL **BlediGo_DB** déjà créée dans l'espace de travail Render.
-Tout est décrit dans `render.yaml` : Render lit ce fichier et monte l'ensemble
-en une fois.
-
-Le code est sur GitHub, la migration initiale est générée et commitée. Il ne
-reste que l'étape 1 ci-dessous.
+Trois ressources décrites dans `render.yaml` : la base PostgreSQL
+**BlediGo_DB**, l'API NestJS et le front Next.js. Render lit ce fichier et
+monte l'ensemble en une fois.
 
 ---
 
@@ -15,19 +11,21 @@ reste que l'étape 1 ci-dessous.
 Dans Render : **New → Blueprint**, choisir le dépôt `danjar2014/bledigo`,
 puis **Apply**.
 
-Render détecte `render.yaml` et crée les deux services. Au premier déploiement :
+Au premier déploiement :
 
-- l'URL de connexion de **BlediGo_DB** est injectée dans l'API ;
+- la base est créée et son URL de connexion injectée dans l'API ;
 - les deux secrets JWT sont générés par Render, ils ne transitent jamais par le dépôt ;
 - l'API reçoit l'URL du front pour CORS, le front reçoit celle de l'API ;
 - `prisma migrate deploy` crée les 27 tables au démarrage de l'API.
 
-L'ordre compte peu : Render résout les dépendances entre services.
+L'ordre compte peu : Render résout les dépendances entre ressources.
 
-**Prérequis unique :** la base doit s'appeler exactement `BlediGo_DB`. Le
-blueprint la référence par son nom sans la déclarer — sinon il en créerait une
-seconde. Si le nom diffère, corriger `render.yaml` (clé `fromDatabase.name`),
-faute de quoi la synchronisation échoue avec une erreur de référence.
+**La région est le piège principal.** Le réseau privé de Render ne franchit
+pas les frontières de région : une base à Francfort et des services en Oregon
+donnent un `P1001 Can't reach database server` au démarrage, alors que l'URL
+de connexion est pourtant juste. Base et services doivent partager la même
+région — et cette valeur est **figée à la création**, la changer impose de
+supprimer puis recréer la ressource.
 
 ## 2. Après le premier déploiement
 

@@ -1,17 +1,20 @@
 # Blueprint Render pour BlediGo
 #
-# Deux services : l API NestJS et le front Next.js. Ils se raccordent a la base
-# PostgreSQL BlediGo_DB, creee a la main dans l espace de travail Render.
-#
-# La base n est volontairement PAS declaree ici : un blueprint peut referencer
-# une ressource existante de l espace de travail, mais s il la declarait il
-# tenterait d en creer une seconde. En contrepartie, BlediGo_DB doit exister
-# avant la premiere synchronisation, sinon le blueprint echoue.
+# Trois ressources : la base PostgreSQL, l API NestJS et le front Next.js.
 #
 # Les URL publiques sont injectees automatiquement d un service a l autre, ce qui
 # evite de coder en dur des adresses qui changent a chaque environnement.
 #
 # Mise en place : Render > New > Blueprint, puis pointer sur ce depot.
+
+# La base BlediGo_DB n est PAS declaree ici : elle existe deja dans l espace de
+# travail, et un blueprint qui la declarerait tenterait d en creer une seconde.
+# Il la reference simplement par son nom, plus bas.
+#
+# Elle doit vivre dans la MEME REGION que les services, ici oregon : le reseau
+# prive de Render ne franchit pas les frontieres de region. Une base a Francfort
+# donne un P1001 au demarrage alors que l URL de connexion est pourtant juste.
+# Cette region est figee a la creation.
 
 services:
   # ---------------------------------------------------------------- API
