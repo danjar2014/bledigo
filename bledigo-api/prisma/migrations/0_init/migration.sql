@@ -1,75 +1,3 @@
--- CreateEnum
-CREATE TYPE "UserRole" AS ENUM ('traveler', 'owner', 'agency', 'admin', 'agent', 'support');
-
--- CreateEnum
-CREATE TYPE "UserStatus" AS ENUM ('active', 'watched', 'limited', 'suspended', 'banned');
-
--- CreateEnum
-CREATE TYPE "PropertyType" AS ENUM ('apartment', 'villa', 'house', 'studio', 'riad', 'bungalow', 'penthouse', 'chalet');
-
--- CreateEnum
-CREATE TYPE "ListingStatus" AS ENUM ('draft', 'pending', 'active', 'inactive', 'suspended', 'under_review');
-
--- CreateEnum
-CREATE TYPE "CertificationLevel" AS ENUM ('none', 'bronze', 'silver', 'gold', 'diamond');
-
--- CreateEnum
-CREATE TYPE "BookingStatus" AS ENUM ('pending', 'confirmed', 'checked_in', 'validated', 'completed', 'cancelled', 'disputed');
-
--- CreateEnum
-CREATE TYPE "PaymentStatus" AS ENUM ('pending', 'held', 'captured', 'refunded', 'partial_refund', 'failed');
-
--- CreateEnum
-CREATE TYPE "ValidationStatus" AS ENUM ('pending', 'validated', 'auto_validated', 'disputed');
-
--- CreateEnum
-CREATE TYPE "DisputeType" AS ENUM ('non_conform', 'dirty', 'missing_amenities', 'false_location', 'damage', 'payment', 'other');
-
--- CreateEnum
-CREATE TYPE "DisputeStatus" AS ENUM ('pending', 'analysis', 'missing_docs', 'amicable', 'bledigo_decision', 'refunded', 'rejected');
-
--- CreateEnum
-CREATE TYPE "EvidenceType" AS ENUM ('photo', 'video', 'document', 'screenshot', 'message', 'invoice');
-
--- CreateEnum
-CREATE TYPE "ReviewType" AS ENUM ('traveler_to_listing', 'traveler_to_owner', 'owner_to_traveler');
-
--- CreateEnum
-CREATE TYPE "MessageType" AS ENUM ('text', 'photo', 'video', 'document', 'voice');
-
--- CreateEnum
-CREATE TYPE "SubscriptionType" AS ENUM ('owner_pro', 'owner_premium', 'agency');
-
--- CreateEnum
-CREATE TYPE "SubscriptionStatus" AS ENUM ('active', 'cancelled', 'expired');
-
--- CreateEnum
-CREATE TYPE "InsuranceType" AS ENUM ('cancellation', 'damage', 'theft', 'assistance', 'liability');
-
--- CreateEnum
-CREATE TYPE "InsuranceProvider" AS ENUM ('internal', 'axa', 'allianz', 'groupama');
-
--- CreateEnum
-CREATE TYPE "InsuranceStatus" AS ENUM ('active', 'claimed', 'settled', 'expired');
-
--- CreateEnum
-CREATE TYPE "SanctionType" AS ENUM ('watch', 'limit', 'suspend', 'ban');
-
--- CreateEnum
-CREATE TYPE "ReverseSearchStatus" AS ENUM ('active', 'fulfilled', 'expired', 'cancelled');
-
--- CreateEnum
-CREATE TYPE "ReverseOfferStatus" AS ENUM ('pending', 'countered', 'accepted', 'rejected', 'expired');
-
--- CreateEnum
-CREATE TYPE "Currency" AS ENUM ('EUR', 'TND', 'USD');
-
--- CreateEnum
-CREATE TYPE "ContactAttemptType" AS ENUM ('phone', 'email', 'social', 'external_link', 'address');
-
--- CreateEnum
-CREATE TYPE "InventoryCheckStatus" AS ENUM ('pending', 'check_in_done', 'check_out_done', 'completed', 'disputed');
-
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
@@ -79,6 +7,9 @@ CREATE TABLE "users" (
     "last_name" TEXT NOT NULL,
     "phone" TEXT,
     "avatar_url" TEXT,
+    "role" TEXT NOT NULL,
+    "secondary_roles" TEXT NOT NULL DEFAULT '[]',
+    "status" TEXT NOT NULL DEFAULT 'active',
     "email_verified" BOOLEAN NOT NULL DEFAULT false,
     "phone_verified" BOOLEAN NOT NULL DEFAULT false,
     "identity_verified" BOOLEAN NOT NULL DEFAULT false,
@@ -86,9 +17,6 @@ CREATE TABLE "users" (
     "updated_at" TIMESTAMP(3) NOT NULL,
     "deleted_at" TIMESTAMP(3),
     "identity_document" TEXT,
-    "role" "UserRole" NOT NULL,
-    "secondary_roles" JSONB NOT NULL DEFAULT '[]',
-    "status" "UserStatus" NOT NULL DEFAULT 'active',
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
@@ -100,11 +28,11 @@ CREATE TABLE "traveler_passports" (
     "trust_score" INTEGER NOT NULL DEFAULT 50,
     "total_stays" INTEGER NOT NULL DEFAULT 0,
     "total_nights" INTEGER NOT NULL DEFAULT 0,
-    "cancellation_rate" DECIMAL(65,30) NOT NULL DEFAULT 0,
+    "cancellation_rate" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "recommendation_count" INTEGER NOT NULL DEFAULT 0,
     "incident_count" INTEGER NOT NULL DEFAULT 0,
     "dispute_count" INTEGER NOT NULL DEFAULT 0,
-    "badges" JSONB NOT NULL DEFAULT '[]',
+    "badges" TEXT NOT NULL DEFAULT '[]',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
     "no_show_count" INTEGER NOT NULL DEFAULT 0,
@@ -119,12 +47,12 @@ CREATE TABLE "owner_passports" (
     "trust_score" INTEGER NOT NULL DEFAULT 50,
     "total_listings" INTEGER NOT NULL DEFAULT 0,
     "total_bookings" INTEGER NOT NULL DEFAULT 0,
-    "total_revenue" DECIMAL(65,30) NOT NULL DEFAULT 0,
-    "response_rate" DECIMAL(65,30) NOT NULL DEFAULT 0,
-    "acceptance_rate" DECIMAL(65,30) NOT NULL DEFAULT 0,
+    "total_revenue" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "response_rate" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "acceptance_rate" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "incident_count" INTEGER NOT NULL DEFAULT 0,
     "dispute_count" INTEGER NOT NULL DEFAULT 0,
-    "badges" JSONB NOT NULL DEFAULT '[]',
+    "badges" TEXT NOT NULL DEFAULT '[]',
     "subscription_tier" TEXT NOT NULL DEFAULT 'free',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
@@ -147,19 +75,23 @@ CREATE TABLE "listings" (
     "region" TEXT NOT NULL,
     "country" TEXT NOT NULL DEFAULT 'Tunisia',
     "postal_code" TEXT,
-    "latitude" DECIMAL(65,30) NOT NULL,
-    "longitude" DECIMAL(65,30) NOT NULL,
+    "latitude" DOUBLE PRECISION NOT NULL,
+    "longitude" DOUBLE PRECISION NOT NULL,
+    "property_type" TEXT NOT NULL,
     "max_guests" INTEGER NOT NULL,
     "bedrooms" INTEGER NOT NULL,
     "bathrooms" INTEGER NOT NULL,
-    "price_per_night" DECIMAL(65,30) NOT NULL,
-    "cleaning_fee" DECIMAL(65,30) NOT NULL DEFAULT 0,
-    "service_fee" DECIMAL(65,30) NOT NULL DEFAULT 0,
+    "price_per_night" DOUBLE PRECISION NOT NULL,
+    "cleaning_fee" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "service_fee" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "currency" TEXT NOT NULL DEFAULT 'TND',
+    "status" TEXT NOT NULL DEFAULT 'draft',
     "trust_score" INTEGER NOT NULL DEFAULT 50,
     "quality_score" INTEGER NOT NULL DEFAULT 0,
     "cleanliness_score" INTEGER NOT NULL DEFAULT 0,
     "compliance_score" INTEGER NOT NULL DEFAULT 0,
     "safety_score" INTEGER NOT NULL DEFAULT 0,
+    "certification_level" TEXT NOT NULL DEFAULT 'none',
     "certification_expires_at" TIMESTAMP(3),
     "total_bookings" INTEGER NOT NULL DEFAULT 0,
     "total_reviews" INTEGER NOT NULL DEFAULT 0,
@@ -169,25 +101,21 @@ CREATE TABLE "listings" (
     "surface_m2" INTEGER,
     "floors" INTEGER DEFAULT 1,
     "year_built" INTEGER,
-    "security_deposit" DECIMAL(65,30) NOT NULL DEFAULT 0,
+    "security_deposit" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "location_score" INTEGER NOT NULL DEFAULT 0,
     "value_score" INTEGER NOT NULL DEFAULT 0,
-    "avg_rating" DECIMAL(65,30) NOT NULL DEFAULT 0,
+    "avg_rating" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "is_editable" BOOLEAN NOT NULL DEFAULT true,
     "last_modified_at" TIMESTAMP(3),
     "modification_count" INTEGER NOT NULL DEFAULT 0,
-    "rules" JSONB NOT NULL DEFAULT '{}',
-    "amenities" JSONB NOT NULL DEFAULT '[]',
-    "house_rules" JSONB NOT NULL DEFAULT '[]',
+    "rules" TEXT NOT NULL DEFAULT '{}',
+    "amenities" TEXT NOT NULL DEFAULT '[]',
+    "house_rules" TEXT NOT NULL DEFAULT '[]',
     "check_in_time" TEXT NOT NULL DEFAULT '15:00',
     "check_out_time" TEXT NOT NULL DEFAULT '11:00',
     "min_nights" INTEGER NOT NULL DEFAULT 1,
     "max_nights" INTEGER,
     "instant_book" BOOLEAN NOT NULL DEFAULT false,
-    "property_type" "PropertyType" NOT NULL,
-    "currency" "Currency" NOT NULL DEFAULT 'TND',
-    "status" "ListingStatus" NOT NULL DEFAULT 'draft',
-    "certification_level" "CertificationLevel" NOT NULL DEFAULT 'none',
 
     CONSTRAINT "listings_pkey" PRIMARY KEY ("id")
 );
@@ -201,7 +129,7 @@ CREATE TABLE "listing_photos" (
     "is_primary" BOOLEAN NOT NULL DEFAULT false,
     "is_certified" BOOLEAN NOT NULL DEFAULT false,
     "certification_date" TIMESTAMP(3),
-    "metadata" JSONB NOT NULL DEFAULT '{}',
+    "metadata" TEXT NOT NULL DEFAULT '{}',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "listing_photos_pkey" PRIMARY KEY ("id")
@@ -214,14 +142,14 @@ CREATE TABLE "listing_passports" (
     "stay_count" INTEGER NOT NULL DEFAULT 0,
     "guest_count" INTEGER NOT NULL DEFAULT 0,
     "age_days" INTEGER NOT NULL DEFAULT 0,
-    "certifications_history" JSONB NOT NULL DEFAULT '[]',
+    "certifications_history" TEXT NOT NULL DEFAULT '[]',
     "certified_photos_count" INTEGER NOT NULL DEFAULT 0,
     "videos_count" INTEGER NOT NULL DEFAULT 0,
     "control_visits_count" INTEGER NOT NULL DEFAULT 0,
-    "incidents" JSONB NOT NULL DEFAULT '[]',
-    "disputes" JSONB NOT NULL DEFAULT '[]',
-    "dispute_resolutions" JSONB NOT NULL DEFAULT '[]',
-    "scores_history" JSONB NOT NULL DEFAULT '[]',
+    "incidents" TEXT NOT NULL DEFAULT '[]',
+    "disputes" TEXT NOT NULL DEFAULT '[]',
+    "dispute_resolutions" TEXT NOT NULL DEFAULT '[]',
+    "scores_history" TEXT NOT NULL DEFAULT '[]',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -238,21 +166,21 @@ CREATE TABLE "bookings" (
     "check_out" TIMESTAMP(3) NOT NULL,
     "guests_count" INTEGER NOT NULL,
     "total_nights" INTEGER NOT NULL,
-    "base_price" DECIMAL(65,30) NOT NULL,
-    "cleaning_fee" DECIMAL(65,30) NOT NULL,
-    "service_fee" DECIMAL(65,30) NOT NULL,
-    "insurance_fee" DECIMAL(65,30) NOT NULL DEFAULT 0,
-    "total_price" DECIMAL(65,30) NOT NULL,
+    "base_price" DOUBLE PRECISION NOT NULL,
+    "cleaning_fee" DOUBLE PRECISION NOT NULL,
+    "service_fee" DOUBLE PRECISION NOT NULL,
+    "insurance_fee" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "total_price" DOUBLE PRECISION NOT NULL,
+    "currency" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "payment_status" TEXT NOT NULL DEFAULT 'pending',
+    "validation_status" TEXT NOT NULL DEFAULT 'pending',
     "validation_deadline" TIMESTAMP(3),
     "dispute_id" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
-    "security_deposit" DECIMAL(65,30) NOT NULL DEFAULT 0,
-    "validation_data" JSONB,
-    "currency" "Currency" NOT NULL,
-    "status" "BookingStatus" NOT NULL DEFAULT 'pending',
-    "payment_status" "PaymentStatus" NOT NULL DEFAULT 'pending',
-    "validation_status" "ValidationStatus" NOT NULL DEFAULT 'pending',
+    "security_deposit" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "validation_data" TEXT,
 
     CONSTRAINT "bookings_pkey" PRIMARY KEY ("id")
 );
@@ -262,16 +190,16 @@ CREATE TABLE "payments" (
     "id" TEXT NOT NULL,
     "booking_id" TEXT NOT NULL,
     "stripe_payment_intent_id" TEXT NOT NULL,
-    "amount" DECIMAL(65,30) NOT NULL,
+    "amount" DOUBLE PRECISION NOT NULL,
+    "currency" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'pending',
     "held_at" TIMESTAMP(3),
     "captured_at" TIMESTAMP(3),
     "refunded_at" TIMESTAMP(3),
-    "refund_amount" DECIMAL(65,30),
+    "refund_amount" DOUBLE PRECISION,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
     "refund_reason" TEXT,
-    "currency" "Currency" NOT NULL,
-    "status" "PaymentStatus" NOT NULL DEFAULT 'pending',
 
     CONSTRAINT "payments_pkey" PRIMARY KEY ("id")
 );
@@ -281,16 +209,16 @@ CREATE TABLE "disputes" (
     "id" TEXT NOT NULL,
     "booking_id" TEXT NOT NULL,
     "initiated_by" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'pending',
     "description" TEXT NOT NULL,
     "resolution_notes" TEXT,
     "decided_by" TEXT,
     "decided_at" TIMESTAMP(3),
-    "refund_amount" DECIMAL(65,30),
-    "sanctions" JSONB NOT NULL DEFAULT '[]',
+    "refund_amount" DOUBLE PRECISION,
+    "sanctions" TEXT NOT NULL DEFAULT '[]',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
-    "type" "DisputeType" NOT NULL,
-    "status" "DisputeStatus" NOT NULL DEFAULT 'pending',
 
     CONSTRAINT "disputes_pkey" PRIMARY KEY ("id")
 );
@@ -300,10 +228,10 @@ CREATE TABLE "dispute_evidence" (
     "id" TEXT NOT NULL,
     "dispute_id" TEXT NOT NULL,
     "uploaded_by" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
     "url" TEXT NOT NULL,
     "description" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "type" "EvidenceType" NOT NULL,
 
     CONSTRAINT "dispute_evidence_pkey" PRIMARY KEY ("id")
 );
@@ -315,6 +243,7 @@ CREATE TABLE "reviews" (
     "listing_id" TEXT NOT NULL,
     "reviewer_id" TEXT NOT NULL,
     "reviewee_id" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
     "rating" INTEGER NOT NULL,
     "cleanliness" INTEGER NOT NULL,
     "accuracy" INTEGER NOT NULL,
@@ -328,9 +257,8 @@ CREATE TABLE "reviews" (
     "flag_reason" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
-    "ai_score" DECIMAL(65,30),
+    "ai_score" DOUBLE PRECISION,
     "helpful_count" INTEGER NOT NULL DEFAULT 0,
-    "type" "ReviewType" NOT NULL,
 
     CONSTRAINT "reviews_pkey" PRIMARY KEY ("id")
 );
@@ -339,7 +267,7 @@ CREATE TABLE "reviews" (
 CREATE TABLE "conversations" (
     "id" TEXT NOT NULL,
     "booking_id" TEXT,
-    "participant_ids" TEXT[],
+    "participant_ids" TEXT NOT NULL DEFAULT '[]',
     "listing_id" TEXT,
     "is_blocked" BOOLEAN NOT NULL DEFAULT false,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -354,13 +282,13 @@ CREATE TABLE "messages" (
     "id" TEXT NOT NULL,
     "conversation_id" TEXT NOT NULL,
     "sender_id" TEXT NOT NULL,
+    "type" TEXT NOT NULL DEFAULT 'text',
     "content" TEXT NOT NULL,
-    "metadata" JSONB NOT NULL DEFAULT '{}',
+    "metadata" TEXT NOT NULL DEFAULT '{}',
     "is_flagged" BOOLEAN NOT NULL DEFAULT false,
     "flag_reason" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "ai_analysis" JSONB,
-    "type" "MessageType" NOT NULL DEFAULT 'text',
+    "ai_analysis" TEXT,
 
     CONSTRAINT "messages_pkey" PRIMARY KEY ("id")
 );
@@ -369,16 +297,16 @@ CREATE TABLE "messages" (
 CREATE TABLE "certifications" (
     "id" TEXT NOT NULL,
     "listing_id" TEXT NOT NULL,
+    "level" TEXT NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'pending',
     "requested_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "validated_at" TIMESTAMP(3),
     "expires_at" TIMESTAMP(3),
     "validated_by" TEXT,
-    "report" JSONB NOT NULL DEFAULT '{}',
+    "report" TEXT NOT NULL DEFAULT '{}',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
-    "score_breakdown" JSONB NOT NULL DEFAULT '{}',
-    "level" "CertificationLevel" NOT NULL,
+    "score_breakdown" TEXT NOT NULL DEFAULT '{}',
 
     CONSTRAINT "certifications_pkey" PRIMARY KEY ("id")
 );
@@ -391,13 +319,13 @@ CREATE TABLE "control_visits" (
     "scheduled_at" TIMESTAMP(3) NOT NULL,
     "completed_at" TIMESTAMP(3),
     "status" TEXT NOT NULL DEFAULT 'scheduled',
-    "checklist" JSONB NOT NULL DEFAULT '{}',
-    "photos" JSONB NOT NULL DEFAULT '[]',
+    "checklist" TEXT NOT NULL DEFAULT '{}',
+    "photos" TEXT NOT NULL DEFAULT '[]',
     "notes" TEXT,
     "gps_coordinates" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
-    "videos" JSONB NOT NULL DEFAULT '[]',
+    "videos" TEXT NOT NULL DEFAULT '[]',
     "weather_conditions" TEXT,
 
     CONSTRAINT "control_visits_pkey" PRIMARY KEY ("id")
@@ -407,8 +335,9 @@ CREATE TABLE "control_visits" (
 CREATE TABLE "sanctions" (
     "id" TEXT NOT NULL,
     "user_id" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
     "reason" TEXT NOT NULL,
-    "evidence" JSONB NOT NULL DEFAULT '{}',
+    "evidence" TEXT NOT NULL DEFAULT '{}',
     "duration_days" INTEGER,
     "expires_at" TIMESTAMP(3),
     "applied_by" TEXT NOT NULL,
@@ -416,7 +345,6 @@ CREATE TABLE "sanctions" (
     "revoked_by" TEXT,
     "revoked_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "type" "SanctionType" NOT NULL,
 
     CONSTRAINT "sanctions_pkey" PRIMARY KEY ("id")
 );
@@ -432,22 +360,22 @@ CREATE TABLE "reverse_searches" (
     "check_out" TIMESTAMP(3) NOT NULL,
     "guests_count" INTEGER NOT NULL,
     "bedrooms" INTEGER,
-    "budget_min" DECIMAL(65,30),
-    "budget_max" DECIMAL(65,30),
-    "requirements" JSONB NOT NULL DEFAULT '{}',
+    "budget_min" DOUBLE PRECISION,
+    "budget_max" DOUBLE PRECISION,
+    "requirements" TEXT NOT NULL DEFAULT '{}',
+    "status" TEXT NOT NULL DEFAULT 'active',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
     "city" TEXT,
     "region" TEXT,
     "bathrooms" INTEGER,
-    "amenities_required" JSONB NOT NULL DEFAULT '[]',
-    "property_types" JSONB NOT NULL DEFAULT '[]',
+    "amenities_required" TEXT NOT NULL DEFAULT '[]',
+    "property_types" TEXT NOT NULL DEFAULT '[]',
     "certification_min" TEXT,
     "min_trust_score" INTEGER,
     "view_count" INTEGER NOT NULL DEFAULT 0,
     "offer_count" INTEGER NOT NULL DEFAULT 0,
     "expires_at" TIMESTAMP(3),
-    "status" "ReverseSearchStatus" NOT NULL DEFAULT 'active',
 
     CONSTRAINT "reverse_searches_pkey" PRIMARY KEY ("id")
 );
@@ -458,19 +386,19 @@ CREATE TABLE "reverse_offers" (
     "reverse_search_id" TEXT NOT NULL,
     "listing_id" TEXT NOT NULL,
     "owner_id" TEXT NOT NULL,
-    "proposed_price" DECIMAL(65,30) NOT NULL,
+    "proposed_price" DOUBLE PRECISION NOT NULL,
     "message" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'pending',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
-    "original_price" DECIMAL(65,30),
-    "discount_percent" DECIMAL(65,30),
+    "original_price" DOUBLE PRECISION,
+    "discount_percent" DOUBLE PRECISION,
     "is_viewed" BOOLEAN NOT NULL DEFAULT false,
     "viewed_at" TIMESTAMP(3),
     "expires_at" TIMESTAMP(3),
-    "counter_price" DECIMAL(65,30),
+    "counter_price" DOUBLE PRECISION,
     "counter_at" TIMESTAMP(3),
     "negotiation_round" INTEGER NOT NULL DEFAULT 0,
-    "status" "ReverseOfferStatus" NOT NULL DEFAULT 'pending',
 
     CONSTRAINT "reverse_offers_pkey" PRIMARY KEY ("id")
 );
@@ -479,17 +407,17 @@ CREATE TABLE "reverse_offers" (
 CREATE TABLE "subscriptions" (
     "id" TEXT NOT NULL,
     "user_id" TEXT NOT NULL,
-    "price" DECIMAL(65,30) NOT NULL,
+    "type" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'active',
+    "price" DOUBLE PRECISION NOT NULL,
+    "currency" TEXT NOT NULL,
     "interval" TEXT NOT NULL,
     "stripe_subscription_id" TEXT NOT NULL,
     "current_period_start" TIMESTAMP(3) NOT NULL,
     "current_period_end" TIMESTAMP(3) NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
-    "features" JSONB NOT NULL DEFAULT '[]',
-    "type" "SubscriptionType" NOT NULL,
-    "status" "SubscriptionStatus" NOT NULL DEFAULT 'active',
-    "currency" "Currency" NOT NULL,
+    "features" TEXT NOT NULL DEFAULT '[]',
 
     CONSTRAINT "subscriptions_pkey" PRIMARY KEY ("id")
 );
@@ -498,15 +426,15 @@ CREATE TABLE "subscriptions" (
 CREATE TABLE "insurance_policies" (
     "id" TEXT NOT NULL,
     "booking_id" TEXT NOT NULL,
-    "premium_amount" DECIMAL(65,30) NOT NULL,
-    "coverage_amount" DECIMAL(65,30) NOT NULL,
+    "type" TEXT NOT NULL,
+    "provider" TEXT NOT NULL DEFAULT 'internal',
+    "premium_amount" DOUBLE PRECISION NOT NULL,
+    "coverage_amount" DOUBLE PRECISION NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'active',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
     "claim_reason" TEXT,
-    "claim_documents" JSONB NOT NULL DEFAULT '[]',
-    "type" "InsuranceType" NOT NULL,
-    "provider" "InsuranceProvider" NOT NULL DEFAULT 'internal',
-    "status" "InsuranceStatus" NOT NULL DEFAULT 'active',
+    "claim_documents" TEXT NOT NULL DEFAULT '[]',
 
     CONSTRAINT "insurance_policies_pkey" PRIMARY KEY ("id")
 );
@@ -518,7 +446,7 @@ CREATE TABLE "audit_logs" (
     "action" TEXT NOT NULL,
     "entity_type" TEXT NOT NULL,
     "entity_id" TEXT NOT NULL,
-    "details" JSONB NOT NULL DEFAULT '{}',
+    "details" TEXT NOT NULL DEFAULT '{}',
     "ip_address" TEXT NOT NULL,
     "user_agent" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -530,14 +458,14 @@ CREATE TABLE "audit_logs" (
 CREATE TABLE "contact_attempts" (
     "id" TEXT NOT NULL,
     "user_id" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
     "content" TEXT NOT NULL,
     "context" TEXT NOT NULL,
     "detected_by" TEXT NOT NULL DEFAULT 'ai',
-    "confidence" DECIMAL(65,30) NOT NULL DEFAULT 0,
+    "confidence" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "message_id" TEXT,
     "is_blocked" BOOLEAN NOT NULL DEFAULT false,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "type" "ContactAttemptType" NOT NULL,
 
     CONSTRAINT "contact_attempts_pkey" PRIMARY KEY ("id")
 );
@@ -546,17 +474,17 @@ CREATE TABLE "contact_attempts" (
 CREATE TABLE "inventory_checks" (
     "id" TEXT NOT NULL,
     "booking_id" TEXT NOT NULL,
-    "check_in_photos" JSONB NOT NULL DEFAULT '[]',
-    "check_out_photos" JSONB NOT NULL DEFAULT '[]',
+    "check_in_photos" TEXT NOT NULL DEFAULT '[]',
+    "check_out_photos" TEXT NOT NULL DEFAULT '[]',
     "check_in_notes" TEXT,
     "check_out_notes" TEXT,
-    "damages_found" JSONB NOT NULL DEFAULT '[]',
+    "damages_found" TEXT NOT NULL DEFAULT '[]',
     "deposit_status" TEXT NOT NULL DEFAULT 'pending',
-    "deposit_returned" DECIMAL(65,30),
-    "deposit_kept" DECIMAL(65,30),
+    "deposit_returned" DOUBLE PRECISION,
+    "deposit_kept" DOUBLE PRECISION,
+    "status" TEXT NOT NULL DEFAULT 'pending',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
-    "status" "InventoryCheckStatus" NOT NULL DEFAULT 'pending',
 
     CONSTRAINT "inventory_checks_pkey" PRIMARY KEY ("id")
 );

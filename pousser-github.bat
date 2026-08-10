@@ -3,25 +3,52 @@ chcp 65001 >nul
 cd /d "%~dp0"
 set LOG=%~dp0pousser-github.log
 
-echo === Envoi vers GitHub === > "%LOG%"
+echo === Regeneration de la migration puis envoi vers GitHub === > "%LOG%"
 echo Date: %DATE% %TIME% >> "%LOG%"
 echo. >> "%LOG%"
 
-REM Authentification via Git Credential Manager, deja configure sur ce poste.
-echo [1/3] Etat local >> "%LOG%"
+REM Le schema PostgreSQL a change : l ancienne migration decrivait des enums
+REM natifs et des colonnes DECIMAL qui n existent plus. On la regenere.
+
+echo [1/5] Suppression de l ancienne migration >> "%LOG%"
+if exist "bledigo-api\prisma\migrations\0_init" rmdir /s /q "bledigo-api\prisma\migrations\0_init"
+mkdir "bledigo-api\prisma\migrations\0_init" 2>nul
+
+echo [2/5] Generation du SQL depuis schema.postgres.prisma >> "%LOG%"
+pushd bledigo-api
+> "prisma\migrations\migration_lock.toml" echo # Genere par pousser-github.bat
+>> "prisma\migrations\migration_lock.toml" echo provider = "postgresql"
+call npx prisma migrate diff ^
+  --from-empty ^
+  --to-schema-datamodel prisma/schema.postgres.prisma ^
+  --script > "prisma\migrations\0_init\migration.sql" 2>> "%LOG%"
+popd
+
+for %%A in ("bledigo-api\prisma\migrations\0_init\migration.sql") do (
+  echo   migration.sql : %%~zA octets >> "%LOG%"
+  if %%~zA LSS 500 goto :echec
+)
+
+echo [3/5] Etat local >> "%LOG%"
 call git branch --show-current >> "%LOG%" 2>&1
-call git log --oneline -3 >> "%LOG%" 2>&1
-call git remote -v >> "%LOG%" 2>&1
-echo. >> "%LOG%"
+call git status --short >> "%LOG%" 2>&1
 
-echo [2/3] Envoi de la branche main >> "%LOG%"
+echo [4/5] Commit de la migration regeneree >> "%LOG%"
+call git add -A >> "%LOG%" 2>&1
+call git commit -m "Migration PostgreSQL regeneree depuis le schema aligne" >> "%LOG%" 2>&1
+
+echo [5/5] Envoi de la branche main >> "%LOG%"
 call git push -u origin main >> "%LOG%" 2>&1
+if errorlevel 1 goto :echec
 
 echo. >> "%LOG%"
-echo [3/3] Etat du distant >> "%LOG%"
 call git ls-remote --heads origin >> "%LOG%" 2>&1
+echo RESULTAT: SUCCES >> "%LOG%"
+exit /b 0
+
+:echec
 echo. >> "%LOG%"
-echo TERMINE >> "%LOG%"
+echo RESULTAT: ECHEC - voir les messages ci-dessus >> "%LOG%"
 exit /b 0
 
 REM ---------------- ancien contenu, conserve pour reference ----------------

@@ -1,2 +1,2 @@
-# Genere par preparer-migration.bat
+# Genere par pousser-github.bat
 provider = "postgresql"
