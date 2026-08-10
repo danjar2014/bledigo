@@ -3,24 +3,24 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, KeyRound, Check, CalendarDays, Users, Gauge, ShieldAlert } from 'lucide-react';
+import { Plus, KeyRound, Check, CalendarDays, Users, Gauge, ShieldAlert, Pencil } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/store/auth';
 import RequireAuth from '@/components/RequireAuth';
 import { Spinner, ErrorBox, Empty } from '@/components/ui';
-import { money, date, photoOf, BOOKING_STATUS, CERTIFICATIONS } from '@/lib/format';
+import { date, photoOf, BOOKING_STATUS, CERTIFICATIONS } from '@/lib/format';
+import { useMoney } from '@/store/preferences';
 
 function Dashboard() {
+  const money = useMoney();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: listings, isLoading, error } = useQuery({
     queryKey: ['my-listings', user?.id],
-    queryFn: async () => {
-      // L API expose les annonces actives ; on filtre sur le proprietaire connecte
-      const all = await api.listings({ limit: 100 });
-      return all.items.filter((l: any) => l.ownerId === user?.id);
-    },
+    // Endpoint dedie : inclut les brouillons et les annonces en re-verification,
+    // que la recherche publique n expose pas.
+    queryFn: () => api.myListings(),
     enabled: !!user,
   });
 
@@ -60,7 +60,7 @@ function Dashboard() {
         {/* Indicateurs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
-            ['Annonces publiees', listings?.length || 0],
+            ['Mes annonces', listings?.length || 0],
             ['Reservations', bookings?.length || 0],
             ['En attente', (bookings || []).filter((b: any) => b.status === 'pending').length],
             ['Revenus encaisses', money(revenue)],
@@ -97,7 +97,7 @@ function Dashboard() {
                   </div>
 
                   <div className="font-accent font-bold text-charcoal">
-                    {money(Number(b.totalPrice), b.currency)}
+                    {money(Number(b.totalPrice))}
                   </div>
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${status.className}`}>
                     {status.label}
@@ -135,7 +135,7 @@ function Dashboard() {
         )}
 
         {/* Mes annonces */}
-        <h2 className="font-display font-semibold text-xl text-charcoal mb-3">Mes annonces publiees</h2>
+        <h2 className="font-display font-semibold text-xl text-charcoal mb-3">Mes annonces</h2>
         {!listings?.length ? (
           <Empty>
             Aucune annonce active. Creez-en une, puis publiez-la pour qu elle apparaisse dans la
@@ -154,6 +154,7 @@ function Dashboard() {
 }
 
 function ListingRow({ listing }: { listing: any }) {
+  const money = useMoney();
   const queryClient = useQueryClient();
   const score = useMutation({
     mutationFn: () => api.scoreListing(listing.id),
@@ -182,7 +183,23 @@ function ListingRow({ listing }: { listing: any }) {
           {listing.title}
         </Link>
         <div className="text-sm text-slate mb-3">
-          {listing.city} - {money(Number(listing.pricePerNight), listing.currency)}/nuit
+          {listing.city} - {money(Number(listing.pricePerNight))}/nuit
+        </div>
+
+        <div className="flex items-center gap-2 mb-3">
+          <Link
+            href={`/proprietaire/annonces/${listing.id}/modifier`}
+            className="btn-secondary text-xs inline-flex items-center gap-1.5 px-3 py-1.5"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            Modifier
+          </Link>
+          <Link
+            href={`/proprietaire/annonces/${listing.id}/modifier#historique`}
+            className="text-xs text-slate hover:text-bledi-blue"
+          >
+            Historique
+          </Link>
         </div>
 
         <div className="flex items-center gap-3 text-sm">

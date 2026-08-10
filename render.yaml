@@ -1,0 +1,75 @@
+# Blueprint Render pour BlediGo
+#
+# Trois ressources : une base PostgreSQL managee, l API NestJS et le front Next.js.
+# Les URL publiques sont injectees automatiquement d un service a l autre, ce qui
+# evite de coder en dur des adresses qui changent a chaque environnement.
+#
+# Mise en place : Render > New > Blueprint, puis pointer sur ce depot.
+
+databases:
+  - name: bledigo-db
+    databaseName: bledigo
+    user: bledigo
+    plan: free
+
+services:
+  # ---------------------------------------------------------------- API
+  - type: web
+    name: bledigo-api
+    runtime: node
+    rootDir: bledigo-api
+    plan: free
+    healthCheckPath: /health
+    # Le client Prisma est genere depuis le schema PostgreSQL, pas depuis
+    # schema.prisma qui reste en SQLite pour le developpement local.
+    buildCommand: npm ci && npx prisma generate --schema=prisma/schema.postgres.prisma && npm run build
+    # migrate deploy est idempotent : il n applique que les migrations manquantes.
+    startCommand: npx prisma migrate deploy --schema=prisma/schema.postgres.prisma && node dist/main
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bledigo-db
+          property: connectionString
+      # Secrets generes par Render, jamais commites
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      # Origine autorisee par CORS : l URL publique du front
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: bledigo-web
+          property: host
+      # Services externes : vides = mode simule, l API demarre sans eux
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: REDIS_URL
+        sync: false
+
+  # ---------------------------------------------------------------- Front
+  - type: web
+    name: bledigo-web
+    runtime: node
+    rootDir: bledigo-web
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Next.js fige les variables NEXT_PUBLIC_ au build : elle doit etre
+      # presente avant la compilation, pas seulement au demarrage.
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: bledigo-api
+          property: host

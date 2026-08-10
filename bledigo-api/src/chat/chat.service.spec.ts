@@ -1,26 +1,65 @@
 import { ChatService } from './chat.service';
 
-describe('ChatService - filtre anti-desintermediation', () => {
-  const service = new ChatService({} as any);
-  const scan = (c: string) => (service as any).scan(c);
+/**
+ * La detection anti-desintermediation a ete deplacee dans AntiFraudService
+ * (voir anti-fraud.service.spec.ts pour la couverture des motifs).
+ * Ce test verifie que ChatService delegue bien l analyse a ce service.
+ */
+describe('ChatService - delegation anti-fraude', () => {
+  const conversation = {
+    id: 'conv-1',
+    participantIds: JSON.stringify(['u1', 'u2']),
+    isBlocked: false,
+  };
 
-  it('laisse passer un message normal', () => {
-    expect(scan('Bonjour, le logement est-il disponible en aout ?')).toBeNull();
+  function build(analysis: { flagged: boolean; confidence: number }) {
+    const analyzeMessage = jest.fn().mockResolvedValue(analysis);
+    const prisma = {
+      conversation: {
+        findUnique: jest.fn().mockResolvedValue(conversation),
+        update: jest.fn().mockResolvedValue(conversation),
+      },
+      message: {
+        create: jest.fn().mockResolvedValue({ id: 'msg-1', content: 'hello' }),
+      },
+    };
+    const service = new ChatService(prisma as any, { analyzeMessage } as any);
+    return { service, prisma, analyzeMessage };
+  }
+
+  it('transmet le message a l analyse anti-fraude', async () => {
+    const { service, analyzeMessage } = build({ flagged: false, confidence: 0 });
+
+    await service.send('u1', 'conv-1', { content: 'Bonjour, le logement est-il libre ?' });
+
+    expect(analyzeMessage).toHaveBeenCalledWith(
+      'msg-1',
+      'Bonjour, le logement est-il libre ?',
+      'u1',
+    );
   });
 
-  it('detecte un numero de telephone', () => {
-    expect(scan('appelle moi au +216 20 123 456')).toBe('numero de telephone');
+  it('ne signale pas un message normal', async () => {
+    const { service } = build({ flagged: false, confidence: 0 });
+
+    const res = await service.send('u1', 'conv-1', { content: 'Bonjour' });
+
+    expect(res.flagged).toBe(false);
+    expect(res.flagReason).toBeNull();
   });
 
-  it('detecte un email', () => {
-    expect(scan('ecris a sami.benali@gmail.com')).toBe('adresse email');
+  it('signale un message detecte comme tentative de contact', async () => {
+    const { service } = build({ flagged: true, confidence: 0.95 });
+
+    const res = await service.send('u1', 'conv-1', { content: 'appelle moi au +216 20 123 456' });
+
+    expect(res.flagged).toBe(true);
+    expect(res.flagReason).toContain('95%');
   });
 
-  it('detecte une messagerie externe', () => {
-    expect(scan('on continue sur WhatsApp ?')).toBe('messagerie externe');
-  });
+  it('refuse un participant exterieur a la conversation', async () => {
+    const { service } = build({ flagged: false, confidence: 0 });
 
-  it('detecte un paiement hors plateforme', () => {
-    expect(scan('tu peux payer en especes a l arrivee')).toBe('paiement hors plateforme');
+    await expect(service.send('u9', 'conv-1', { content: 'Bonjour' })).rejects.toThrow();
   });
 });

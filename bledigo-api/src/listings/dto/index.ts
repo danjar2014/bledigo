@@ -1,4 +1,4 @@
-import { IsString, IsInt, IsNumber, IsOptional, IsEnum, Min, MaxLength } from 'class-validator';
+import { IsString, IsInt, IsNumber, IsBoolean, IsArray, IsOptional, IsEnum, Min, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PropertyType, Currency, ListingStatus } from '../../common/enums';
@@ -20,7 +20,21 @@ export class CreateListingDto {
   @IsNumber() @Min(0) @Type(() => Number) pricePerNight: number;
   @IsOptional() @IsNumber() @Type(() => Number) cleaningFee?: number;
   @IsOptional() @IsNumber() @Type(() => Number) serviceFee?: number;
+  @IsOptional() @IsNumber() @Type(() => Number) securityDeposit?: number;
   @IsOptional() @IsEnum(Currency) currency?: Currency;
+  @IsOptional() @IsInt() @Type(() => Number) surfaceM2?: number;
+  @IsOptional() @IsInt() @Type(() => Number) floors?: number;
+  @IsOptional() @IsInt() @Type(() => Number) yearBuilt?: number;
+  @IsOptional() @IsArray() amenities?: string[];
+  /** [{ key, allowed }] : regle autorisee ou interdite. */
+  @IsOptional() @IsArray() houseRules?: { key: string; allowed: boolean }[];
+  /** Bloc libre : texte de precisions et proximites cochees. */
+  @IsOptional() rules?: { text?: string; proximity?: string[] } & Record<string, any>;
+  @IsOptional() @IsString() checkInTime?: string;
+  @IsOptional() @IsString() checkOutTime?: string;
+  @IsOptional() @IsInt() @Min(1) @Type(() => Number) minNights?: number;
+  @IsOptional() @IsInt() @Min(1) @Type(() => Number) maxNights?: number;
+  @IsOptional() @IsBoolean() instantBook?: boolean;
 }
 
 export class UpdateListingDto {
@@ -29,6 +43,17 @@ export class UpdateListingDto {
   @IsOptional() @IsNumber() @Type(() => Number) pricePerNight?: number;
   @IsOptional() @IsNumber() @Type(() => Number) cleaningFee?: number;
   @IsOptional() @IsInt() @Type(() => Number) maxGuests?: number;
+  @IsOptional() @IsNumber() @Type(() => Number) serviceFee?: number;
+  @IsOptional() @IsNumber() @Type(() => Number) securityDeposit?: number;
+  @IsOptional() @IsArray() amenities?: string[];
+  @IsOptional() @IsArray() houseRules?: { key: string; allowed: boolean }[];
+  @IsOptional() @IsString() checkInTime?: string;
+  @IsOptional() @IsString() checkOutTime?: string;
+  @IsOptional() @IsInt() @Min(1) @Type(() => Number) minNights?: number;
+  @IsOptional() @IsInt() @Min(1) @Type(() => Number) maxNights?: number;
+  @IsOptional() @IsBoolean() instantBook?: boolean;
+  /** Motif enregistre dans l historique de modification. */
+  @IsOptional() @IsString() modificationReason?: string;
   @IsOptional() @IsEnum(ListingStatus) status?: ListingStatus;
 }
 

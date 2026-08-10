@@ -4,9 +4,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { MapPin, Star, Shield, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { money, photoOf, CERTIFICATIONS } from '@/lib/format';
+import { photoOf, CERTIFICATIONS } from '@/lib/format';
+import { useMoney } from '@/store/preferences';
 
 export default function ListingCard({ listing }: { listing: any }) {
+  const money = useMoney();
   const certification = CERTIFICATIONS[listing.certificationLevel] || CERTIFICATIONS.none;
   const trustScore = listing.trustScore ?? 50;
 
@@ -33,7 +35,7 @@ export default function ListingCard({ listing }: { listing: any }) {
             )}
           </div>
           <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-sm font-accent font-semibold">
-            {money(Number(listing.pricePerNight), listing.currency)}/nuit
+            {money(Number(listing.pricePerNight))}/nuit
           </div>
         </div>
 

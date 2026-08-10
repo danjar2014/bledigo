@@ -6,11 +6,15 @@ import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { MapPin, Users, BedDouble, Bath, Shield, Star, Check, Lock } from 'lucide-react';
 import { api } from '@/lib/api';
+import ReviewsSection from '@/components/ReviewsSection';
+import ListingFeatures from '@/components/ListingFeatures';
 import { useAuth } from '@/store/auth';
-import { money, date, nights, photoOf, CERTIFICATIONS } from '@/lib/format';
+import { date, nights, photoOf, CERTIFICATIONS } from '@/lib/format';
+import { useMoney } from '@/store/preferences';
 import { Spinner, ErrorBox } from '@/components/ui';
 
 export default function ListingPage() {
+  const money = useMoney();
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
@@ -25,7 +29,7 @@ export default function ListingPage() {
 
   const { data: reviews } = useQuery({
     queryKey: ['reviews', listing?.id],
-    queryFn: () => api.reviews(listing.id),
+    queryFn: () => api.listingReviews(listing.id),
     enabled: !!listing?.id,
   });
 
@@ -93,30 +97,16 @@ export default function ListingPage() {
           <h2 className="font-display font-semibold text-xl mb-2">Description</h2>
           <p className="text-slate leading-relaxed mb-8 whitespace-pre-line">{listing.description}</p>
 
-          <h2 className="font-display font-semibold text-xl mb-4">
-            Avis verifies {reviews?.total ? `(${reviews.total})` : ''}
-          </h2>
-          {!reviews?.items?.length ? (
-            <p className="text-slate mb-8">
-              Aucun avis pour le moment. Seuls les voyageurs ayant termine un sejour peuvent en deposer.
-            </p>
-          ) : (
-            <div className="space-y-4 mb-8">
-              {reviews.items.map((r: any) => (
-                <div key={r.id} className="bg-white rounded-bledi p-4 shadow-bledi">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="font-medium text-charcoal">{r.reviewer?.firstName || 'Voyageur'}</div>
-                    <div className="flex items-center gap-1 text-bledi-gold">
-                      <Star className="w-4 h-4 fill-bledi-gold" />
-                      {r.rating}/5
-                    </div>
-                  </div>
-                  <div className="text-xs text-slate mb-2">{date(r.createdAt)} - avis verifie</div>
-                  <p className="text-slate">{r.comment}</p>
-                </div>
-              ))}
-            </div>
-          )}
+          <ListingFeatures listing={listing} />
+
+          <ReviewsSection
+            listingId={listing.id}
+            avgRating={reviews?.avgRating}
+            totalReviews={reviews?.total}
+            criteriaAvg={reviews?.criteriaAvg}
+            breakdown={reviews?.breakdown}
+            reviews={reviews?.reviews ?? reviews?.items}
+          />
         </div>
 
         {/* Widget de reservation */}
@@ -124,7 +114,7 @@ export default function ListingPage() {
           <div className="bg-white rounded-bledi shadow-bledi-hover p-5">
             <div className="flex items-baseline gap-1 mb-4">
               <span className="text-2xl font-accent font-bold text-charcoal">
-                {money(Number(listing.pricePerNight), listing.currency)}
+                {money(Number(listing.pricePerNight))}
               </span>
               <span className="text-slate">/ nuit</span>
             </div>
@@ -156,20 +146,20 @@ export default function ListingPage() {
             {nbNights > 0 && (
               <div className="text-sm space-y-1 border-t border-cloud pt-3 mb-4">
                 <div className="flex justify-between text-slate">
-                  <span>{money(Number(listing.pricePerNight), '')} x {nbNights} nuits</span>
-                  <span>{money(nbNights * Number(listing.pricePerNight), listing.currency)}</span>
+                  <span>{money(Number(listing.pricePerNight))} x {nbNights} nuits</span>
+                  <span>{money(nbNights * Number(listing.pricePerNight))}</span>
                 </div>
                 <div className="flex justify-between text-slate">
                   <span>Frais de menage</span>
-                  <span>{money(Number(listing.cleaningFee), listing.currency)}</span>
+                  <span>{money(Number(listing.cleaningFee))}</span>
                 </div>
                 <div className="flex justify-between text-slate">
                   <span>Frais de service</span>
-                  <span>{money(Number(listing.serviceFee), listing.currency)}</span>
+                  <span>{money(Number(listing.serviceFee))}</span>
                 </div>
                 <div className="flex justify-between font-semibold text-charcoal pt-2 border-t border-cloud">
                   <span>Total</span>
-                  <span>{money(total, listing.currency)}</span>
+                  <span>{money(total)}</span>
                 </div>
               </div>
             )}

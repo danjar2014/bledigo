@@ -1,8 +1,12 @@
 import Hero from '@/components/Hero';
 import SearchBar from '@/components/SearchBar';
+import PropertyTypeTiles from '@/components/PropertyTypeTiles';
 import FeaturedListings from '@/components/FeaturedListings';
+import PopularCities from '@/components/PopularCities';
+import EscapeIdeas from '@/components/EscapeIdeas';
 import TrustIndicators from '@/components/TrustIndicators';
 import HowItWorks from '@/components/HowItWorks';
+import BecomeHost from '@/components/BecomeHost';
 import ReverseSearchCTA from '@/components/ReverseSearchCTA';
 
 export default function Home() {
@@ -13,9 +17,13 @@ export default function Home() {
         <SearchBar />
       </div>
       <TrustIndicators />
+      <PropertyTypeTiles />
       <FeaturedListings />
-      <HowItWorks />
+      <PopularCities />
       <ReverseSearchCTA />
+      <EscapeIdeas />
+      <HowItWorks />
+      <BecomeHost />
     </main>
   );
 }

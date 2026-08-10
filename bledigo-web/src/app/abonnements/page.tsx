@@ -5,7 +5,7 @@ import { Check, Crown } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/store/auth';
 import { Spinner, ErrorBox } from '@/components/ui';
-import { money } from '@/lib/format';
+import { useMoney } from '@/store/preferences';
 
 const LABELS: Record<string, string> = {
   owner_pro: 'Pro',
@@ -14,6 +14,7 @@ const LABELS: Record<string, string> = {
 };
 
 export default function AbonnementsPage() {
+  const money = useMoney();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -55,7 +56,7 @@ export default function AbonnementsPage() {
                   <span className="font-display font-bold text-xl">{LABELS[plan.type] || plan.type}</span>
                 </div>
                 <div className="font-accent font-bold text-3xl text-charcoal mb-4">
-                  {money(plan.price, plan.currency)}
+                  {money(plan.price)}
                   <span className="text-base text-slate font-body font-normal"> / mois</span>
                 </div>
                 <ul className="space-y-2 mb-6 text-sm text-slate">

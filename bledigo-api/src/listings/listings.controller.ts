@@ -16,6 +16,15 @@ export class ListingsController {
     return this.listingsService.findAll(q);
   }
 
+  /** Mes annonces, brouillons compris : declaree avant :id pour ne pas etre capturee. */
+  @Get('mine')
+  @ApiOperation({ summary: 'Annonces du proprietaire connecte, tous statuts' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  findMine(@CurrentUser('id') me: string) {
+    return this.listingsService.findMine(me);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.listingsService.findOne(id);
@@ -24,6 +33,14 @@ export class ListingsController {
   @Get(':id/availability')
   availability(@Param('id') id: string) {
     return this.listingsService.availability(id);
+  }
+
+  @Get(':id/modifications')
+  @ApiOperation({ summary: 'Historique des modifications (proprietaire)' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  modifications(@CurrentUser('id') me: string, @Param('id') id: string) {
+    return this.listingsService.getModificationHistory(id, me);
   }
 
   @Post()

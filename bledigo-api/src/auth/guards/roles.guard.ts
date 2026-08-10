@@ -1,6 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { UserRole } from '../../common/enums';
+import { hasAnyRole } from '../../common/roles';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -17,7 +18,8 @@ export class RolesGuard implements CanActivate {
     const { user } = context.switchToHttp().getRequest();
     if (!user) throw new ForbiddenException('Authentification requise');
 
-    if (!requiredRoles.includes(user.role)) {
+    // Un compte peut cumuler plusieurs roles (proprietaire qui voyage aussi)
+    if (!hasAnyRole(user, requiredRoles)) {
       throw new ForbiddenException('Permissions insuffisantes');
     }
 

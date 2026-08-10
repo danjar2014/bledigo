@@ -8,7 +8,8 @@ import {
 import { api } from '@/lib/api';
 import RequireAuth from '@/components/RequireAuth';
 import { Spinner, ErrorBox, Empty } from '@/components/ui';
-import { money, date, CERTIFICATIONS } from '@/lib/format';
+import { date, CERTIFICATIONS } from '@/lib/format';
+import { useMoney } from '@/store/preferences';
 
 const TABS = [
   ['dashboard', 'Tableau de bord'],
@@ -51,6 +52,7 @@ function Admin() {
 }
 
 function DashboardTab() {
+  const money = useMoney();
   const { data, isLoading, error } = useQuery({ queryKey: ['admin-dashboard'], queryFn: () => api.dashboard() });
   if (isLoading) return <Spinner />;
   if (error) return <ErrorBox error={error} />;
@@ -173,6 +175,7 @@ function ListingsTab() {
 }
 
 function DisputesTab() {
+  const money = useMoney();
   const queryClient = useQueryClient();
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [refunds, setRefunds] = useState<Record<string, string>>({});
@@ -213,7 +216,7 @@ function DisputesTab() {
           {d.booking && (
             <div className="text-sm text-slate mb-3">
               Reservation du {date(d.booking.checkIn)} au {date(d.booking.checkOut)} -{' '}
-              {money(Number(d.booking.totalPrice), d.booking.currency)}
+              {money(Number(d.booking.totalPrice))}
             </div>
           )}
 

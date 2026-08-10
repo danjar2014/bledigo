@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../../prisma/prisma.service';
+import { availableModes, effectiveRoles } from '../../common/roles';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -24,6 +25,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     }
 
     const { passwordHash, ...safe } = user;
-    return safe;
+    // Roles effectifs : un compte peut cumuler proprietaire et voyageur
+    return { ...safe, roles: effectiveRoles(user), modes: availableModes(user) };
   }
 }

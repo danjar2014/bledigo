@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ListingStatus } from '../common/enums';
+import { filterByAmenities } from '../common/amenities';
 
 /**
  * Recherche full-text + geo. En prod : Elasticsearch (voir ELASTICSEARCH_URL).
@@ -23,6 +24,10 @@ export class SearchService {
   async search(q: {
     q?: string;
     city?: string;
+    propertyType?: string;
+    amenities?: string | string[];
+    minRating?: number;
+    sortBy?: string;
     lat?: number;
     lng?: number;
     radiusKm?: number;
@@ -47,6 +52,8 @@ export class SearchService {
       ];
     }
     if (q.city) where.city = { contains: q.city };
+    if (q.propertyType) where.propertyType = q.propertyType;
+    if (q.minRating) where.avgRating = { gte: Number(q.minRating) };
     if (q.guests) where.maxGuests = { gte: Number(q.guests) };
     if (q.minPrice != null || q.maxPrice != null) {
       where.pricePerNight = {
@@ -60,6 +67,9 @@ export class SearchService {
       include: { photos: { where: { isPrimary: true }, take: 1 } },
       orderBy: [{ certificationLevel: 'desc' }, { trustScore: 'desc' }],
     });
+
+    // Filtre equipements : le logement doit posseder tous ceux demandes
+    results = filterByAmenities(results as any, q.amenities) as any;
 
     // Filtre geographique
     if (q.lat != null && q.lng != null) {
@@ -87,6 +97,13 @@ export class SearchService {
       const busyIds = new Set(busy.map((b: any) => b.listingId));
       results = results.filter((l: any) => !busyIds.has(l.id));
     }
+
+    // Tri demande par l utilisateur
+    const sortBy = q.sortBy;
+    if (sortBy === 'price_asc') results.sort((a: any, b: any) => a.pricePerNight - b.pricePerNight);
+    else if (sortBy === 'price_desc') results.sort((a: any, b: any) => b.pricePerNight - a.pricePerNight);
+    else if (sortBy === 'rating') results.sort((a: any, b: any) => Number(b.avgRating) - Number(a.avgRating));
+    else if (sortBy === 'newest') results.sort((a: any, b: any) => +new Date(b.createdAt) - +new Date(a.createdAt));
 
     const total = results.length;
     return {

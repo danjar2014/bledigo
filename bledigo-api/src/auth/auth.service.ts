@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto, LoginDto, OAuthDto } from './dto';
 import * as bcrypt from 'bcryptjs';
 import { UserRole, UserStatus } from '../common/enums';
+import { availableModes, effectiveRoles } from '../common/roles';
 
 @Injectable()
 export class AuthService {
@@ -126,6 +127,7 @@ export class AuthService {
 
   private sanitizeUser(user: any) {
     const { passwordHash, ...rest } = user;
-    return rest;
+    // Le front s appuie sur les roles effectifs pour proposer la bascule de mode
+    return { ...rest, roles: effectiveRoles(user), modes: availableModes(user) };
   }
 }

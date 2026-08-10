@@ -9,6 +9,10 @@ export type User = {
   firstName: string;
   lastName: string;
   role: 'traveler' | 'owner' | 'agency' | 'admin' | 'agent' | 'support';
+  /** Roles effectifs : un compte peut cumuler proprietaire et voyageur. */
+  roles?: string[];
+  /** Modes d interface disponibles pour ce compte. */
+  modes?: string[];
   avatarUrl?: string | null;
   [key: string]: any;
 };
@@ -19,6 +23,8 @@ type AuthState = {
   hydrate: () => Promise<void>;
   login: (email: string, password: string) => Promise<User>;
   register: (dto: Record<string, unknown>) => Promise<User>;
+  /** Active un second role (voyageur ou proprietaire) sur le compte courant. */
+  enableRole: (role: 'traveler' | 'owner') => Promise<User | null>;
   logout: () => void;
 };
 
@@ -51,6 +57,14 @@ export const useAuth = create<AuthState>((set) => ({
     writeTokens({ accessToken: res.accessToken, refreshToken: res.refreshToken });
     set({ user: res.user, loading: false });
     return res.user;
+  },
+
+  enableRole: async (role) => {
+    const updated = await api.enableRole(role);
+    // On recharge le profil complet : le backend a pu creer un passeport
+    const user = await api.me();
+    set({ user: { ...user, roles: updated.roles ?? user.roles, modes: updated.modes ?? user.modes } });
+    return user;
   },
 
   logout: () => {

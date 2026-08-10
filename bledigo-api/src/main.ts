@@ -17,10 +17,17 @@ async function bootstrap() {
   );
 
   // CORS
-  app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    credentials: true,
-  });
+  // Render fournit l hote sans protocole quand la variable vient d un autre
+  // service : on le complete en https. Plusieurs origines peuvent etre
+  // separees par des virgules.
+  const origins = (process.env.FRONTEND_URL || 'http://localhost:3000')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean)
+    .map((o) => (/^https?:\/\//i.test(o) ? o : `https://${o}`))
+    .map((o) => o.replace(/\/+$/, ''));
+
+  app.enableCors({ origin: origins, credentials: true });
 
   // Swagger / OpenAPI
   const config = new DocumentBuilder()

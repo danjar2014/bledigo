@@ -2,23 +2,14 @@ import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/commo
 import { PrismaService } from '../prisma/prisma.service';
 import { MessageType } from '../common/enums';
 import { toDbJson, fromDbJson } from '../common/json';
-
-/** Filtre anti-desintermediation : coordonnees hors plateforme */
-const PATTERNS: { re: RegExp; reason: string }[] = [
-  { re: /\b(?:\+?\d[\d .-]{7,}\d)\b/, reason: 'numero de telephone' },
-  { re: /[\w.+-]+@[\w-]+\.[\w.]+/, reason: 'adresse email' },
-  { re: /\b(whatsapp|telegram|viber|messenger)\b/i, reason: 'messagerie externe' },
-  { re: /\b(iban|rib|virement|especes|cash)\b/i, reason: 'paiement hors plateforme' },
-];
+import { AntiFraudService } from '../anti-fraud/anti-fraud.service';
 
 @Injectable()
 export class ChatService {
-  constructor(private readonly prisma: PrismaService) {}
-
-  private scan(content: string) {
-    for (const p of PATTERNS) if (p.re.test(content)) return p.reason;
-    return null;
-  }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly antiFraud: AntiFraudService,
+  ) {}
 
   private participants(conv: { participantIds: any }): string[] {
     return fromDbJson<string[]>(conv.participantIds, []);
@@ -60,15 +51,12 @@ export class ChatService {
     if (!this.participants(conv).includes(userId)) throw new ForbiddenException('Acces refuse');
     if (conv.isBlocked) throw new ForbiddenException('Conversation bloquee');
 
-    const flagReason = this.scan(dto.content);
     const message = await this.prisma.message.create({
       data: {
         conversationId,
         senderId: userId,
         type: dto.type || MessageType.text,
         content: dto.content,
-        isFlagged: !!flagReason,
-        flagReason: flagReason || undefined,
       },
     });
     await this.prisma.conversation.update({
@@ -76,6 +64,16 @@ export class ChatService {
       data: { updatedAt: new Date() },
     });
 
-    return { message, flagged: !!flagReason, flagReason };
+    // Analyse anti-desintermediation : flag, journalisation et sanction graduee
+    const analysis = await this.antiFraud.analyzeMessage(message.id, dto.content, userId);
+
+    return {
+      message,
+      flagged: analysis.flagged,
+      flagReason: analysis.flagged
+        ? `Tentative de contact hors plateforme detectee (${(analysis.confidence * 100).toFixed(0)}% de confiance)`
+        : null,
+      confidence: analysis.confidence,
+    };
   }
 }

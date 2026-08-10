@@ -10,9 +10,11 @@ import RequireAuth from '@/components/RequireAuth';
 import ValidationModal from '@/components/ValidationModal';
 import ReviewModal from '@/components/ReviewModal';
 import { Spinner, ErrorBox, Empty } from '@/components/ui';
-import { money, date, photoOf, BOOKING_STATUS } from '@/lib/format';
+import { date, photoOf, BOOKING_STATUS } from '@/lib/format';
+import { useMoney } from '@/store/preferences';
 
 function Reservations() {
+  const money = useMoney();
   const [validating, setValidating] = useState<any>(null);
   const [reviewing, setReviewing] = useState<any>(null);
 
@@ -77,7 +79,7 @@ function Reservations() {
 
                     <div className="flex flex-wrap items-center gap-4">
                       <div className="font-accent font-bold text-lg text-charcoal">
-                        {money(Number(b.totalPrice), b.currency)}
+                        {money(Number(b.totalPrice))}
                       </div>
                       {b.payment && (
                         <span className="flex items-center gap-1 text-xs text-slate">

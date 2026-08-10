@@ -24,6 +24,8 @@ model User {
   phone             String?    @unique
   avatarUrl         String?    @map("avatar_url")
   role              String
+  /// Roles supplementaires : un proprietaire peut aussi voyager.
+  secondaryRoles    String  @default("[]") @map("secondary_roles")
   status            String @default("active")
   emailVerified     Boolean    @default(false) @map("email_verified")
   phoneVerified     Boolean    @default(false) @map("phone_verified")
@@ -31,6 +33,7 @@ model User {
   createdAt         DateTime   @default(now()) @map("created_at")
   updatedAt         DateTime   @updatedAt @map("updated_at")
   deletedAt         DateTime?  @map("deleted_at")
+  identityDocument String? @map("identity_document")
 
   // Relations
   travelerPassport  TravelerPassport?
@@ -50,6 +53,9 @@ model User {
   sanctionsReceived Sanction[]      @relation("SanctionUser")
   controlVisits     ControlVisit[]  @relation("AgentVisits")
   auditLogs         AuditLog[]
+  contactAttempts     ContactAttempt[]
+  reverseSearchCredit ReverseSearchCredit?
+  unlocks             ReverseSearchUnlock[] @relation("OwnerUnlocks")
 
   @@index([email])
   @@index([role])
@@ -70,7 +76,9 @@ model TravelerPassport {
   badges              String     @default("[]")
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
+  noShowCount Int @default(0) @map("no_show_count")
 
+  // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("traveler_passports")
@@ -91,7 +99,10 @@ model OwnerPassport {
   subscriptionTier  String   @default("free") @map("subscription_tier")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
+  avgResponseTime     Int @default(0) @map("avg_response_time")
+  offPlatformAttempts Int @default(0) @map("off_platform_attempts")
 
+  // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("owner_passports")
@@ -132,6 +143,24 @@ model Listing {
   createdAt             DateTime          @default(now()) @map("created_at")
   updatedAt             DateTime          @updatedAt @map("updated_at")
   deletedAt             DateTime?         @map("deleted_at")
+  surfaceM2             Int?              @map("surface_m2")
+  floors                Int?              @default(1)
+  yearBuilt             Int?              @map("year_built")
+  securityDeposit       Float             @default(0) @map("security_deposit")
+  locationScore         Int               @default(0) @map("location_score")
+  valueScore            Int               @default(0) @map("value_score")
+  avgRating             Float             @default(0) @map("avg_rating")
+  isEditable            Boolean           @default(true) @map("is_editable")
+  lastModifiedAt        DateTime?         @map("last_modified_at")
+  modificationCount     Int               @default(0) @map("modification_count")
+  rules                 String            @default("{}")
+  amenities             String            @default("[]")
+  houseRules            String            @default("[]") @map("house_rules")
+  checkInTime           String            @default("15:00") @map("check_in_time")
+  checkOutTime          String            @default("11:00") @map("check_out_time")
+  minNights             Int               @default(1) @map("min_nights")
+  maxNights             Int?              @map("max_nights")
+  instantBook           Boolean           @default(false) @map("instant_book")
 
   // Relations
   owner           User              @relation("OwnerListings", fields: [ownerId], references: [id])
@@ -144,6 +173,7 @@ model Listing {
   controlVisits   ControlVisit[]
   reverseOffers   ReverseOffer[]
   conversations   Conversation[]
+  modificationHistory ListingModification[]
 
   @@index([ownerId])
   @@index([status])
@@ -164,6 +194,7 @@ model ListingPhoto {
   metadata          String      @default("{}")
   createdAt         DateTime  @default(now()) @map("created_at")
 
+  // Relations
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   @@index([listingId])
@@ -187,6 +218,7 @@ model ListingPassport {
   createdAt             DateTime @default(now()) @map("created_at")
   updatedAt             DateTime @updatedAt @map("updated_at")
 
+  // Relations
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   @@map("listing_passports")
@@ -214,6 +246,8 @@ model Booking {
   disputeId         String?          @map("dispute_id")
   createdAt         DateTime         @default(now()) @map("created_at")
   updatedAt         DateTime         @updatedAt @map("updated_at")
+  securityDeposit Float   @default(0) @map("security_deposit")
+  validationData  String? @map("validation_data")
 
   // Relations
   listing   Listing    @relation(fields: [listingId], references: [id])
@@ -223,6 +257,7 @@ model Booking {
   disputeRecord Dispute?
   review    Review?
   conversation Conversation?
+  inventoryCheck InventoryCheck?
 
   @@index([listingId])
   @@index([travelerId])
@@ -244,7 +279,9 @@ model Payment {
   refundAmount          Float?      @map("refund_amount")
   createdAt             DateTime      @default(now()) @map("created_at")
   updatedAt             DateTime      @updatedAt @map("updated_at")
+  refundReason String? @map("refund_reason")
 
+  // Relations
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@map("payments")
@@ -282,6 +319,7 @@ model DisputeEvidence {
   description String?
   createdAt   DateTime     @default(now()) @map("created_at")
 
+  // Relations
   dispute Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
 
   @@index([disputeId])
@@ -308,7 +346,10 @@ model Review {
   flagReason  String?   @map("flag_reason")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
+  aiScore      Float? @map("ai_score")
+  helpfulCount Int    @default(0) @map("helpful_count")
 
+  // Relations
   booking  Booking  @relation(fields: [bookingId], references: [id])
   listing  Listing  @relation(fields: [listingId], references: [id])
   reviewer User     @relation("ReviewerReviews", fields: [reviewerId], references: [id])
@@ -328,6 +369,7 @@ model Conversation {
   isBlocked     Boolean   @default(false) @map("is_blocked")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
+  blockReason String? @map("block_reason")
 
   // Relations
   booking  Booking?  @relation(fields: [bookingId], references: [id])
@@ -349,7 +391,9 @@ model Message {
   isFlagged       Boolean     @default(false) @map("is_flagged")
   flagReason      String?     @map("flag_reason")
   createdAt       DateTime    @default(now()) @map("created_at")
+  aiAnalysis String? @map("ai_analysis")
 
+  // Relations
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender       User        @relation(fields: [senderId], references: [id])
 
@@ -370,7 +414,9 @@ model Certification {
   report      String               @default("{}")
   createdAt   DateTime           @default(now()) @map("created_at")
   updatedAt   DateTime           @updatedAt @map("updated_at")
+  scoreBreakdown String @default("{}") @map("score_breakdown")
 
+  // Relations
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   @@index([listingId])
@@ -390,7 +436,10 @@ model ControlVisit {
   gpsCoordinates String?  @map("gps_coordinates")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
+  videos            String  @default("[]")
+  weatherConditions String? @map("weather_conditions")
 
+  // Relations
   listing Listing @relation(fields: [listingId], references: [id])
   agent   User    @relation("AgentVisits", fields: [agentId], references: [id])
 
@@ -413,6 +462,7 @@ model Sanction {
   revokedAt    DateTime?    @map("revoked_at")
   createdAt    DateTime     @default(now()) @map("created_at")
 
+  // Relations
   user      User @relation("SanctionUser", fields: [userId], references: [id])
   appliedByUser User @relation("SanctionAppliedBy", fields: [appliedBy], references: [id])
 
@@ -437,9 +487,21 @@ model ReverseSearch {
   status       String @default("active")
   createdAt    DateTime            @default(now()) @map("created_at")
   updatedAt    DateTime            @updatedAt @map("updated_at")
+  city              String?
+  region            String?
+  bathrooms         Int?
+  amenitiesRequired String    @default("[]") @map("amenities_required")
+  propertyTypes     String    @default("[]") @map("property_types")
+  certificationMin  String?   @map("certification_min")
+  minTrustScore     Int?      @map("min_trust_score")
+  viewCount         Int       @default(0) @map("view_count")
+  offerCount        Int       @default(0) @map("offer_count")
+  expiresAt         DateTime? @map("expires_at")
 
+  // Relations
   traveler User          @relation(fields: [travelerId], references: [id])
   offers   ReverseOffer[]
+  unlocks       ReverseSearchUnlock[]
 
   @@index([travelerId])
   @@index([status])
@@ -456,7 +518,18 @@ model ReverseOffer {
   status          String @default("pending")
   createdAt       DateTime          @default(now()) @map("created_at")
   updatedAt       DateTime          @updatedAt @map("updated_at")
+  originalPrice   Float?    @map("original_price")
+  discountPercent Float?    @map("discount_percent")
+  isViewed        Boolean   @default(false) @map("is_viewed")
+  viewedAt        DateTime? @map("viewed_at")
+  expiresAt       DateTime? @map("expires_at")
+  /// Montant propose par le voyageur en reponse a l offre
+  counterPrice     Float?    @map("counter_price")
+  counterAt        DateTime? @map("counter_at")
+  /// Nombre d allers-retours, pour borner la negociation
+  negotiationRound Int       @default(0) @map("negotiation_round")
 
+  // Relations
   reverseSearch ReverseSearch @relation(fields: [reverseSearchId], references: [id])
   listing       Listing       @relation(fields: [listingId], references: [id])
   owner         User          @relation(fields: [ownerId], references: [id])
@@ -479,7 +552,9 @@ model Subscription {
   currentPeriodEnd     DateTime           @map("current_period_end")
   createdAt            DateTime           @default(now()) @map("created_at")
   updatedAt            DateTime           @updatedAt @map("updated_at")
+  features String @default("[]")
 
+  // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -496,6 +571,8 @@ model InsurancePolicy {
   status         String  @default("active")
   createdAt      DateTime         @default(now()) @map("created_at")
   updatedAt      DateTime         @updatedAt @map("updated_at")
+  claimReason    String? @map("claim_reason")
+  claimDocuments String  @default("[]") @map("claim_documents")
 
   @@index([bookingId])
   @@map("insurance_policies")
@@ -512,6 +589,7 @@ model AuditLog {
   userAgent  String   @map("user_agent")
   createdAt  DateTime @default(now()) @map("created_at")
 
+  // Relations
   user User? @relation(fields: [userId], references: [id])
 
   @@index([userId])
@@ -519,4 +597,94 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+model ContactAttempt {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  type        String
+  content     String
+  context     String
+  detectedBy  String   @default("ai") @map("detected_by")
+  confidence  Float    @default(0)
+  messageId   String?  @map("message_id")
+  isBlocked   Boolean  @default(false) @map("is_blocked")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([type])
+  @@map("contact_attempts")
+}
+
+model InventoryCheck {
+  id              String    @id @default(uuid())
+  bookingId       String    @unique @map("booking_id")
+  checkInPhotos   String    @default("[]") @map("check_in_photos")
+  checkOutPhotos  String    @default("[]") @map("check_out_photos")
+  checkInNotes    String?   @map("check_in_notes")
+  checkOutNotes   String?   @map("check_out_notes")
+  damagesFound    String    @default("[]") @map("damages_found")
+  depositStatus   String    @default("pending") @map("deposit_status")
+  depositReturned Float?    @map("deposit_returned")
+  depositKept     Float?    @map("deposit_kept")
+  status          String    @default("pending")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("inventory_checks")
+}
+
+model ListingModification {
+  id          String   @id @default(uuid())
+  listingId   String   @map("listing_id")
+  modifiedBy  String   @map("modified_by")
+  fieldName   String   @map("field_name")
+  oldValue    String?  @map("old_value")
+  newValue    String   @map("new_value")
+  reason      String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@map("listing_modifications")
+}
+
+model ReverseSearchCredit {
+  id               String    @id @default(uuid())
+  userId           String    @unique @map("user_id")
+  creditsTotal     Int       @default(0) @map("credits_total")
+  creditsUsed      Int       @default(0) @map("credits_used")
+  creditsRemaining Int       @default(0) @map("credits_remaining")
+  lastPurchasedAt  DateTime? @map("last_purchased_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("reverse_search_credits")
+}
+
+model ReverseSearchUnlock {
+  id              String   @id @default(uuid())
+  ownerId         String   @map("owner_id")
+  reverseSearchId String   @map("reverse_search_id")
+  creditsSpent    Int      @default(1) @map("credits_spent")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  owner         User          @relation("OwnerUnlocks", fields: [ownerId], references: [id], onDelete: Cascade)
+  reverseSearch ReverseSearch @relation(fields: [reverseSearchId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, reverseSearchId])
+  @@index([ownerId])
+  @@map("reverse_search_unlocks")
 }

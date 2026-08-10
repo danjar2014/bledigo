@@ -12,6 +12,43 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-display font-semibold;
   }
+
+  /* Mode sombre : on redefinit les surfaces plutot que de suffixer chaque classe */
+  .dark body {
+    @apply bg-[#0F1523] text-[#E6EAF2];
+  }
+  .dark .bg-cream,
+  .dark .bg-white {
+    @apply bg-[#161D2E];
+  }
+  .dark .bg-cloud {
+    @apply bg-[#232C42];
+  }
+  .dark .text-charcoal {
+    @apply text-[#E6EAF2];
+  }
+  .dark .text-slate {
+    @apply text-[#9AA6BF];
+  }
+  .dark .border-cloud {
+    @apply border-[#2B3550];
+  }
+  .dark header {
+    @apply bg-[#161D2E]/90;
+  }
+  .dark .shadow-bledi,
+  .dark .shadow-bledi-hover {
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+  }
+  /* Les tuiles de carte Leaflet sont trop lumineuses sur fond sombre */
+  .dark .leaflet-tile {
+    filter: brightness(0.75) saturate(0.85);
+  }
+}
+
+/* L arabe passe le document en RTL : quelques ajustements ponctuels */
+[dir='rtl'] .leaflet-container {
+  direction: ltr;
 }
 
 @layer components {

@@ -2,7 +2,19 @@
  * Client HTTP de l API BlediGo.
  * Le token d acces est injecte automatiquement et rafraichi via /auth/refresh.
  */
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+/**
+ * Render injecte l hote sans protocole (« bledigo-api.onrender.com ») quand la
+ * variable provient d un autre service. On complete donc en https, tout en
+ * laissant passer une URL deja formee et le http local.
+ */
+function normalizeApiUrl(raw?: string): string {
+  const value = (raw || '').trim();
+  if (!value) return 'http://localhost:4000';
+  if (/^https?:\/\//i.test(value)) return value.replace(/\/+$/, '');
+  return `https://${value.replace(/\/+$/, '')}`;
+}
+
+export const API_URL = normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL);
 
 export class ApiError extends Error {
   constructor(
@@ -88,10 +100,18 @@ export const api = {
   login: (dto: any) => request<any>('/api/v1/auth/login', { method: 'POST', body: body(dto) }),
   me: () => request<any>('/api/v1/auth/me', { auth: true }),
 
+  // --- roles du compte courant ---
+  myRoles: () => request<any>('/api/v1/users/me/roles', { auth: true }),
+  /** Active un second role : proprietaire qui veut aussi voyager, ou l inverse. */
+  enableRole: (role: 'traveler' | 'owner') =>
+    request<any>('/api/v1/users/me/roles', { method: 'POST', auth: true, body: body({ role }) }),
+
   // --- annonces ---
   listings: (params: Record<string, any> = {}) =>
     request<any>(`/api/v1/listings?${new URLSearchParams(clean(params))}`),
   listing: (id: string) => request<any>(`/api/v1/listings/${id}`),
+  /** Mes annonces, brouillons et re-verifications compris. */
+  myListings: () => request<any[]>('/api/v1/listings/mine', { auth: true }),
   availability: (id: string) => request<any>(`/api/v1/listings/${id}/availability`),
   createListing: (dto: any) =>
     request<any>('/api/v1/listings', { method: 'POST', auth: true, body: body(dto) }),
@@ -99,11 +119,29 @@ export const api = {
     request<any>(`/api/v1/listings/${id}/publish`, { method: 'POST', auth: true }),
   addPhoto: (id: string, dto: any) =>
     request<any>(`/api/v1/listings/${id}/photos`, { method: 'POST', auth: true, body: body(dto) }),
+  updateListing: (id: string, dto: any) =>
+    request<any>(`/api/v1/listings/${id}`, { method: 'PATCH', auth: true, body: body(dto) }),
+  listingModifications: (id: string) =>
+    request<any[]>(`/api/v1/listings/${id}/modifications`, { auth: true }),
 
   // --- recherche ---
   search: (params: Record<string, any>) =>
     request<any>(`/api/v1/search?${new URLSearchParams(clean(params))}`),
   suggestions: (q: string) => request<any>(`/api/v1/search/suggestions?q=${encodeURIComponent(q)}`),
+
+  // --- villes & types de biens ---
+  cities: (limit?: number) =>
+    request<any[]>(`/api/v1/cities${limit ? `?limit=${limit}` : ''}`),
+  city: (slug: string, params: Record<string, any> = {}) =>
+    request<any>(`/api/v1/cities/${slug}?${new URLSearchParams(clean(params))}`),
+  propertyTypes: () => request<any[]>('/api/v1/property-types'),
+  /** Referentiel des localites, groupees par gouvernorat. */
+  localities: () => request<any[]>('/api/v1/localities'),
+
+  // --- carte ---
+  /** Annonces dans une bounding box ou dans un polygone tracé. */
+  mapListings: (params: Record<string, any>) =>
+    request<any>(`/api/v1/map/listings?${new URLSearchParams(clean(params))}`),
 
   // --- reservations ---
   createBooking: (dto: any) =>
@@ -135,8 +173,14 @@ export const api = {
 
   // --- avis ---
   reviews: (listingId: string) => request<any>(`/api/v1/reviews/listing/${listingId}`),
+  listingReviews: (listingId: string, params: Record<string, any> = {}) =>
+    request<any>(`/api/v1/listings/${listingId}/reviews?${new URLSearchParams(clean(params))}`),
   createReview: (dto: any) =>
     request<any>('/api/v1/reviews', { method: 'POST', auth: true, body: body(dto) }),
+  markReviewHelpful: (id: string) =>
+    request<any>(`/api/v1/reviews/${id}/helpful`, { method: 'POST', auth: true }),
+  flagReview: (id: string, reason: string) =>
+    request<any>(`/api/v1/reviews/${id}/flag`, { method: 'POST', auth: true, body: body({ reason }) }),
 
   // --- litiges ---
   createDispute: (dto: any) =>
@@ -160,12 +204,72 @@ export const api = {
     }),
 
   // --- recherche inversee ---
+  /** Mes demandes : il n existe pas de liste publique. */
   reverseSearches: (params: Record<string, any> = {}) =>
-    request<any>(`/api/v1/reverse-searches?${new URLSearchParams(clean(params))}`),
+    request<any>(`/api/v1/reverse-searches?${new URLSearchParams(clean(params))}`, { auth: true }),
+  reverseSearch: (id: string) => request<any>(`/api/v1/reverse-searches/${id}`, { auth: true }),
   createReverseSearch: (dto: any) =>
     request<any>('/api/v1/reverse-searches', { method: 'POST', auth: true, body: body(dto) }),
+  updateReverseSearch: (id: string, dto: any) =>
+    request<any>(`/api/v1/reverse-searches/${id}`, { method: 'PATCH', auth: true, body: body(dto) }),
+  cancelReverseSearch: (id: string) =>
+    request<any>(`/api/v1/reverse-searches/${id}`, { method: 'DELETE', auth: true }),
   makeOffer: (id: string, dto: any) =>
     request<any>(`/api/v1/reverse-searches/${id}/offers`, { method: 'POST', auth: true, body: body(dto) }),
+  /** Messages standards : seule source acceptee pour le message d une offre. */
+  offerTemplates: () => request<any[]>('/api/v1/reverse-searches/offer-templates'),
+  /** Ouvre une demande : 1 credit, une seule fois. La liste reste gratuite. */
+  unlockReverseSearch: (id: string) =>
+    request<any>(`/api/v1/reverse-searches/${id}/unlock`, { method: 'POST', auth: true }),
+  /** Voyageur : mes recherches publiees */
+  myReverseSearches: () => request<any[]>('/api/v1/reverse-searches/my-searches', { auth: true }),
+  /** Voyageur : offres recues (tri + filtres) */
+  reverseOffers: (id: string, params: Record<string, any> = {}) =>
+    request<any>(`/api/v1/reverse-searches/${id}/offers?${new URLSearchParams(clean(params))}`, {
+      auth: true,
+    }),
+  acceptReverseOffer: (id: string, offerId: string) =>
+    request<any>(`/api/v1/reverse-searches/${id}/offers/${offerId}/accept`, {
+      method: 'POST',
+      auth: true,
+    }),
+  /** Voyageur : refuse une offre. */
+  rejectReverseOffer: (offerId: string) =>
+    request<any>(`/api/v1/reverse-searches/offers/${offerId}/reject`, {
+      method: 'POST',
+      auth: true,
+    }),
+  /** Voyageur : propose un autre montant ; la main passe a l hote. */
+  counterReverseOffer: (offerId: string, price: number) =>
+    request<any>(`/api/v1/reverse-searches/offers/${offerId}/counter`, {
+      method: 'POST',
+      auth: true,
+      body: body({ price }),
+    }),
+  /** Hote : contre-propositions en attente de sa reponse. */
+  pendingCounters: () =>
+    request<any[]>('/api/v1/reverse-searches/offers/pending-counters', { auth: true }),
+  /** Hote : accepte, refuse ou propose un compromis. */
+  respondToCounter: (offerId: string, action: 'accept' | 'reject' | 'counter', price?: number) =>
+    request<any>(`/api/v1/reverse-searches/offers/${offerId}/respond`, {
+      method: 'POST',
+      auth: true,
+      body: body({ action, price }),
+    }),
+  /** Proprietaire : demandes disponibles (consomme 1 credit) */
+  availableReverseSearches: (params: Record<string, any> = {}) =>
+    request<any>(`/api/v1/reverse-searches/available?${new URLSearchParams(clean(params))}`, {
+      auth: true,
+    }),
+
+  // --- credits recherche inversee ---
+  reverseSearchCredits: () => request<any>('/api/v1/reverse-searches/credits', { auth: true }),
+  purchaseReverseSearchCredits: (packageType: string) =>
+    request<any>('/api/v1/reverse-searches/credits/purchase', {
+      method: 'POST',
+      auth: true,
+      body: body({ packageType }),
+    }),
 
   // --- ia ---
   scoreListing: (id: string) =>

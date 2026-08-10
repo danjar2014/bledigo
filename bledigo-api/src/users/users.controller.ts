@@ -1,9 +1,14 @@
-import { Controller, Get, Patch, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { IsIn, IsOptional, IsString } from 'class-validator';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+
+export class EnableRoleDto {
+  /** Seuls voyageur et proprietaire sont activables librement. */
+  @IsIn(['traveler', 'owner']) role: 'traveler' | 'owner';
+}
 
 export class UpdateUserDto {
   @IsOptional() @IsString() firstName?: string;
@@ -20,6 +25,21 @@ export class UsersController {
   @Get()
   findAll(@Query('page') page = 1, @Query('limit') limit = 20, @Query('role') role?: string) {
     return this.usersService.findAll(Number(page), Number(limit), role);
+  }
+
+  @Get('me/roles')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  myRoles(@CurrentUser('id') me: string) {
+    return this.usersService.myRoles(me);
+  }
+
+  /** Active un second role (proprietaire qui veut aussi voyager, ou l inverse). */
+  @Post('me/roles')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  enableRole(@CurrentUser('id') me: string, @Body() dto: EnableRoleDto) {
+    return this.usersService.enableRole(me, dto.role);
   }
 
   @Get(':id')

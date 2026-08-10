@@ -1,10 +1,27 @@
 node_modules/
 dist/
 .next/
+out/
+
+# Sauvegardes et artefacts locaux
 _backup-*/
 *.zip
+*.log
+localities.json
+prisma/dev.db*
+bledigo-api/prisma/dev.db*
+
+# Zone de transit des livraisons v2 : archives sources, deja integrees
+Upgrade/
+
+# Exports de tableaux generes pendant les echanges, sans valeur pour le code
+table-*.csv
+
+# Secrets : jamais commites, ils sont fournis par Render en production
 .env
 .env.local
-*.log
-prisma/dev.db
-prisma/dev.db-journal
+.env.*.local
+
+# Les migrations Prisma, elles, DOIVENT etre versionnees :
+# `prisma migrate deploy` s appuie dessus au demarrage sur Render.
+!bledigo-api/prisma/migrations/

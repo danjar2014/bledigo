@@ -35,6 +35,7 @@ export enum ListingStatus {
   active = 'active',
   inactive = 'inactive',
   suspended = 'suspended',
+  under_review = 'under_review',
 }
 
 export enum CertificationLevel {
@@ -163,7 +164,10 @@ export enum ReverseSearchStatus {
 }
 
 export enum ReverseOfferStatus {
+  /** En attente du voyageur : c est a lui d accepter, refuser ou contre-proposer. */
   pending = 'pending',
+  /** Le voyageur a contre-propose : la main est au proprietaire. */
+  countered = 'countered',
   accepted = 'accepted',
   rejected = 'rejected',
   expired = 'expired',

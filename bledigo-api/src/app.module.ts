@@ -11,6 +11,7 @@ import { BookingsModule } from './bookings/bookings.module';
 import { PaymentsModule } from './payments/payments.module';
 import { DisputesModule } from './disputes/disputes.module';
 import { ChatModule } from './chat/chat.module';
+import { AntiFraudModule } from './anti-fraud/anti-fraud.module';
 import { SearchModule } from './search/search.module';
 import { ReverseSearchModule } from './reverse-search/reverse-search.module';
 import { ReviewsModule } from './reviews/reviews.module';
@@ -33,6 +34,7 @@ import { InsuranceModule } from './insurance/insurance.module';
     PaymentsModule,
     DisputesModule,
     ChatModule,
+    AntiFraudModule,
     SearchModule,
     ReverseSearchModule,
     ReviewsModule,
