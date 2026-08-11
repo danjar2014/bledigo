@@ -32,7 +32,17 @@ services:
     # schema.prisma qui reste en SQLite pour le developpement local.
     buildCommand: npm ci --include=dev && npx prisma generate --schema=prisma/schema.postgres.prisma && npm run build
     # migrate deploy est idempotent : il n applique que les migrations manquantes.
-    startCommand: npx prisma migrate deploy --schema=prisma/schema.postgres.prisma && node dist/main
+    #
+    # Le semis suit, car le Shell Render n est pas disponible sur l offre
+    # gratuite : c est le seul moyen de peupler la base. Il est lui aussi
+    # idempotent (upsert sur email et slug, tous deux uniques), donc sans
+    # danger a chaque reveil du service.
+    #
+    # On invoque le script directement plutot que `prisma db seed` : la CLI
+    # chargerait schema.prisma, reste en sqlite, et refuserait une URL
+    # PostgreSQL. Le `|| true` garantit qu un semis en echec n empeche jamais
+    # l API de demarrer.
+    startCommand: npx prisma migrate deploy --schema=prisma/schema.postgres.prisma && (npx ts-node prisma/seed.ts || true) && node dist/main
     envVars:
       - key: NODE_ENV
         value: production
