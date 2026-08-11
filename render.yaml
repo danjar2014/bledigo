@@ -47,12 +47,14 @@ services:
         generateValue: true
       - key: JWT_REFRESH_SECRET
         generateValue: true
-      # Origine autorisee par CORS : l URL publique du front
+      # Origine autorisee par CORS : l URL PUBLIQUE du front.
+      #
+      # Surtout pas fromService/host : Render n expose que le nom d hote du
+      # reseau prive, soit "bledigo-web" tout court. Aucune propriete ne donne
+      # l URL publique. Le navigateur presente une origine en
+      # https://bledigo-web.onrender.com, que le CORS rejetterait.
       - key: FRONTEND_URL
-        fromService:
-          type: web
-          name: bledigo-web
-          property: host
+        value: https://bledigo-web.onrender.com
       # Services externes : vides = mode simule, l API demarre sans eux
       - key: STRIPE_SECRET_KEY
         sync: false
@@ -79,10 +81,11 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      # Next.js fige les variables NEXT_PUBLIC_ au build : elle doit etre
-      # presente avant la compilation, pas seulement au demarrage.
+      # URL PUBLIQUE de l API : ce code s execute dans le navigateur du
+      # visiteur, qui n a evidemment pas acces au reseau prive de Render.
+      # fromService/host renvoyait "bledigo-api", d ou un "Failed to fetch".
+      #
+      # Next.js fige les variables NEXT_PUBLIC_ au build : la modifier impose
+      # de reconstruire le service, pas seulement de le redemarrer.
       - key: NEXT_PUBLIC_API_URL
-        fromService:
-          type: web
-          name: bledigo-api
-          property: host
+        value: https://bledigo-api.onrender.com
