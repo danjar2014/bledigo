@@ -115,7 +115,7 @@ export default function Footer() {
             <span>© {new Date().getFullYear()} BlediGo. Tous droits reserves.</span>
             <span className="flex items-center gap-2 text-white/60">
               <Shield className="w-3.5 h-3.5 text-bledi-gold" />
-              Photos certifiees · Paiement bloque jusqu a validation · Litiges arbitres
+              Annonces verifiees · Contact direct avec l hote · Sans commission
             </span>
           </div>
         </div>

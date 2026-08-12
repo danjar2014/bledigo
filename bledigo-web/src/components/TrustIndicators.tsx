@@ -7,8 +7,8 @@ const indicators = [
   { icon: Shield, title: 'Zero arnaque', desc: 'Tous les logements verifies par nos agents' },
   { icon: Camera, title: 'Photos certifiees', desc: 'Prises par nos controleurs terrain' },
   { icon: MapPin, title: 'Emplacement garanti', desc: 'GPS verifie, pas de faux emplacements' },
-  { icon: Clock, title: 'Validation 30min', desc: 'Verifiez votre logement a l arrivee' },
-  { icon: Lock, title: 'Paiement securise', desc: 'Vos fonds proteges jusqu a validation' },
+  { icon: Clock, title: 'Reponse rapide', desc: 'L hote accepte, vous le contactez' },
+  { icon: Lock, title: 'Sans commission', desc: 'Vous reglez directement avec l hote' },
   { icon: Award, title: 'Certification', desc: 'Bronze, Silver, Gold, Diamond' },
 ];
 

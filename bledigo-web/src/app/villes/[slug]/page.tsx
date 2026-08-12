@@ -154,10 +154,10 @@ export default function CityPage() {
               Pourquoi reserver a {city.name} avec BlediGo ?
             </h2>
             <p className="text-slate text-sm leading-relaxed">
-              Chaque logement propose a {city.name} est verifie par nos agents avant publication :
-              photos prises sur place, adresse controlee et proprietaire identifie. Votre paiement
-              reste bloque jusqu a votre validation, et vous disposez de 30 minutes apres l arrivee
-              pour signaler une non-conformite.
+              Chaque logement propose a {city.name} est verifie avant publication : adresse
+              controlee et proprietaire identifie. Vous envoyez votre demande, l hote l accepte,
+              puis vous convenez directement du reglement avec lui — BlediGo ne prend aucune
+              commission.
               {data?.items?.[0]?.pricePerNight != null && (
                 <>
                   {' '}

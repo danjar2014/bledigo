@@ -25,8 +25,8 @@ export default function Hero() {
             Reservez en <span className="text-bledi-gold">confiance</span>
           </h1>
           <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto mb-8">
-            La location en Tunisie sans arnaque. Photos certifiees, emplacements verifies,
-            paiement bloque jusqu a votre validation.
+            La location en Tunisie en direct avec le proprietaire. Annonces verifiees,
+            emplacements controles, aucune commission.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link href="/recherche" className="btn-gold text-lg px-8 py-4 inline-block">

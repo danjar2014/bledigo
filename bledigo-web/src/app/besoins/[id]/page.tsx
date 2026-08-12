@@ -136,9 +136,9 @@ function OfferForm({ searchId, search }: { searchId: string; search: any }) {
           </span>
         </span>
         <p className="text-xs text-slate mb-2">
-          Composez votre message a partir des propositions. La saisie libre est desactivee :
-          transmettre un telephone ou un email ferait sortir la reservation de BlediGo, sans
-          paiement bloque ni recours en cas de litige.
+          Composez votre message a partir des propositions. La saisie libre est desactivee a ce
+          stade : elle protege les deux parties du demarchage. Vos coordonnees seront echangees
+          automatiquement des que le voyageur retiendra votre offre.
         </p>
 
         <div className="border border-cloud rounded-bledi-sm max-h-64 overflow-y-auto">

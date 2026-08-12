@@ -38,16 +38,31 @@ sur `/health`.
 
 ## Partis pris
 
-**Aucune coordonnée personnelle ne circule.** Les messages d'offre sont composés
-à partir d'un catalogue fermé, et tout texte libre (titre, description d'une
-demande) passe par un filtre anti-fraude. Laisser un hôte écrire son numéro
-ferait sortir la réservation de la plateforme : plus de paiement bloqué, plus de
-recours en cas de litige.
+**Le paiement se fait en direct, pour l'amorçage.** Le voyageur envoie une
+demande, l'hôte l'accepte, et les coordonnées des deux parties s'échangent
+alors automatiquement. Aucun montant ne transite par la plateforme, aucune
+commission n'est prélevée.
+
+Ce mode est un **interrupteur** (`PAIEMENT_EN_LIGNE`), pas une amputation :
+paiement bloqué, validation à l'arrivée, refus, gel des versements et
+surveillance des ententes restent écrits et testés, en sommeil. Une place de
+marché vide ne sert personne — exiger un paiement en ligne freine l'inscription
+des hôtes avant qu'il n'y ait des voyageurs.
+
+**Les coordonnées ne circulent qu'après acceptation.** Avant, le filtre
+anti-fraude reste actif : il protège du démarchage et de l'aspiration de
+contacts. Il demeure en vigueur sans condition sur les **textes publics** —
+titre et description d'annonce, demandes de recherche inversée — car un numéro
+diffusé publiquement reste du démarchage, quel que soit le mode de paiement.
 
 **Les crédits se consomment au déblocage, pas à l'affichage.** Un hôte voit
 gratuitement les demandes de sa zone, en version tronquée ; il ne paie que pour
 ouvrir celle qui l'intéresse. Le déblocage est idempotent, rafraîchir la page ne
 coûte rien.
+
+Pendant l'amorçage les crédits sont **offerts**, faute de moyen d'encaisser.
+Chaque déblocage reste tracé avec un coût nul : on saura exactement ce qui
+aurait été facturé avant de rendre le canal payant.
 
 **Le périmètre d'un hôte est déduit de ses annonces.** Un propriétaire de Djerba
 ne voit pas les demandes de Tunis. Les villes sont choisies dans un référentiel

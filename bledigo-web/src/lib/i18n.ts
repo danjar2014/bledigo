@@ -44,7 +44,7 @@ const fr: Dict = {
   'home.ideas.title': 'Des idees pour vos prochaines escapades',
   'home.host.title': 'Devenez hote',
   'home.host.body':
-    'Vous avez un logement a louer en Tunisie ? Rejoignez BlediGo et louez sereinement : paiement securise, voyageurs verifies, assistance en cas de litige.',
+    'Vous avez un logement a louer en Tunisie ? Rejoignez BlediGo : publication gratuite, aucune commission, contact direct avec les voyageurs.',
   'home.host.cta': 'Commencer maintenant',
   'home.host.note': 'Inscription gratuite · Certification offerte la premiere annee',
   'home.why.title': 'Pourquoi BlediGo ?',

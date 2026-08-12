@@ -7,7 +7,7 @@ import Footer from '@/components/Footer';
 export const metadata: Metadata = {
   title: 'BlediGo - Reservez en confiance',
   description:
-    'La reference de la location de logements en Tunisie. Zero arnaque, photos certifiees, paiement securise.',
+    'La location de logements en Tunisie, en direct avec le proprietaire. Annonces verifiees, aucune commission.',
   keywords:
     'location vacances Tunisie, villa Djerba, appartement Sidi Bou Said, location courte duree',
 };

@@ -189,7 +189,7 @@ export default function OwnerCreditsPage() {
           </button>
           {message && <p className="text-sm text-charcoal mt-3">{message}</p>}
           <p className="text-sm text-slate mt-3">
-            Paiement securise via Stripe · Annulation possible sous 14 jours
+            Credits offerts pendant la phase de lancement · Aucun paiement requis
           </p>
         </div>
       </div>
