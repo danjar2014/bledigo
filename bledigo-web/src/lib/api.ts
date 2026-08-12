@@ -138,6 +138,17 @@ export const api = {
   /** Mes annonces, brouillons et re-verifications compris. */
   myListings: () => request<any[]>('/api/v1/listings/mine', { auth: true }),
   availability: (id: string) => request<any>(`/api/v1/listings/${id}/availability`),
+  /** Periodes du calendrier : fermetures, tarifs saisonniers, sejours minimums. */
+  calendrier: (id: string) => request<any[]>(`/api/v1/listings/${id}/calendrier`),
+  ajouterPeriode: (id: string, dto: any) =>
+    request<any>(`/api/v1/listings/${id}/calendrier`, { method: 'POST', auth: true, body: body(dto) }),
+  supprimerPeriode: (id: string, periodeId: string) =>
+    request<any>(`/api/v1/listings/${id}/calendrier/${periodeId}`, { method: 'DELETE', auth: true }),
+  /** Prix d un sejour, tarifs saisonniers appliques nuit par nuit. */
+  tarifSejour: (id: string, checkIn: string, checkOut: string) =>
+    request<{ nuits: number; basePrice: number; minNights: number; prixMoyen: number }>(
+      `/api/v1/listings/${id}/tarif?${new URLSearchParams({ checkIn, checkOut })}`,
+    ),
   createListing: (dto: any) =>
     request<any>('/api/v1/listings', { method: 'POST', auth: true, body: body(dto) }),
   publishListing: (id: string) =>

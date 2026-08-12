@@ -61,19 +61,21 @@ export default function Header() {
 
         <nav className="flex items-center gap-1 md:gap-2 text-sm">
           {!user && (
-            <>
-              <Link href="/recherche" className="text-slate hover:text-bledi-blue px-2 py-1">
-                {t('nav.search')}
-              </Link>
-              <Link
-                href="/carte"
-                className="hidden sm:flex items-center gap-1 text-slate hover:text-bledi-blue px-2 py-1"
-              >
-                <Map className="w-4 h-4" />
-                {t('nav.map')}
-              </Link>
-            </>
+            <Link href="/recherche" className="text-slate hover:text-bledi-blue px-2 py-1">
+              {t('nav.search')}
+            </Link>
           )}
+
+          {/* La carte reste accessible une fois connecte : elle etait auparavant
+              reservee aux visiteurs, et disparaissait donc au moment ou elle
+              devient le plus utile. */}
+          <Link
+            href="/carte"
+            className="hidden sm:flex items-center gap-1 text-slate hover:text-bledi-blue px-2 py-1"
+          >
+            <Map className="w-4 h-4" />
+            {t('nav.map')}
+          </Link>
 
           {user &&
             links.map((l) => (

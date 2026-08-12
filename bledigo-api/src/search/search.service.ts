@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CalendarService } from '../listings/calendar.service';
 import { ListingStatus } from '../common/enums';
 import { filterByAmenities } from '../common/amenities';
 
@@ -9,7 +10,10 @@ import { filterByAmenities } from '../common/amenities';
  */
 @Injectable()
 export class SearchService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly calendar: CalendarService,
+  ) {}
 
   private distanceKm(lat1: number, lon1: number, lat2: number, lon2: number) {
     const R = 6371;
@@ -83,19 +87,15 @@ export class SearchService {
         .sort((a: any, b: any) => a.distanceKm - b.distanceKm);
     }
 
-    // Filtre disponibilite
+    // Filtre disponibilite : reservations ET fermetures decidees par l hote.
+    // Ne retenir que les reservations laisserait passer des dates que le
+    // proprietaire a explicitement fermees.
     if (q.checkIn && q.checkOut) {
-      const checkIn = new Date(q.checkIn);
-      const checkOut = new Date(q.checkOut);
-      const busy = await this.prisma.booking.findMany({
-        where: {
-          status: { notIn: ['cancelled'] },
-          AND: [{ checkIn: { lt: checkOut } }, { checkOut: { gt: checkIn } }],
-        },
-        select: { listingId: true },
-      });
-      const busyIds = new Set(busy.map((b: any) => b.listingId));
-      results = results.filter((l: any) => !busyIds.has(l.id));
+      const indisponibles = await this.calendar.logementsIndisponibles(
+        new Date(q.checkIn),
+        new Date(q.checkOut),
+      );
+      results = results.filter((l: any) => !indisponibles.has(l.id));
     }
 
     // Tri demande par l utilisateur

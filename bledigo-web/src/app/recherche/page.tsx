@@ -24,9 +24,14 @@ function Resultats() {
     maxPrice: '',
   });
 
+  // Les dates commandent la disponibilite : sans elles, la liste afficherait
+  // des logements que l hote a fermes ou qui sont deja reserves.
+  const datesChoisies = filters.checkIn !== '' && filters.checkOut !== '';
+
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['search', filters],
     queryFn: () => api.search(filters),
+    enabled: datesChoisies,
   });
 
   const apply = (next: Partial<typeof filters>) => {
@@ -42,7 +47,7 @@ function Resultats() {
     <main className="min-h-screen bg-cream">
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-display font-bold text-charcoal mb-6">
-          {filters.q ? `Logements a ${filters.q}` : 'Tous les logements'}
+          {filters.q ? `Logements a ${filters.q}` : 'Rechercher un logement'}
         </h1>
 
         <div className="grid lg:grid-cols-[280px_1fr] gap-8">
@@ -117,15 +122,23 @@ function Resultats() {
 
           {/* Resultats */}
           <section>
-            {isLoading ? (
+            {!datesChoisies ? (
+              <Empty>
+                <span className="block font-medium text-charcoal mb-1">
+                  Choisissez vos dates d arrivee et de depart
+                </span>
+                La disponibilite depend des dates : sans elles, la liste contiendrait des
+                logements deja reserves ou fermes par leur proprietaire.
+              </Empty>
+            ) : isLoading ? (
               <Spinner />
             ) : error ? (
               <ErrorBox error={error} />
             ) : !data?.items?.length ? (
               <Empty>
-                Aucun logement ne correspond a ces criteres.
+                Aucun logement disponible a ces dates.
                 <div className="text-sm mt-2">
-                  Astuce : lancez `npm run db:setup` cote API pour charger les annonces de demo.
+                  Essayez d elargir la periode ou de changer de destination.
                 </div>
               </Empty>
             ) : (

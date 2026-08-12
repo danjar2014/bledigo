@@ -5,9 +5,10 @@ import { CitiesService } from './cities.service';
 import { CitiesController } from './cities.controller';
 import { GeoService } from './geo.service';
 import { PrismaModule } from '../prisma/prisma.module';
+import { ListingsModule } from '../listings/listings.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, ListingsModule],
   providers: [SearchService, CitiesService, GeoService],
   controllers: [SearchController, CitiesController],
   exports: [SearchService, CitiesService, GeoService],

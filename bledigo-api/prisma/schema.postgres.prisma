@@ -181,6 +181,7 @@ model Listing {
   reverseOffers   ReverseOffer[]
   conversations   Conversation[]
   modificationHistory ListingModification[]
+  calendar        ListingCalendar[]
 
   @@index([ownerId])
   @@index([status])
@@ -694,4 +695,36 @@ model ReverseSearchUnlock {
   @@unique([ownerId, reverseSearchId])
   @@index([ownerId])
   @@map("reverse_search_unlocks")
+}
+
+/// Une periode du calendrier d un logement.
+///
+/// Trois usages dans une seule table, parce qu ils portent tous sur un
+/// intervalle de dates : fermer des dates, y appliquer un tarif particulier,
+/// ou y imposer une duree minimale. Une periode peut combiner les trois.
+///
+/// Les bornes suivent la convention des sejours : `startDate` incluse,
+/// `endDate` exclue. Une fermeture du 10 au 12 rend indisponibles les nuits du
+/// 10 et du 11, et laisse le 12 reservable en arrivee.
+model ListingCalendar {
+  id            String   @id @default(uuid())
+  listingId     String   @map("listing_id")
+  startDate     DateTime @map("start_date")
+  endDate       DateTime @map("end_date")
+  /// Dates fermees a la reservation.
+  blocked       Boolean  @default(false)
+  /// Tarif substitue au prix de base sur la periode.
+  pricePerNight Float?   @map("price_per_night")
+  /// Duree minimale imposee sur la periode.
+  minNights     Int?     @map("min_nights")
+  /// Note privee de l hote : travaux, usage personnel, haute saison.
+  note          String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@index([listingId, startDate, endDate])
+  @@map("listing_calendar")
 }

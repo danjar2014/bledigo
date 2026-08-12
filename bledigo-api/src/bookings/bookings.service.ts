@@ -11,6 +11,7 @@ import {
 import { CreateBookingDto, ValidateBookingDto, RefuseBookingDto } from './dto';
 import { AntiFraudService } from '../anti-fraud/anti-fraud.service';
 import { RefusalGuardService } from './refusal-guard.service';
+import { CalendarService } from '../listings/calendar.service';
 import { toDbJson } from '../common/json';
 
 /** Delai de validation post check-in, en minutes (regle metier BlediGo) */
@@ -24,6 +25,7 @@ export class BookingsService {
     private readonly prisma: PrismaService,
     private readonly antiFraud: AntiFraudService,
     private readonly refusalGuard: RefusalGuardService,
+    private readonly calendar: CalendarService,
   ) {}
 
   async create(travelerId: string, dto: CreateBookingDto) {
@@ -50,8 +52,29 @@ export class BookingsService {
     });
     if (existing.length > 0) throw new BadRequestException('Dates non disponibles');
 
-    const totalNights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / 86400000);
-    const basePrice = Number(listing.pricePerNight) * totalNights;
+    // Le calendrier de l hote ferme des dates que les reservations ne couvrent
+    // pas : usage personnel, travaux, saison morte.
+    const ferme = await this.prisma.listingCalendar.findFirst({
+      where: {
+        listingId: dto.listingId,
+        blocked: true,
+        AND: [{ startDate: { lt: checkOut } }, { endDate: { gt: checkIn } }],
+      },
+    });
+    if (ferme) throw new BadRequestException('Le proprietaire a ferme ces dates');
+
+    // Tarification nuit par nuit : une periode saisonniere peut ne couvrir
+    // qu une partie du sejour, le prix de base s applique ailleurs.
+    const tarification = await this.calendar.tarifer(dto.listingId, checkIn, checkOut);
+    const totalNights = tarification.nuits;
+
+    if (totalNights < tarification.minNights) {
+      throw new BadRequestException(
+        `Sejour minimum de ${tarification.minNights} nuits sur cette periode`,
+      );
+    }
+
+    const basePrice = tarification.basePrice;
     const cleaningFee = Number(listing.cleaningFee);
     const serviceFee = Number(listing.serviceFee);
     const totalPrice = basePrice + cleaningFee + serviceFee;
