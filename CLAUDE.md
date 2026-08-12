@@ -187,6 +187,76 @@ développement local, faute de ces variables, les comptes d'essai retombent sur
       événement : pas de reprise de l'historique.
 - [ ] `criteresEchoues` est collecté mais volontairement non utilisé dans le
       score, en réserve pour la phase d'apprentissage.
+- [ ] Connexion Google jamais testée de bout en bout avec un vrai compte.
+      L'écran de consentement est en mode *Testing* : seuls les comptes listés
+      en *test users* peuvent entrer. Passer en *In production* avant
+      l'ouverture, sinon les clients sont refusés sans message compréhensible.
+
+---
+
+## Demandé, pas encore planifié
+
+Fonctionnalités décidées mais volontairement non entamées. Les notes qui
+suivent ne sont pas des spécifications : ce sont les pièges repérés en lisant
+le code existant, pour que la mise en œuvre ne les redécouvre pas.
+
+- [ ] **Modifier un séjour en cours : extension du nombre de jours.** Le
+      chevauchement se teste déjà à la création (`bookings.service.ts`), il
+      faudra le rejouer sur les dates étendues et retarifer via
+      `calendar.tarifer` — une extension peut mordre sur une période
+      saisonnière au tarif différent.
+
+- [ ] **Horizon de réservation : bloquer au-delà de X jours.** À distinguer de
+      `maxNights`, qui borne la *durée* d'un séjour, pas la *distance* à
+      laquelle on peut réserver. `ListingCalendar` ne sait exprimer que des
+      périodes fixes : un horizon glissant demande un champ sur `Listing`, pas
+      une ligne de calendrier qu'il faudrait recalculer chaque jour.
+
+- [ ] **Visibilité selon le profil de location choisi par l'hôte** : longue
+      durée, ou quelques semaines / mois. Touche la recherche, qui est adossée
+      au calendrier — un profil « longue durée » ne doit pas disparaître des
+      résultats d'une recherche courte, mais s'y présenter autrement.
+
+- [ ] **Canal de contact choisi par l'hôte : WhatsApp ou téléphone.** Le bloc
+      de coordonnées existe déjà (`avecContact`), il n'expose qu'un numéro et
+      un email. Rien à inventer côté révélation : la règle reste que rien ne
+      sort avant acceptation.
+
+- [ ] **Les alertes de la cloche ne mènent nulle part de précis.**
+      `feed.service.ts:130` et `:158` renvoient `/reservations` en dur, alors
+      que les offres de recherche inversée savent pointer l'événement
+      (`/besoins/{id}/offres`). Il manque soit une ancre sur la réservation
+      concernée, soit une page de détail.
+
+- [ ] **Majoration si le séjour est raccourci.** Optionnelle, à la main de
+      l'hôte. Exigible seulement quand `PAIEMENT_EN_LIGNE=true` : sans
+      encaissement, une majoration n'est qu'une phrase.
+
+- [ ] **Date limite d'annulation, no-show et sanction du voyageur.** Le plus
+      délicat, parce que sans paiement il n'existe aucun levier financier.
+
+      Ce qui marche déjà : une réservation `cancelled` est exclue du test de
+      chevauchement, les dates se relibèrent donc d'elles-mêmes. Reste à
+      prévenir l'hôte.
+
+      Le seul levier disponible est le compte du voyageur : `UserStatus`
+      (`watched`, `limited`, `suspended`) et le modèle `Sanction` existent
+      déjà. La forme à reprendre est celle de `refusal-guard.service.ts` — un
+      taux rapporté aux séjours aboutis, sur une fenêtre glissante, centré sur
+      l'acteur — plutôt qu'un second mécanisme parallèle.
+
+      Deux conditions non négociables :
+
+      1. **Le voyageur doit être prévenu avant**, à la réservation puis à
+         l'annulation. Une sanction non annoncée est arbitraire, et
+         inopposable.
+      2. **Une absence de check-in ne prouve pas un no-show.** `checkIn` est
+         déclenché par l'hôte (`bookings.service.ts:197`) : un séjour sans
+         check-in peut tout aussi bien être un hôte qui n'a pas appuyé sur le
+         bouton. Sanctionner automatiquement là-dessus punit le voyageur pour
+         l'inaction de l'hôte. Il faut un signal des deux côtés, ou une
+         déclaration de l'hôte qui compte elle-même dans son propre score —
+         exactement comme ses refus.
 
 ---
 
