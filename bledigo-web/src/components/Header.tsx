@@ -7,6 +7,7 @@ import { usePreferences } from '@/store/preferences';
 import { useMode, modesOf } from '@/store/mode';
 import PreferencesMenu from '@/components/PreferencesMenu';
 import ModeSwitch from '@/components/ModeSwitch';
+import NotificationBell from '@/components/NotificationBell';
 import {
   Shield,
   LogOut,
@@ -97,6 +98,10 @@ export default function Header() {
           )}
 
           {user && <ModeSwitch />}
+
+          {/* La cloche couvre les deux casquettes : elle reste visible quel que
+              soit le mode actif, pour ne pas masquer une action a mener. */}
+          {user && <NotificationBell />}
 
           <PreferencesMenu />
 

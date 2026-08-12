@@ -27,6 +27,24 @@ export class ApiError extends Error {
 
 type Tokens = { accessToken: string; refreshToken: string };
 
+/** Une ligne de la cloche. Le champ `link` pointe vers la page de l evenement. */
+export type NotificationItem = {
+  id: string;
+  type:
+    | 'offer_received'
+    | 'counter_answered'
+    | 'counter_to_answer'
+    | 'booking_to_confirm'
+    | 'booking_confirmed'
+    | 'booking_cancelled';
+  audience: 'traveler' | 'owner';
+  title: string;
+  body: string;
+  link: string;
+  actionRequired: boolean;
+  createdAt: string;
+};
+
 const STORAGE_KEY = 'bledigo.auth';
 
 export function readTokens(): Tokens | null {
@@ -105,6 +123,13 @@ export const api = {
   /** Active un second role : proprietaire qui veut aussi voyager, ou l inverse. */
   enableRole: (role: 'traveler' | 'owner') =>
     request<any>('/api/v1/users/me/roles', { method: 'POST', auth: true, body: body({ role }) }),
+
+  // --- notifications ---
+  /** Alimente la cloche : ce qui attend une action, pour les deux casquettes. */
+  notificationFeed: () =>
+    request<{ items: NotificationItem[]; actionCount: number }>('/api/v1/notifications/feed', {
+      auth: true,
+    }),
 
   // --- annonces ---
   listings: (params: Record<string, any> = {}) =>
