@@ -1,7 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AntiFraudService } from '../anti-fraud/anti-fraud.service';
-import { BookingStatus, SanctionType, ValidationStatus } from '../common/enums';
+import {
+  BookingStatus,
+  ListingStatus,
+  SanctionType,
+  UserStatus,
+  ValidationStatus,
+} from '../common/enums';
 import { toDbJson } from '../common/json';
 
 /**
@@ -78,14 +84,31 @@ export class RefusalGuardService {
       );
     } else {
       // L hote recurrent : soit son annonce est mensongere, soit il organise
-      // le contournement. Les deux justifient d arreter la diffusion.
+      // le contournement. Dans les deux cas on arrete la diffusion — mais pas
+      // brutalement le compte : voir plus bas.
       if (refusHote >= SEUIL_REFUS) {
         const proportion = tauxHote != null ? ` (${Math.round(tauxHote * 100)} % de ses sejours)` : '';
-        sanctions.push({
-          userId: ownerId,
-          type: SanctionType.suspend,
-          motif: `${refusHote} logements refuses a l arrivee en ${FENETRE_JOURS} jours${proportion}`,
-        });
+        const enCours = await this.reservationsEnCours(ownerId);
+
+        // Couper un hote qui a des voyageurs attendus revient a punir d abord
+        // ces voyageurs. On gele donc l argent et on retire les annonces de la
+        // diffusion, en laissant les sejours deja pris se derouler. Le compte
+        // n est ferme que lorsqu il ne reste plus personne a heberger.
+        sanctions.push(
+          enCours > 0
+            ? {
+                userId: ownerId,
+                type: SanctionType.limit,
+                motif: `Versements geles : ${refusHote} logements refuses en ${FENETRE_JOURS} jours${proportion}. ${enCours} reservation(s) en cours a honorer avant fermeture.`,
+              }
+            : {
+                userId: ownerId,
+                type: SanctionType.suspend,
+                motif: `${refusHote} logements refuses a l arrivee en ${FENETRE_JOURS} jours${proportion}, aucune reservation en cours`,
+              },
+        );
+
+        await this.retirerDeLaDiffusion(ownerId);
       }
 
       // Le voyageur recurrent : deux refus peuvent relever de la malchance,
@@ -131,5 +154,53 @@ export class RefusalGuardService {
     }
 
     return { refusVoyageur, refusHote, refusMemeDuo, tauxHote, sanctions };
+  }
+
+  /** Sejours encore a honorer : ni termines, ni annules. */
+  async reservationsEnCours(ownerId: string): Promise<number> {
+    return this.prisma.booking.count({
+      where: {
+        ownerId,
+        status: { in: [BookingStatus.pending, BookingStatus.confirmed, BookingStatus.checked_in] },
+      },
+    });
+  }
+
+  /**
+   * Retire les annonces de la diffusion sans les supprimer : plus aucune
+   * nouvelle reservation, mais celles deja prises restent honorees.
+   */
+  private async retirerDeLaDiffusion(ownerId: string) {
+    await this.prisma.listing.updateMany({
+      where: { ownerId, status: ListingStatus.active },
+      data: { status: ListingStatus.under_review },
+    });
+  }
+
+  /**
+   * Appele quand un sejour se termine : si l hote sous gel n a plus personne a
+   * heberger, la mesure conservatoire n a plus lieu d etre et le compte est
+   * ferme. C est la « liquidation » des reservations en cours.
+   */
+  async cloturerSiPlusRien(ownerId: string) {
+    const hote = await this.prisma.user.findUnique({ where: { id: ownerId } });
+    if (hote?.status !== UserStatus.limited) return;
+
+    const gelPourRefus = await this.prisma.sanction.findFirst({
+      where: { userId: ownerId, type: SanctionType.limit, revokedAt: null },
+      orderBy: { appliedAt: 'desc' },
+    });
+    if (!gelPourRefus) return;
+
+    if ((await this.reservationsEnCours(ownerId)) > 0) return;
+
+    await this.antiFraud.applySanction(
+      ownerId,
+      SanctionType.suspend,
+      'Fermeture apres liquidation des reservations en cours (refus repetes)',
+      SUSPENSION_JOURS,
+      'refus_logement',
+    );
+    this.logger.warn(`Hote ${ownerId} suspendu : plus aucune reservation a honorer`);
   }
 }

@@ -1,6 +1,13 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { BookingStatus, PaymentStatus, ValidationStatus, DisputeType, DisputeStatus } from '../common/enums';
+import {
+  BookingStatus,
+  PaymentStatus,
+  ValidationStatus,
+  UserStatus,
+  DisputeType,
+  DisputeStatus,
+} from '../common/enums';
 import { CreateBookingDto, ValidateBookingDto, RefuseBookingDto } from './dto';
 import { AntiFraudService } from '../anti-fraud/anti-fraud.service';
 import { RefusalGuardService } from './refusal-guard.service';
@@ -11,6 +18,8 @@ const VALIDATION_WINDOW_MINUTES = 30;
 
 @Injectable()
 export class BookingsService {
+  private readonly logger = new Logger(BookingsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly antiFraud: AntiFraudService,
@@ -143,7 +152,7 @@ export class BookingsService {
           status: BookingStatus.completed,
         },
       });
-      await this.releasePayment(booking.payment?.id);
+      await this.releasePayment(booking.payment?.id, booking.ownerId);
       return {
         booking: await this.prisma.booking.findUnique({ where: { id: bookingId } }),
         autoValidated: true,
@@ -158,8 +167,10 @@ export class BookingsService {
         where: { id: bookingId },
         data: { validationStatus: ValidationStatus.validated, status: BookingStatus.completed },
       });
-      await this.releasePayment(booking.payment?.id);
+      await this.releasePayment(booking.payment?.id, booking.ownerId);
       await this.bumpPassports(booking.listingId, travelerId, booking.ownerId, booking.totalNights);
+      // Ce sejour etait peut-etre le dernier que l hote sous gel avait a honorer.
+      await this.refusalGuard.cloturerSiPlusRien(booking.ownerId);
     } else {
       await this.openDispute(bookingId, travelerId, dto);
     }
@@ -283,8 +294,37 @@ export class BookingsService {
     };
   }
 
-  private async releasePayment(paymentId?: string) {
+  /**
+   * Libere les fonds vers l hote — sauf si ses versements sont geles.
+   *
+   * Un hote sous mesure conservatoire continue d accueillir les voyageurs deja
+   * reserves : les annuler punirait d abord ces voyageurs, qui n y sont pour
+   * rien. Mais l argent reste bloque le temps de la verification. C est
+   * exactement ce que fait Airbnb, qui suspend le versement sans couper le
+   * compte tant que des sejours sont engages.
+   *
+   * Le paiement reste donc en `held` : ni rendu au voyageur, ni verse a l hote.
+   */
+  private async releasePayment(paymentId?: string, ownerId?: string) {
     if (!paymentId) return;
+
+    if (ownerId) {
+      const hote = await this.prisma.user.findUnique({ where: { id: ownerId } });
+      const gele =
+        hote?.status === UserStatus.limited || hote?.status === UserStatus.suspended;
+
+      if (gele) {
+        await this.prisma.payment.update({
+          where: { id: paymentId },
+          data: { status: PaymentStatus.held, heldAt: new Date() },
+        });
+        this.logger.warn(
+          `Versement gele pour l hote ${ownerId} : fonds conserves jusqu a la fin de la verification`,
+        );
+        return;
+      }
+    }
+
     await this.prisma.payment.update({
       where: { id: paymentId },
       data: { status: PaymentStatus.captured, capturedAt: new Date() },
