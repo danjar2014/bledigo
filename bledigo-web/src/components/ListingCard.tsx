@@ -7,14 +7,23 @@ import { motion } from 'framer-motion';
 import { photoOf, CERTIFICATIONS } from '@/lib/format';
 import { useMoney } from '@/store/preferences';
 
-export default function ListingCard({ listing }: { listing: any }) {
+/**
+ * `dates` propage la periode recherchee vers la fiche, qui la reporte a son
+ * tour dans le formulaire de reservation. Sans cela, le voyageur ressaisit les
+ * dates qu il vient de choisir — et peut en saisir d autres par megarde.
+ */
+export default function ListingCard({ listing, dates }: { listing: any; dates?: { checkIn?: string; checkOut?: string } }) {
+  const suffixe =
+    dates?.checkIn && dates?.checkOut
+      ? `?${new URLSearchParams({ checkIn: dates.checkIn, checkOut: dates.checkOut })}`
+      : '';
   const money = useMoney();
   const certification = CERTIFICATIONS[listing.certificationLevel] || CERTIFICATIONS.none;
   const trustScore = listing.trustScore ?? 50;
 
   return (
     <motion.div whileHover={{ y: -4 }}>
-      <Link href={`/logements/${listing.slug || listing.id}`} className="card-bledi overflow-hidden group block">
+      <Link href={`/logements/${listing.slug || listing.id}${suffixe}`} className="card-bledi overflow-hidden group block">
         <div className="relative h-56 overflow-hidden">
           <Image
             src={photoOf(listing)}

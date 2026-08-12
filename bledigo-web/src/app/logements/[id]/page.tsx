@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { MapPin, Users, BedDouble, Bath, Shield, Star, Check, Lock } from 'lucide-react';
 import { api } from '@/lib/api';
@@ -19,7 +19,29 @@ export default function ListingPage() {
   const router = useRouter();
   const { user } = useAuth();
 
-  const [form, setForm] = useState({ checkIn: '', checkOut: '', guestsCount: 2 });
+  // Les dates de la recherche sont reportees ici : le voyageur vient de les
+  // choisir, les lui faire ressaisir invite a se tromper de periode.
+  const params = useSearchParams();
+  const [form, setForm] = useState({
+    checkIn: params.get('checkIn') ?? '',
+    checkOut: params.get('checkOut') ?? '',
+    guestsCount: 2,
+  });
+
+  const aujourdhui = new Date().toISOString().slice(0, 10);
+  const lendemain = (d: string) => {
+    if (!d) return aujourdhui;
+    const j = new Date(d);
+    j.setDate(j.getDate() + 1);
+    return j.toISOString().slice(0, 10);
+  };
+  /** Le depart suit toujours l arrivee, meme quand celle-ci recule. */
+  const setArrivee = (checkIn: string) =>
+    setForm((f) => ({
+      ...f,
+      checkIn,
+      checkOut: f.checkOut && f.checkOut <= checkIn ? lendemain(checkIn) : f.checkOut,
+    }));
   const [message, setMessage] = useState<string | null>(null);
 
   const { data: listing, isLoading, error } = useQuery({
@@ -123,13 +145,15 @@ export default function ListingPage() {
             <input
               type="date"
               className="input-bledi mb-3"
+              min={aujourdhui}
               value={form.checkIn}
-              onChange={(e) => setForm({ ...form, checkIn: e.target.value })}
+              onChange={(e) => setArrivee(e.target.value)}
             />
             <label className="block text-sm font-medium mb-1">Depart</label>
             <input
               type="date"
               className="input-bledi mb-3"
+              min={lendemain(form.checkIn)}
               value={form.checkOut}
               onChange={(e) => setForm({ ...form, checkOut: e.target.value })}
             />
