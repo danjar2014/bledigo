@@ -93,6 +93,21 @@ gel des fonds existe et reste branché — la variable le rallume sans
 redéveloppement. Voir `src/common/mode-plateforme.ts`. Les crédits sont offerts
 et la boutique est en sommeil, pas supprimée.
 
+**L'acceptation appartient à l'hôte, et à lui seul.** Une demande naît en
+`pending` et n'en sort que par `bookings.confirm`, qui vérifie que l'appelant
+est bien l'hôte — ou d'emblée si celui-ci a coché `instantBook`, seul
+contournement légitime puisqu'il y renonce explicitement. Rien d'autre ne doit
+faire basculer ce statut : c'est l'acceptation qui déclenche l'échange des
+coordonnées (`avecContact`), et tout raccourci livre l'email de l'hôte à
+quiconque clique sur « Réserver ».
+
+Le raccourci a déjà existé : créer une intention de paiement confirmait la
+réservation au passage, héritage de l'époque où la plateforme tenait l'argent
+et où payer valait acceptation. Le front appelait cette route juste après la
+création, donc **toute** demande s'acceptait seule. En paiement direct il n'y a
+plus rien à bloquer — la route n'est plus appelée, et elle ne confirme plus
+rien.
+
 **Anti-collusion centré sur l'acteur, pas sur le duo.** Un hôte qui organise des
 refus pour échapper à la commission change de complice : modéliser
 l'affinité de paire passerait à côté. `src/bookings/refusal-guard.service.ts`
@@ -164,6 +179,10 @@ développement local, faute de ces variables, les comptes d'essai retombent sur
 - [ ] Stockage des photos (S3 ou Cloudinary) — c'est le levier anti-collusion
       qui manque le plus.
 - [ ] Cycle complet de négociation jamais testé de bout en bout.
+- [ ] Réservations confirmées avant le correctif d'acceptation : elles sont
+      restées `confirmed` sans qu'aucun hôte ne les ait acceptées, et les
+      coordonnées ont déjà été échangées. Décider si on les repasse en
+      `pending` — modification de données de production.
 - [ ] Les annonces existantes ne voient leur score bougé qu'à leur premier
       événement : pas de reprise de l'historique.
 - [ ] `criteresEchoues` est collecté mais volontairement non utilisé dans le
