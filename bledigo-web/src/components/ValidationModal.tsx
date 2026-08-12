@@ -127,13 +127,24 @@ export default function ValidationModal({
           </div>
         )}
 
-        <label className="block text-sm font-medium mb-1">Commentaire (optionnel)</label>
+        <label className="block text-sm font-medium mb-1">
+          {allOk ? 'Commentaire (optionnel)' : 'Ce qui ne va pas'}
+          {!allOk && <span className="text-slate font-normal"> — requis pour refuser</span>}
+        </label>
         <textarea
-          className="input-bledi mb-4 h-24"
+          className="input-bledi mb-1 h-24"
           value={comment}
           onChange={(e) => setComment(e.target.value)}
-          placeholder="Precisez ce qui ne va pas..."
+          placeholder="Decrivez precisement l ecart constate..."
         />
+        {!allOk && (
+          <p className="text-xs text-slate mb-4">
+            {comment.trim().length < 15
+              ? `Encore ${15 - comment.trim().length} caractere(s) pour pouvoir refuser.`
+              : 'Ce texte sera transmis a l hote et servira de piece en cas de contestation.'}
+          </p>
+        )}
+        {allOk && <div className="mb-4" />}
 
         {(validate.error || refuse.error) && (
           <div className="text-sm text-red-700 bg-red-50 rounded p-2 mb-3">
@@ -165,8 +176,13 @@ export default function ValidationModal({
             {!confirmeRefus ? (
               <button
                 onClick={() => setConfirmeRefus(true)}
-                disabled={validate.isPending || refuse.isPending}
-                className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-bledi-sm font-medium border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50"
+                disabled={validate.isPending || refuse.isPending || comment.trim().length < 15}
+                title={
+                  comment.trim().length < 15
+                    ? 'Decrivez d abord ce qui ne va pas'
+                    : undefined
+                }
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-bledi-sm font-medium border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <DoorOpen className="w-5 h-5" />
                 Je refuse le logement et j annule
@@ -177,6 +193,15 @@ export default function ValidationModal({
                   La reservation sera <strong>annulee</strong> et vous ne serez{' '}
                   <strong>pas debite</strong>. Cette action est definitive : vous ne pourrez plus
                   valider ce sejour ni ouvrir de litige.
+                </p>
+                <p className="text-sm text-red-900 mb-3 border-t border-red-200 pt-3">
+                  Chaque refus est <strong>enregistre et controle</strong>, des deux cotes. Au
+                  deuxieme refus, le compte concerne est <strong>suspendu</strong> le temps d une
+                  verification — voyageur comme hote.
+                </p>
+                <p className="text-xs text-red-800/90 mb-3">
+                  S entendre avec l hote pour annuler ici puis regler en direct revient a un
+                  contournement : la protection du paiement disparait, et les deux comptes tombent.
                 </p>
                 <div className="flex gap-2">
                   <button

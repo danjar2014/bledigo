@@ -1,4 +1,4 @@
-import { IsString, IsInt, IsDateString, IsBoolean, IsOptional, Min } from 'class-validator';
+import { IsString, IsInt, IsDateString, IsBoolean, IsOptional, Min, MinLength } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateBookingDto {
@@ -28,5 +28,13 @@ export class RefuseBookingDto {
   @IsBoolean() locationConform: boolean;
   @IsBoolean() amenitiesPresent: boolean;
   @IsBoolean() clean: boolean;
-  @IsOptional() @IsString() reason?: string;
+  /**
+   * Motif OBLIGATOIRE, contrairement au commentaire de validation.
+   *
+   * Il ne coute rien a une victime reelle, qui a beaucoup a dire, mais oblige
+   * une entente a fabriquer un mensonge ecrit, date et opposable. C est aussi
+   * la seule piece dont disposera l arbitrage si l hote conteste.
+   */
+  @IsString() @MinLength(15, { message: 'Decrivez en quelques mots ce qui ne va pas (15 caracteres minimum)' })
+  reason: string;
 }

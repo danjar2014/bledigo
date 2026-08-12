@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { BookingStatus, PaymentStatus, ValidationStatus, DisputeType, DisputeStatus } from '../common/enums';
 import { CreateBookingDto, ValidateBookingDto, RefuseBookingDto } from './dto';
 import { AntiFraudService } from '../anti-fraud/anti-fraud.service';
+import { RefusalGuardService } from './refusal-guard.service';
 import { toDbJson } from '../common/json';
 
 /** Delai de validation post check-in, en minutes (regle metier BlediGo) */
@@ -13,6 +14,7 @@ export class BookingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly antiFraud: AntiFraudService,
+    private readonly refusalGuard: RefusalGuardService,
   ) {}
 
   async create(travelerId: string, dto: CreateBookingDto) {
@@ -218,9 +220,17 @@ export class BookingsService {
       );
     }
 
-    if (dto.reason) {
-      await this.antiFraud.assertClean(travelerId, dto.reason, 'booking_refusal');
-    }
+    await this.antiFraud.assertClean(travelerId, dto.reason, 'booking_refusal');
+
+    // Un refus immediat n est pas credible : personne ne constate qu un
+    // logement ne correspond pas a l annonce en quelques secondes. Ce delai
+    // est le marqueur le moins contournable d un refus de complaisance.
+    const ouvertureFenetre = booking.validationDeadline
+      ? new Date(booking.validationDeadline).getTime() - VALIDATION_WINDOW_MINUTES * 60 * 1000
+      : null;
+    const secondesDepuisArrivee = ouvertureFenetre
+      ? Math.round((Date.now() - ouvertureFenetre) / 1000)
+      : null;
 
     const [mise] = await this.prisma.$transaction([
       this.prisma.booking.update({
@@ -238,7 +248,8 @@ export class BookingsService {
               clean: dto.clean,
             },
             motifs,
-            reason: dto.reason ?? null,
+            reason: dto.reason,
+            secondesDepuisArrivee,
           }),
         },
       }),
@@ -257,7 +268,19 @@ export class BookingsService {
         : []),
     ]);
 
-    return { booking: mise, refunded: !!booking.payment, motifs };
+    // Le controle vient APRES l enregistrement : le refus reste acquis au
+    // voyageur meme s il declenche une sanction. On ne lui refuse pas une
+    // protection au motif qu il pourrait en abuser.
+    const verdict = await this.refusalGuard.evaluer(bookingId, travelerId, booking.ownerId);
+
+    return {
+      booking: mise,
+      refunded: !!booking.payment,
+      motifs,
+      /** Sanctions declenchees, pour que l interface puisse l annoncer sans detour. */
+      sanctions: verdict.sanctions.map((s) => ({ userId: s.userId, type: s.type })),
+      refusAnterieurs: verdict.refusVoyageur - 1,
+    };
   }
 
   private async releasePayment(paymentId?: string) {

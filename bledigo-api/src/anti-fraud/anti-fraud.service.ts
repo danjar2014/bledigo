@@ -231,11 +231,17 @@ export class AntiFraudService {
     return Math.min(score, 1);
   }
 
-  private async applySanction(
+  /**
+   * Sanction automatique, ouverte aux autres modules : le contournement de la
+   * plateforme ne passe pas que par la messagerie, le refus de logement en est
+   * un autre vecteur. Toute sanction reste revocable depuis l administration.
+   */
+  async applySanction(
     userId: string,
     type: SanctionType,
     reason: string,
     durationDays?: number,
+    source = 'anti_fraud_system',
   ) {
     const expiresAt = durationDays
       ? new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000)
@@ -249,7 +255,7 @@ export class AntiFraudService {
         durationDays,
         expiresAt,
         appliedBy: userId, // auto-sanction systeme : tracee via evidence.source
-        evidence: toDbJson({ autoDetected: true, source: 'anti_fraud_system' }),
+        evidence: toDbJson({ autoDetected: true, source }),
       },
     });
 

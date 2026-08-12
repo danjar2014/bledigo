@@ -151,10 +151,14 @@ export class NotificationFeedService {
         audience: cotePropio ? 'owner' : 'traveler',
         title,
         body: refuse && cotePropio
-          ? `${b.listing?.title ?? 'Votre logement'} a ete refuse par le voyageur : la reservation est annulee et le paiement rendu.`
-          : `${b.listing?.title ?? 'Le sejour'} — arrivee le ${this.date(b.checkIn)}.`,
+          ? `${b.listing?.title ?? 'Votre logement'} a ete refuse a l arrivee : reservation annulee, paiement rendu. Le motif vous est communique. Chaque refus est controle — au deuxieme, le compte est suspendu le temps d une verification.`
+          : refuse
+            ? `${b.listing?.title ?? 'Le sejour'} a ete refuse : vous n avez pas ete debite.`
+            : `${b.listing?.title ?? 'Le sejour'} — arrivee le ${this.date(b.checkIn)}.`,
         link: '/reservations',
-        actionRequired: false,
+        // Un refus n est pas une simple information pour l hote : il doit
+        // corriger son annonce ou contester, sous peine de recidive.
+        actionRequired: refuse && cotePropio,
         createdAt: b.updatedAt,
       });
     }
