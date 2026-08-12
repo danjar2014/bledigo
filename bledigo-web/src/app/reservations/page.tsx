@@ -110,7 +110,33 @@ function Reservations() {
                       </div>
                     </div>
 
-                    {b.status === 'confirmed' && (
+                    {/* Paiement direct : une fois la demande acceptee, les deux parties
+                        se joignent et reglent entre elles. Ce bloc disparait de lui-meme
+                        quand le paiement en ligne est reactive cote serveur. */}
+                    {b.contact && (
+                      <div className="mt-3 p-3 rounded-bledi-sm bg-emerald-50 border border-emerald-200">
+                        <p className="text-sm font-medium text-emerald-900 mb-1">
+                          Demande acceptee — contactez votre {b.contact.role}
+                        </p>
+                        <p className="text-sm text-charcoal">
+                          {b.contact.nom}
+                          {b.contact.telephone && (
+                            <>
+                              {' · '}
+                              <a href={`tel:${b.contact.telephone}`} className="font-medium underline">
+                                {b.contact.telephone}
+                              </a>
+                            </>
+                          )}
+                        </p>
+                        <p className="text-xs text-emerald-800/80 mt-1">
+                          Le reglement se fait directement entre vous. BlediGo ne percoit aucun montant
+                          et n intervient pas dans la transaction.
+                        </p>
+                      </div>
+                    )}
+
+                    {b.status === 'confirmed' && b.paiementEnLigne && (
                       <p className="text-xs text-slate mt-3">
                         Le proprietaire declenchera le check-in a votre arrivee. Vous aurez alors 30
                         minutes pour verifier le logement.

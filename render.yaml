@@ -46,6 +46,12 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # Phase d amorcage : paiement DIRECT entre voyageur et hote, aucun montant
+      # ne transite par la plateforme. Le dispositif de paiement, validation,
+      # refus et gel reste en place mais en sommeil — passer cette valeur a
+      # "true" le rallume, sans redeveloppement.
+      - key: PAIEMENT_EN_LIGNE
+        value: "false"
       # Base existante dans l espace de travail : le nom doit correspondre
       # exactement a celui affiche dans Render.
       - key: DATABASE_URL

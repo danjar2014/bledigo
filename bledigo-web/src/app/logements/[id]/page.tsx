@@ -192,7 +192,7 @@ export default function ListingPage() {
 
             {!user ? (
               <a href="/connexion" className="btn-primary w-full block text-center">
-                Se connecter pour reserver
+                Se connecter pour envoyer une demande
               </a>
             ) : (
               <button
@@ -200,7 +200,7 @@ export default function ListingPage() {
                 disabled={!form.checkIn || !form.checkOut || booking.isPending}
                 className="btn-primary w-full disabled:opacity-50"
               >
-                {booking.isPending ? 'Reservation...' : 'Reserver'}
+                {booking.isPending ? 'Envoi...' : 'Envoyer ma demande'}
               </button>
             )}
 

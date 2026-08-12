@@ -15,6 +15,7 @@ import {
   UserRole,
 } from '../common/enums';
 import { toDbJson } from '../common/json';
+import { creditsGratuits } from '../common/mode-plateforme';
 import { buildOwnerZone, filterByZone, matchesZone, type ZoneScope } from '../common/zone';
 import { hasRole } from '../common/roles';
 import { findLocality, resolveLocality } from '../common/localities';
@@ -417,6 +418,16 @@ export class ReverseSearchService {
     const zone = buildOwnerZone(listings);
     if (!matchesZone(search, zone)) {
       throw new ForbiddenException('Cette demande ne concerne pas votre zone.');
+    }
+
+    // Phase d amorcage : les credits sont offerts tant qu il n existe aucun
+    // moyen d encaisser. Le deblocage reste trace, pour qu on sache plus tard
+    // ce qui aurait ete facture.
+    if (creditsGratuits()) {
+      await this.prisma.reverseSearchUnlock.create({
+        data: { ownerId, reverseSearchId, creditsSpent: 0 },
+      });
+      return { alreadyUnlocked: false, creditsSpent: 0, creditsRemaining: null, offert: true };
     }
 
     const credits = await this.prisma.reverseSearchCredit.findUnique({ where: { userId: ownerId } });

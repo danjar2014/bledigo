@@ -14,6 +14,7 @@ import { RefusalGuardService } from './refusal-guard.service';
 import { CalendarService } from '../listings/calendar.service';
 import { ScoringService } from '../ai/scoring.service';
 import { toDbJson } from '../common/json';
+import { paiementEnLigne, coordonneesAutorisees } from '../common/mode-plateforme';
 
 /** Delai de validation post check-in, en minutes (regle metier BlediGo) */
 const VALIDATION_WINDOW_MINUTES = 30;
@@ -106,20 +107,67 @@ export class BookingsService {
   }
 
   async findMine(userId: string, role: 'traveler' | 'owner' = 'traveler') {
-    return this.prisma.booking.findMany({
+    const bookings = await this.prisma.booking.findMany({
       where: role === 'owner' ? { ownerId: userId } : { travelerId: userId },
-      include: { listing: { include: { photos: true } }, payment: true },
+      include: {
+        listing: { include: { photos: true } },
+        payment: true,
+        owner: { select: { firstName: true, lastName: true, phone: true, email: true } },
+        traveler: { select: { firstName: true, lastName: true, phone: true, email: true } },
+      },
       orderBy: { checkIn: 'desc' },
     });
+
+    return bookings.map((b) => this.avecContact(b, role));
+  }
+
+  /**
+   * En paiement direct, les deux parties reglent entre elles : elles doivent
+   * donc pouvoir se joindre. Les coordonnees ne sont revelees qu APRES
+   * acceptation par l hote — avant, le filtre anti-fraude continue de proteger
+   * du demarchage et de l aspiration de contacts.
+   */
+  private avecContact(booking: any, role: 'traveler' | 'owner') {
+    const acceptee = [
+      BookingStatus.confirmed,
+      BookingStatus.checked_in,
+      BookingStatus.validated,
+      BookingStatus.completed,
+    ].includes(booking.status as BookingStatus);
+
+    const contrepartie = role === 'owner' ? booking.traveler : booking.owner;
+    const visible = coordonneesAutorisees(acceptee);
+
+    return {
+      ...booking,
+      owner: undefined,
+      traveler: undefined,
+      /** Renseigne uniquement quand l echange direct est autorise. */
+      contact: visible
+        ? {
+            nom: `${contrepartie?.firstName ?? ''} ${contrepartie?.lastName ?? ''}`.trim(),
+            telephone: contrepartie?.phone ?? null,
+            email: contrepartie?.email ?? null,
+            role: role === 'owner' ? 'voyageur' : 'hote',
+          }
+        : null,
+      /** L interface adapte son vocabulaire et ses boutons a partir de ceci. */
+      paiementEnLigne: paiementEnLigne(),
+    };
   }
 
   async findOne(userId: string, id: string) {
     const booking = await this.prisma.booking.findFirst({
       where: { id, OR: [{ travelerId: userId }, { ownerId: userId }] },
-      include: { listing: true, payment: true },
+      include: {
+        listing: true,
+        payment: true,
+        owner: { select: { firstName: true, lastName: true, phone: true, email: true } },
+        traveler: { select: { firstName: true, lastName: true, phone: true, email: true } },
+      },
     });
     if (!booking) throw new NotFoundException('Reservation non trouvee');
-    return booking;
+    return this.avecContact(booking, booking.ownerId === userId ? 'owner' : 'traveler');
   }
 
   async confirm(ownerId: string, id: string) {
