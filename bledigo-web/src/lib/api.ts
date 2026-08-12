@@ -172,7 +172,15 @@ export const api = {
     request<any>(`/api/v1/cities/${slug}?${new URLSearchParams(clean(params))}`),
   propertyTypes: () => request<any[]>('/api/v1/property-types'),
   /** Referentiel des localites, groupees par gouvernorat. */
-  localities: () => request<any[]>('/api/v1/localities'),
+  /**
+   * Referentiel des localites.
+   *
+   * Sans `flat`, l API renvoie des GROUPES par region — { region, items[] } —
+   * et non des villes. Confondre les deux formes donne des `undefined`
+   * silencieux, ou une exception a la premiere lecture de `.name`.
+   */
+  localities: (flat = false) =>
+    request<any[]>(`/api/v1/localities${flat ? '?flat=1' : ''}`),
 
   // --- carte ---
   /** Annonces dans une bounding box ou dans un polygone tracé. */

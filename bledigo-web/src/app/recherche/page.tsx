@@ -44,14 +44,6 @@ function Resultats() {
     enabled: datesChoisies,
   });
 
-  // Le referentiel complet, pas seulement les villes ou une annonce existe :
-  // une destination sans disponibilite doit pouvoir etre choisie, pour que la
-  // reponse soit « rien a ces dates » et non « cette ville n existe pas ».
-  const { data: localites } = useQuery({
-    queryKey: ['localities'],
-    queryFn: () => api.localities(),
-    staleTime: Infinity,
-  });
 
   const aujourdhui = new Date().toISOString().slice(0, 10);
   /** Le depart suit l arrivee : une nuit au minimum. */

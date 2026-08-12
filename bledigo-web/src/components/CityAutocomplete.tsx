@@ -44,11 +44,20 @@ export default function CityAutocomplete({
   // suggeree, ou un retour arriere du navigateur.
   useEffect(() => setSaisie(value), [value]);
 
-  const { data: localites } = useQuery({
-    queryKey: ['localities'],
-    queryFn: () => api.localities(),
+  const { data: brut } = useQuery({
+    queryKey: ['localities', 'flat'],
+    queryFn: () => api.localities(true),
     staleTime: Infinity,
   });
+
+  /**
+   * Tolerant aux deux formes du referentiel : liste plate, ou groupes par
+   * region. L API peut renvoyer l une ou l autre selon le parametre, et une
+   * ville sans `name` fait echouer la comparaison plus bas.
+   */
+  const localites: any[] = Array.isArray(brut)
+    ? brut.flatMap((x: any) => (Array.isArray(x?.items) ? x.items : [x]))
+    : [];
 
   useEffect(() => {
     if (!ouvert) return;
@@ -60,7 +69,8 @@ export default function CityAutocomplete({
   }, [ouvert]);
 
   const recherche = normaliser(saisie);
-  const propositions = (localites ?? [])
+  const propositions = localites
+    .filter((l: any) => l?.name)
     .filter((l: any) => {
       if (!recherche) return true;
       return (
