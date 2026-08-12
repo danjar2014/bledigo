@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { BookingStatus, ReverseOfferStatus } from '../common/enums';
+import { BookingStatus, ReverseOfferStatus, ValidationStatus } from '../common/enums';
 
 /**
  * Le flux de la cloche est DEDUIT de l etat courant, il n est pas stocke.
@@ -72,10 +72,12 @@ export class NotificationFeedService {
         take: 30,
       }),
 
-      // VOYAGEUR : issues recentes de ses reservations.
+      // Issues recentes des reservations, pour les DEUX parties : le voyageur
+      // suit ses sejours, et le proprietaire doit apprendre qu un logement a
+      // ete refuse a l arrivee — c est precisement ce qu il doit corriger.
       this.prisma.booking.findMany({
         where: {
-          travelerId: userId,
+          OR: [{ travelerId: userId }, { ownerId: userId }],
           status: { in: [BookingStatus.confirmed, BookingStatus.cancelled] },
           updatedAt: { gte: depuis },
         },
@@ -132,13 +134,25 @@ export class NotificationFeedService {
     }
 
     for (const b of recentes) {
+      const cotePropio = b.ownerId === userId;
       const annulee = b.status === BookingStatus.cancelled;
+      const refuse = b.validationStatus === ValidationStatus.refused;
+
+      // Un refus n est pas une annulation ordinaire : cote proprietaire c est
+      // un signal a traiter, pas une simple information.
+      let title: string;
+      if (refuse) title = cotePropio ? 'Logement refuse a l arrivee' : 'Sejour refuse, aucun debit';
+      else if (annulee) title = 'Reservation annulee';
+      else title = cotePropio ? 'Reservation a venir' : 'Reservation confirmee';
+
       items.push({
         id: `booking-issue:${b.id}`,
         type: annulee ? 'booking_cancelled' : 'booking_confirmed',
-        audience: 'traveler',
-        title: annulee ? 'Reservation annulee' : 'Reservation confirmee',
-        body: `${b.listing?.title ?? 'Votre sejour'} — arrivee le ${this.date(b.checkIn)}.`,
+        audience: cotePropio ? 'owner' : 'traveler',
+        title,
+        body: refuse && cotePropio
+          ? `${b.listing?.title ?? 'Votre logement'} a ete refuse par le voyageur : la reservation est annulee et le paiement rendu.`
+          : `${b.listing?.title ?? 'Le sejour'} — arrivee le ${this.date(b.checkIn)}.`,
         link: '/reservations',
         actionRequired: false,
         createdAt: b.updatedAt,

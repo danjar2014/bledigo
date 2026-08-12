@@ -1,14 +1,19 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BookingStatus, PaymentStatus, ValidationStatus, DisputeType, DisputeStatus } from '../common/enums';
-import { CreateBookingDto, ValidateBookingDto } from './dto';
+import { CreateBookingDto, ValidateBookingDto, RefuseBookingDto } from './dto';
+import { AntiFraudService } from '../anti-fraud/anti-fraud.service';
+import { toDbJson } from '../common/json';
 
 /** Delai de validation post check-in, en minutes (regle metier BlediGo) */
 const VALIDATION_WINDOW_MINUTES = 30;
 
 @Injectable()
 export class BookingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly antiFraud: AntiFraudService,
+  ) {}
 
   async create(travelerId: string, dto: CreateBookingDto) {
     const listing = await this.prisma.listing.findUnique({ where: { id: dto.listingId } });
@@ -158,6 +163,101 @@ export class BookingsService {
     }
 
     return { booking: await this.prisma.booking.findUnique({ where: { id: bookingId } }) };
+  }
+
+  /**
+   * Refus du logement a l arrivee : la reservation est annulee et le paiement
+   * rendu, sans arbitrage.
+   *
+   * Se distingue du litige, qui bloque les fonds le temps de l instruction.
+   * Ici le voyageur repart : on ne peut lui demander ni d attendre, ni de
+   * payer un logement qu il n occupera pas.
+   *
+   * La fenetre de 30 minutes ouverte au check-in est le garde-fou : passe ce
+   * delai le sejour s auto-valide, on ne peut donc plus refuser apres avoir
+   * occupe les lieux.
+   */
+  async refuse(travelerId: string, bookingId: string, dto: RefuseBookingDto) {
+    const booking = await this.prisma.booking.findFirst({
+      where: { id: bookingId, travelerId },
+      include: { payment: true },
+    });
+    if (!booking) throw new NotFoundException('Reservation non trouvee');
+
+    if (booking.validationStatus !== ValidationStatus.pending) {
+      throw new BadRequestException('Cette reservation a deja ete validee ou contestee');
+    }
+    if (booking.status !== BookingStatus.checked_in) {
+      throw new BadRequestException(
+        'Le refus n est possible qu a l arrivee, une fois le check-in fait par le proprietaire',
+      );
+    }
+    if (booking.validationDeadline && new Date() > booking.validationDeadline) {
+      throw new BadRequestException(
+        'Le delai de verification est depasse : le sejour est auto-valide. Ouvrez un litige.',
+      );
+    }
+
+    // Refuser un logement declare conforme n a pas de sens : le motif doit
+    // exister, faute de quoi le refus serait inopposable au proprietaire.
+    const motifs = (
+      [
+        ['conform', "le logement ne correspond pas a l annonce"],
+        ['photosConform', 'les photos ne sont pas conformes'],
+        ['locationConform', "l emplacement n est pas celui annonce"],
+        ['amenitiesPresent', 'des equipements annonces sont absents'],
+        ['clean', "le logement n est pas propre"],
+      ] as const
+    )
+      .filter(([cle]) => !dto[cle])
+      .map(([, libelle]) => libelle);
+
+    if (motifs.length === 0) {
+      throw new BadRequestException(
+        'Indiquez au moins un critere non conforme pour refuser le logement',
+      );
+    }
+
+    if (dto.reason) {
+      await this.antiFraud.assertClean(travelerId, dto.reason, 'booking_refusal');
+    }
+
+    const [mise] = await this.prisma.$transaction([
+      this.prisma.booking.update({
+        where: { id: bookingId },
+        data: {
+          status: BookingStatus.cancelled,
+          validationStatus: ValidationStatus.refused,
+          validationData: toDbJson({
+            refusedAt: new Date().toISOString(),
+            criteria: {
+              conform: dto.conform,
+              photosConform: dto.photosConform,
+              locationConform: dto.locationConform,
+              amenitiesPresent: dto.amenitiesPresent,
+              clean: dto.clean,
+            },
+            motifs,
+            reason: dto.reason ?? null,
+          }),
+        },
+      }),
+      ...(booking.payment
+        ? [
+            this.prisma.payment.update({
+              where: { id: booking.payment.id },
+              data: {
+                status: PaymentStatus.refunded,
+                refundedAt: new Date(),
+                refundAmount: booking.payment.amount,
+                refundReason: `Logement refuse a l arrivee : ${motifs.join(', ')}`,
+              },
+            }),
+          ]
+        : []),
+    ]);
+
+    return { booking: mise, refunded: !!booking.payment, motifs };
   }
 
   private async releasePayment(paymentId?: string) {

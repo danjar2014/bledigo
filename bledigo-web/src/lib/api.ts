@@ -181,6 +181,12 @@ export const api = {
     request<any>(`/api/v1/bookings/${id}/check-in`, { method: 'POST', auth: true }),
   validateStay: (id: string, dto: any) =>
     request<any>(`/api/v1/bookings/${id}/validate`, { method: 'POST', auth: true, body: body(dto) }),
+  /** Refus a l arrivee : annule la reservation et rembourse, sans arbitrage. */
+  refuseStay: (id: string, dto: any) =>
+    request<{ booking: any; refunded: boolean; motifs: string[] }>(
+      `/api/v1/bookings/${id}/refuse`,
+      { method: 'POST', auth: true, body: body(dto) },
+    ),
 
   // --- paiements ---
   payIntent: (bookingId: string) =>

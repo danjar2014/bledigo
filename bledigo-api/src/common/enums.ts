@@ -70,6 +70,12 @@ export enum ValidationStatus {
   validated = 'validated',
   auto_validated = 'auto_validated',
   disputed = 'disputed',
+  /**
+   * Le voyageur a refuse le logement a l arrivee : la reservation est annulee
+   * et rien n est preleve. A distinguer du litige, qui laisse le paiement
+   * bloque le temps de l instruction.
+   */
+  refused = 'refused',
 }
 
 export enum DisputeType {

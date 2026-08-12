@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { BookingsService } from './bookings.service';
-import { CreateBookingDto, ValidateBookingDto } from './dto';
+import { CreateBookingDto, ValidateBookingDto, RefuseBookingDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
@@ -47,5 +47,14 @@ export class BookingsController {
   @ApiOperation({ summary: 'Validation du sejour (voyageur) : libere le paiement ou ouvre un litige' })
   validate(@CurrentUser('id') me: string, @Param('id') id: string, @Body() dto: ValidateBookingDto) {
     return this.bookingsService.validate(me, id, dto);
+  }
+
+  @Post(':id/refuse')
+  @ApiOperation({
+    summary:
+      'Refus du logement a l arrivee (voyageur) : annule la reservation et rembourse, sans arbitrage',
+  })
+  refuse(@CurrentUser('id') me: string, @Param('id') id: string, @Body() dto: RefuseBookingDto) {
+    return this.bookingsService.refuse(me, id, dto);
   }
 }
