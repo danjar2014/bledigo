@@ -15,6 +15,9 @@ const TABS = [
   ['dashboard', 'Tableau de bord'],
   ['listings', 'Moderation'],
   ['disputes', 'Litiges'],
+  // Rien ne leve une mesure conservatoire automatiquement : sans cet ecran,
+  // les fonds geles resteraient immobilises indefiniment.
+  ['sanctions', 'Sanctions et fonds geles'],
   ['users', 'Utilisateurs'],
   ['logs', 'Journal'],
 ] as const;
@@ -44,6 +47,7 @@ function Admin() {
         {tab === 'dashboard' && <DashboardTab />}
         {tab === 'listings' && <ListingsTab />}
         {tab === 'disputes' && <DisputesTab />}
+        {tab === 'sanctions' && <SanctionsTab />}
         {tab === 'users' && <UsersTab />}
         {tab === 'logs' && <LogsTab />}
       </div>
@@ -339,6 +343,166 @@ function UsersTab() {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+/**
+ * Sanctions en vigueur et versements immobilises.
+ *
+ * Le gel des versements est une mesure conservatoire : il protege le voyageur
+ * pendant la verification, mais rien ne le leve tout seul. Sans cet ecran,
+ * l argent d un hote finalement blanchi resterait bloque indefiniment — et
+ * celui d un hote fautif ne serait jamais rendu au voyageur.
+ */
+function SanctionsTab() {
+  const money = useMoney();
+  const queryClient = useQueryClient();
+  const [motif, setMotif] = useState<Record<string, string>>({});
+
+  const sanctions = useQuery({ queryKey: ['admin-sanctions'], queryFn: () => api.activeSanctions() });
+  const fonds = useQuery({ queryKey: ['admin-held'], queryFn: () => api.heldPayments() });
+
+  const rafraichir = () => {
+    queryClient.invalidateQueries({ queryKey: ['admin-sanctions'] });
+    queryClient.invalidateQueries({ queryKey: ['admin-held'] });
+  };
+
+  const lever = useMutation({
+    mutationFn: (id: string) => api.revokeSanction(id),
+    onSuccess: rafraichir,
+  });
+
+  const denouer = useMutation({
+    mutationFn: ({ id, decision }: { id: string; decision: 'release' | 'refund' }) =>
+      api.settlePayment(id, decision, motif[id]),
+    onSuccess: rafraichir,
+  });
+
+  if (sanctions.isLoading || fonds.isLoading) return <Spinner />;
+  if (sanctions.error) return <ErrorBox error={sanctions.error} />;
+
+  const listeSanctions = sanctions.data ?? [];
+  const listeFonds = fonds.data ?? [];
+  const totalGele = listeFonds.reduce((s: number, p: any) => s + Number(p.amount ?? 0), 0);
+
+  return (
+    <div className="space-y-8">
+      <section>
+        <div className="flex items-baseline justify-between mb-3">
+          <h2 className="font-display font-semibold text-lg">Versements geles</h2>
+          {listeFonds.length > 0 && (
+            <span className="text-sm text-slate">
+              {listeFonds.length} paiement(s) · {money(totalGele)} immobilises
+            </span>
+          )}
+        </div>
+
+        {listeFonds.length === 0 ? (
+          <Empty>Aucun versement en attente de decision.</Empty>
+        ) : (
+          <ul className="space-y-3">
+            {listeFonds.map((p: any) => (
+              <li key={p.id} className="bg-white rounded-bledi shadow-bledi p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                  <div>
+                    <p className="font-medium text-charcoal">
+                      {p.booking?.listing?.title ?? 'Logement'}{' '}
+                      <span className="text-slate font-normal">· {p.booking?.listing?.city}</span>
+                    </p>
+                    <p className="text-sm text-slate mt-0.5">
+                      Hote {p.booking?.owner?.firstName} {p.booking?.owner?.lastName} ({p.booking?.owner?.status})
+                      {' · '}Voyageur {p.booking?.traveler?.firstName} {p.booking?.traveler?.lastName}
+                    </p>
+                    <p className="text-xs text-slate mt-0.5">Gele le {date(p.heldAt)}</p>
+                  </div>
+                  <span className="font-accent font-bold text-lg text-charcoal">
+                    {money(Number(p.amount))}
+                  </span>
+                </div>
+
+                <input
+                  className="input-bledi mb-2 text-sm"
+                  placeholder="Motif de la decision (conserve dans le journal)"
+                  value={motif[p.id] ?? ''}
+                  onChange={(e) => setMotif({ ...motif, [p.id]: e.target.value })}
+                />
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => denouer.mutate({ id: p.id, decision: 'release' })}
+                    disabled={denouer.isPending}
+                    className="px-4 py-2 rounded-bledi-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    Verser a l hote
+                  </button>
+                  <button
+                    onClick={() => denouer.mutate({ id: p.id, decision: 'refund' })}
+                    disabled={denouer.isPending}
+                    className="px-4 py-2 rounded-bledi-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
+                  >
+                    Rembourser le voyageur
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        {denouer.error && <ErrorBox error={denouer.error} />}
+      </section>
+
+      <section>
+        <h2 className="font-display font-semibold text-lg mb-3">Sanctions en vigueur</h2>
+
+        {listeSanctions.length === 0 ? (
+          <Empty>Aucune sanction active.</Empty>
+        ) : (
+          <ul className="space-y-3">
+            {listeSanctions.map((s: any) => (
+              <li key={s.id} className="bg-white rounded-bledi shadow-bledi p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-charcoal">
+                      {s.user?.firstName} {s.user?.lastName}{' '}
+                      <span className="text-slate font-normal">· {s.user?.email}</span>
+                    </p>
+                    <p className="text-sm text-slate mt-1">{s.reason}</p>
+                    <p className="text-xs text-slate mt-1">
+                      {s.type} · appliquee le {date(s.appliedAt)}
+                      {s.expiresAt && ` · expire le ${date(s.expiresAt)}`}
+                      {' · compte '}
+                      {s.user?.status}
+                    </p>
+                    {/* Le gel n a plus d objet quand il ne reste personne a
+                        heberger : c est le signal pour trancher. */}
+                    <p className="text-xs mt-1">
+                      {s.reservationsEnCours > 0 ? (
+                        <span className="text-amber-700">
+                          {s.reservationsEnCours} reservation(s) encore a honorer
+                        </span>
+                      ) : (
+                        <span className="text-slate">Plus aucune reservation en cours</span>
+                      )}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => lever.mutate(s.id)}
+                    disabled={lever.isPending}
+                    className="px-4 py-2 rounded-bledi-sm text-sm font-medium border border-cloud text-charcoal hover:bg-cream disabled:opacity-50 shrink-0"
+                  >
+                    Lever la sanction
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        {lever.error && <ErrorBox error={lever.error} />}
+        <p className="text-xs text-slate mt-3">
+          Lever la derniere sanction d un compte le remet en actif et rend ses annonces a la
+          diffusion. Les versements geles, eux, se denouent un par un ci-dessus.
+        </p>
+      </section>
     </div>
   );
 }

@@ -333,6 +333,21 @@ export const api = {
     }),
   sanction: (dto: any) =>
     request<any>('/api/v1/admin/sanctions', { method: 'POST', auth: true, body: body(dto) }),
+  /** Sanctions en vigueur, avec le nombre de sejours restant a honorer. */
+  activeSanctions: () => request<any[]>('/api/v1/admin/sanctions', { auth: true }),
+  revokeSanction: (id: string) =>
+    request<{ revoked: boolean; compteReactive: boolean; sanctionsRestantes: number }>(
+      `/api/v1/admin/sanctions/${id}/revoke`,
+      { method: 'POST', auth: true },
+    ),
+  /** Versements immobilises par une mesure conservatoire. */
+  heldPayments: () => request<any[]>('/api/v1/admin/payments/held', { auth: true }),
+  settlePayment: (id: string, decision: 'release' | 'refund', motif?: string) =>
+    request<any>(`/api/v1/admin/payments/${id}/settle`, {
+      method: 'POST',
+      auth: true,
+      body: body({ decision, motif }),
+    }),
   users: (params: Record<string, any> = {}) =>
     request<any>(`/api/v1/users?${new URLSearchParams(clean(params))}`),
 };

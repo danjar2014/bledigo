@@ -1,6 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { SanctionType, UserStatus, ListingStatus, CertificationLevel } from '../common/enums';
+import {
+  SanctionType,
+  UserStatus,
+  ListingStatus,
+  CertificationLevel,
+  BookingStatus,
+  PaymentStatus,
+} from '../common/enums';
+import { toDbJson } from '../common/json';
 
 @Injectable()
 export class AdminService {
@@ -83,6 +91,139 @@ export class AdminService {
     });
 
     return sanction;
+  }
+
+  /**
+   * Sanctions encore en vigueur, avec l etat du compte et ce qui reste a
+   * honorer. Sans cette vue, une mesure conservatoire immobilise des fonds
+   * indefiniment : rien ne la leve tout seul.
+   */
+  async activeSanctions() {
+    const sanctions = await this.prisma.sanction.findMany({
+      where: { revokedAt: null },
+      orderBy: { appliedAt: 'desc' },
+      take: 100,
+      include: {
+        user: {
+          select: { id: true, email: true, firstName: true, lastName: true, role: true, status: true },
+        },
+      },
+    });
+
+    // Le nombre de sejours restant a honorer conditionne la levee : c est lui
+    // qui dit si le gel a encore un objet.
+    const enrichies = await Promise.all(
+      sanctions.map(async (s: (typeof sanctions)[number]) => ({
+        ...s,
+        reservationsEnCours: await this.prisma.booking.count({
+          where: {
+            ownerId: s.userId,
+            status: {
+              in: [BookingStatus.pending, BookingStatus.confirmed, BookingStatus.checked_in],
+            },
+          },
+        }),
+      })),
+    );
+
+    return enrichies;
+  }
+
+  /**
+   * Leve une sanction. Le compte ne redevient actif que si aucune AUTRE
+   * mesure ne pese encore sur lui, sans quoi on annulerait par effet de bord
+   * une decision sans rapport.
+   */
+  async revokeSanction(adminId: string, sanctionId: string) {
+    const sanction = await this.prisma.sanction.findUnique({ where: { id: sanctionId } });
+    if (!sanction) throw new NotFoundException('Sanction non trouvee');
+    if (sanction.revokedAt) throw new BadRequestException('Sanction deja levee');
+
+    await this.prisma.sanction.update({
+      where: { id: sanctionId },
+      data: { revokedAt: new Date(), revokedBy: adminId },
+    });
+
+    const restantes = await this.prisma.sanction.count({
+      where: { userId: sanction.userId, revokedAt: null },
+    });
+
+    if (restantes === 0) {
+      await this.prisma.user.update({
+        where: { id: sanction.userId },
+        data: { status: UserStatus.active },
+      });
+      // Les annonces retirees de la diffusion par la mesure y reviennent.
+      await this.prisma.listing.updateMany({
+        where: { ownerId: sanction.userId, status: ListingStatus.under_review },
+        data: { status: ListingStatus.active },
+      });
+    }
+
+    return { revoked: true, compteReactive: restantes === 0, sanctionsRestantes: restantes };
+  }
+
+  /** Versements immobilises par une mesure conservatoire. */
+  async heldPayments() {
+    return this.prisma.payment.findMany({
+      where: { status: PaymentStatus.held },
+      orderBy: { heldAt: 'desc' },
+      take: 100,
+      include: {
+        booking: {
+          include: {
+            listing: { select: { title: true, city: true } },
+            owner: { select: { id: true, email: true, firstName: true, lastName: true, status: true } },
+            traveler: { select: { id: true, email: true, firstName: true, lastName: true } },
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Denouement d un versement gele : soit vers l hote, soit vers le voyageur.
+   * C est une decision humaine, jamais automatique — c est precisement ce que
+   * la verification devait trancher.
+   */
+  async settleHeldPayment(
+    adminId: string,
+    paymentId: string,
+    decision: 'release' | 'refund',
+    motif: string,
+  ) {
+    const payment = await this.prisma.payment.findUnique({ where: { id: paymentId } });
+    if (!payment) throw new NotFoundException('Paiement non trouve');
+    if (payment.status !== PaymentStatus.held) {
+      throw new BadRequestException('Ce paiement n est pas en attente de decision');
+    }
+
+    const paye = decision === 'release';
+    const maj = await this.prisma.payment.update({
+      where: { id: paymentId },
+      data: paye
+        ? { status: PaymentStatus.captured, capturedAt: new Date() }
+        : {
+            status: PaymentStatus.refunded,
+            refundedAt: new Date(),
+            refundAmount: payment.amount,
+            refundReason: motif,
+          },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId: adminId,
+        action: paye ? 'payment.released' : 'payment.refunded',
+        entityType: 'payment',
+        entityId: paymentId,
+        details: toDbJson({ motif, montant: payment.amount, bookingId: payment.bookingId }),
+        ipAddress: 'admin',
+        userAgent: 'admin',
+      },
+    });
+
+    return maj;
   }
 
   async auditLogs(page = 1, limit = 50) {

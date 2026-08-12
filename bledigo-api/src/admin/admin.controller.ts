@@ -40,6 +40,30 @@ export class AdminController {
     return this.service.sanction(me, dto);
   }
 
+  @Get('sanctions')
+  activeSanctions() {
+    return this.service.activeSanctions();
+  }
+
+  @Post('sanctions/:id/revoke')
+  revoke(@CurrentUser('id') me: string, @Param('id') id: string) {
+    return this.service.revokeSanction(me, id);
+  }
+
+  @Get('payments/held')
+  heldPayments() {
+    return this.service.heldPayments();
+  }
+
+  @Post('payments/:id/settle')
+  settle(
+    @CurrentUser('id') me: string,
+    @Param('id') id: string,
+    @Body() dto: { decision: 'release' | 'refund'; motif?: string },
+  ) {
+    return this.service.settleHeldPayment(me, id, dto.decision, dto.motif ?? 'Decision administrateur');
+  }
+
   @Post('control-visits')
   visit(@CurrentUser('id') me: string, @Body() dto: any) {
     return this.service.scheduleControlVisit(me, dto);
