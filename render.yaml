@@ -90,12 +90,20 @@ services:
         sync: false
       - key: ADMIN_PASSWORD
         sync: false
-      # Identifiant client Google (public, pas un secret). Il sert a verifier
-      # que le jeton recu a bien ete emis POUR BlediGo : sans ce controle, un
-      # jeton valide emis pour une autre application serait accepte.
+      # Identifiant client Google. Il sert a verifier que le jeton recu a bien
+      # ete emis POUR BlediGo : sans ce controle, un jeton valide emis pour une
+      # autre application serait accepte.
+      #
+      # En clair, et c est delibere : ce n est pas un secret, il est publie
+      # dans le bundle JavaScript du front a chaque visite. Le laisser en
+      # `sync: false` le rendait impossible a provisionner sur un blueprint
+      # deja cree, et la connexion Google restait muette faute de valeur.
+      # Le client SECRET, lui, n existe pas ici : Google Identity Services
+      # fonctionne par jeton signe.
+      #
       # Vide = connexion Google desactivee, l email reste disponible.
       - key: GOOGLE_CLIENT_ID
-        sync: false
+        value: 12342673780-3l6kojeqhniup2a6qt999ejsnf9v215j.apps.googleusercontent.com
       # Base existante dans l espace de travail : le nom doit correspondre
       # exactement a celui affiche dans Render.
       - key: DATABASE_URL
@@ -149,7 +157,12 @@ services:
       # de reconstruire le service, pas seulement de le redemarrer.
       - key: NEXT_PUBLIC_API_URL
         value: https://bledigo-api.onrender.com
-      # Meme identifiant que cote API. Fige a la compilation comme toute
-      # variable NEXT_PUBLIC_ : le renseigner impose de reconstruire le front.
+      # Meme identifiant que cote API, et il doit le rester : l API refuse tout
+      # jeton dont l audience ne correspond pas.
+      #
+      # Fige a la compilation comme toute variable NEXT_PUBLIC_ : le modifier
+      # impose de RECONSTRUIRE le front, un redemarrage ne suffit pas. Le
+      # symptome d une valeur absente au build est silencieux — GoogleButton
+      # retourne null, aucun bouton n apparait, aucune erreur nulle part.
       - key: NEXT_PUBLIC_GOOGLE_CLIENT_ID
-        sync: false
+        value: 12342673780-3l6kojeqhniup2a6qt999ejsnf9v215j.apps.googleusercontent.com
