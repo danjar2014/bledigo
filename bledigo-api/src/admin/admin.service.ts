@@ -9,10 +9,14 @@ import {
   PaymentStatus,
 } from '../common/enums';
 import { toDbJson } from '../common/json';
+import { ScoringService } from '../ai/scoring.service';
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly scoring: ScoringService,
+  ) {}
 
   async dashboard() {
     const [users, listings, bookings, disputes, revenue] = await Promise.all([
@@ -60,10 +64,13 @@ export class AdminService {
       },
     });
 
-    return this.prisma.listing.update({
+    const maj = await this.prisma.listing.update({
       where: { id: listingId },
       data: { certificationLevel: level, certificationExpiresAt: expiresAt },
     });
+
+    await this.scoring.recalculer(listingId, 'certification');
+    return maj;
   }
 
   async sanction(adminId: string, dto: { userId: string; type: SanctionType; reason: string; durationDays?: number }) {

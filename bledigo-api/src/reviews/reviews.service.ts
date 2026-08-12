@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ScoringService } from '../ai/scoring.service';
 import { ReviewType, BookingStatus } from '../common/enums';
 
 /** Delai maximum pour deposer un avis apres le check-out (jours). */
@@ -7,7 +8,7 @@ const REVIEW_WINDOW_DAYS = 30;
 
 @Injectable()
 export class ReviewsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly scoring: ScoringService) {}
 
   /** Avis verifie : uniquement apres un sejour reellement termine, dans les 30 jours. */
   async create(reviewerId: string, dto: any) {
@@ -185,10 +186,13 @@ export class ReviewsService {
       data: {
         totalReviews: agg._count,
         avgRating: agg._avg.rating || 0,
-        qualityScore: Math.round((agg._avg.rating || 0) * 20),
-        cleanlinessScore: Math.round((agg._avg.cleanliness || 0) * 20),
       },
     });
+
+    // Un avis change la qualite ET la conformite percue : on repasse par le
+    // calcul unique, plutot que d entretenir une seconde formule ici. Deux
+    // formules pour une meme notion finissent toujours par diverger.
+    await this.scoring.recalculer(listingId, 'avis');
   }
 
   private async updatePassportScores(userId: string, revieweeIsOwner: boolean) {

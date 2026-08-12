@@ -12,6 +12,7 @@ import { CreateBookingDto, ValidateBookingDto, RefuseBookingDto } from './dto';
 import { AntiFraudService } from '../anti-fraud/anti-fraud.service';
 import { RefusalGuardService } from './refusal-guard.service';
 import { CalendarService } from '../listings/calendar.service';
+import { ScoringService } from '../ai/scoring.service';
 import { toDbJson } from '../common/json';
 
 /** Delai de validation post check-in, en minutes (regle metier BlediGo) */
@@ -26,6 +27,7 @@ export class BookingsService {
     private readonly antiFraud: AntiFraudService,
     private readonly refusalGuard: RefusalGuardService,
     private readonly calendar: CalendarService,
+    private readonly scoring: ScoringService,
   ) {}
 
   async create(travelerId: string, dto: CreateBookingDto) {
@@ -176,6 +178,7 @@ export class BookingsService {
         },
       });
       await this.releasePayment(booking.payment?.id, booking.ownerId);
+      await this.scoring.recalculer(booking.listingId, 'validation_automatique');
       return {
         booking: await this.prisma.booking.findUnique({ where: { id: bookingId } }),
         autoValidated: true,
@@ -194,8 +197,10 @@ export class BookingsService {
       await this.bumpPassports(booking.listingId, travelerId, booking.ownerId, booking.totalNights);
       // Ce sejour etait peut-etre le dernier que l hote sous gel avait a honorer.
       await this.refusalGuard.cloturerSiPlusRien(booking.ownerId);
+      await this.scoring.recalculer(booking.listingId, 'validation');
     } else {
       await this.openDispute(bookingId, travelerId, dto);
+      await this.scoring.recalculer(booking.listingId, 'litige');
     }
 
     return { booking: await this.prisma.booking.findUnique({ where: { id: bookingId } }) };
@@ -306,6 +311,10 @@ export class BookingsService {
     // voyageur meme s il declenche une sanction. On ne lui refuse pas une
     // protection au motif qu il pourrait en abuser.
     const verdict = await this.refusalGuard.evaluer(bookingId, travelerId, booking.ownerId);
+
+    // Un refus est le fait le plus lourd pour la conformite : il dit qu un
+    // voyageur a prefere repartir plutot que d occuper le logement annonce.
+    await this.scoring.recalculer(booking.listingId, 'refus');
 
     return {
       booking: mise,
