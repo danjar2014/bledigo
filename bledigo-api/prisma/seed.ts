@@ -45,6 +45,23 @@ async function fermer(email: string, raison: string) {
   if (r.count > 0) console.log(`  ferme : ${email} (${raison})`);
 }
 
+/**
+ * Detache un numero de telephone de tout compte qui n est pas son titulaire
+ * attendu.
+ *
+ * `phone` est unique. Changer DEMO_EMAIL_OWNER faisait donc echouer la creation
+ * du nouveau compte sur P2002, l ancien titulaire gardant le numero — et comme
+ * le semis vit derriere un `|| true`, l echec passait inapercu : anciens comptes
+ * fermes, nouveaux jamais crees, plus aucun acces de demonstration.
+ */
+async function libererTelephone(numero: string, titulaire: string) {
+  const r = await prisma.user.updateMany({
+    where: { phone: numero, NOT: { email: titulaire } },
+    data: { phone: null },
+  });
+  if (r.count > 0) console.log(`  telephone ${numero} libere pour ${titulaire}`);
+}
+
 async function main() {
   console.log('Seed BlediGo...');
 
@@ -107,6 +124,11 @@ async function main() {
 
   const hash = MDP_DEMO ? await bcrypt.hash(MDP_DEMO, 12) : await empreinteInutilisable();
 
+  const TEL_OWNER = '+21620123456';
+  const TEL_TRAVELER = '+33612345678';
+  await libererTelephone(TEL_OWNER, EMAIL_OWNER);
+  await libererTelephone(TEL_TRAVELER, EMAIL_TRAVELER);
+
   const owner = await prisma.user.upsert({
     where: { email: EMAIL_OWNER },
     update: { passwordHash: hash },
@@ -115,7 +137,7 @@ async function main() {
       passwordHash: hash,
       firstName: 'Sami',
       lastName: 'Ben Ali',
-      phone: '+21620123456',
+      phone: TEL_OWNER,
       role: 'owner',
       status: 'active',
       emailVerified: true,
@@ -133,7 +155,7 @@ async function main() {
       passwordHash: hash,
       firstName: 'Leila',
       lastName: 'Trabelsi',
-      phone: '+33612345678',
+      phone: TEL_TRAVELER,
       role: 'traveler',
       status: 'active',
       emailVerified: true,
@@ -230,7 +252,11 @@ async function main() {
 
     const listing = await prisma.listing.upsert({
       where: { slug },
-      update: {},
+      // Les annonces suivent le compte de demonstration courant : sans cela,
+      // changer DEMO_EMAIL_OWNER laissait les quatre annonces attachees a l
+      // ancien compte, desormais ferme, et le nouveau proprietaire ouvrait un
+      // tableau de bord vide.
+      update: { ownerId: owner.id },
       create: {
         ...(l as any),
         slug,
@@ -266,6 +292,10 @@ async function main() {
 
 main()
   .catch((e) => {
+    // Banniere explicite : le semis tourne derriere un `|| true` dans le
+    // startCommand, un echec n empeche donc pas l API de demarrer et se perd
+    // facilement dans les journaux de deploiement. Cette ligne se cherche.
+    console.error('\n=== ECHEC DU SEMIS — les comptes peuvent etre incomplets ===');
     console.error(e);
     process.exit(1);
   })
