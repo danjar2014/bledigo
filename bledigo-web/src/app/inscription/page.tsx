@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/store/auth';
 import { Shield } from 'lucide-react';
+import GoogleButton from '@/components/GoogleButton';
 
 export default function InscriptionPage() {
   const router = useRouter();
@@ -40,6 +41,9 @@ export default function InscriptionPage() {
           <Shield className="w-6 h-6 text-bledi-gold" />
           Creer un compte
         </div>
+
+        <GoogleButton onError={setError} />
+
 
         <form onSubmit={submit}>
           <div className="grid grid-cols-2 gap-3 mb-4">

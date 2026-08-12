@@ -117,6 +117,12 @@ export const api = {
   register: (dto: any) => request<any>('/api/v1/auth/register', { method: 'POST', body: body(dto) }),
   login: (dto: any) => request<any>('/api/v1/auth/login', { method: 'POST', body: body(dto) }),
   me: () => request<any>('/api/v1/auth/me', { auth: true }),
+  /** Connexion Google : le jeton d identite est verifie cote serveur. */
+  googleLogin: (credential: string) =>
+    request<{ user: any; accessToken: string; refreshToken: string }>('/api/v1/auth/google', {
+      method: 'POST',
+      body: body({ credential }),
+    }),
 
   // --- roles du compte courant ---
   myRoles: () => request<any>('/api/v1/users/me/roles', { auth: true }),

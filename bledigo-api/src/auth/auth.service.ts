@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto, LoginDto, OAuthDto } from './dto';
 import * as bcrypt from 'bcryptjs';
+import { randomUUID } from 'crypto';
 import { UserRole, UserStatus } from '../common/enums';
 import { availableModes, effectiveRoles } from '../common/roles';
 
@@ -87,11 +88,86 @@ export class AuthService {
     return { success: true };
   }
 
+  /**
+   * Connexion Google.
+   *
+   * Le front obtient un jeton d identite signe par Google et nous le transmet ;
+   * nous le faisons valider par Google avant d y croire. Un jeton non verifie
+   * serait une porte ouverte : n importe qui pourrait en fabriquer un et se
+   * declarer proprietaire de n importe quelle adresse.
+   *
+   * Deux controles sont indispensables et souvent oublies :
+   *  - `aud` doit etre NOTRE identifiant client, sinon un jeton emis pour une
+   *    autre application serait accepte ;
+   *  - `email_verified` doit etre vrai, sinon on lierait un compte a une
+   *    adresse que Google lui-meme ne garantit pas.
+   */
+  async googleLogin(credential: string) {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      throw new BadRequestException('Connexion Google non configuree sur ce serveur');
+    }
+
+    const reponse = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`,
+    );
+    if (!reponse.ok) throw new UnauthorizedException('Jeton Google invalide ou expire');
+
+    const info: any = await reponse.json();
+
+    if (info.aud !== clientId) {
+      throw new UnauthorizedException('Ce jeton Google ne concerne pas BlediGo');
+    }
+    if (String(info.email_verified) !== 'true' || !info.email) {
+      throw new UnauthorizedException('Adresse Google non verifiee');
+    }
+
+    const email = String(info.email).toLowerCase();
+    let user = await this.prisma.user.findUnique({ where: { email } });
+
+    if (user) {
+      if (user.status === UserStatus.banned) {
+        throw new UnauthorizedException('Compte suspendu definitivement');
+      }
+      if (user.status === UserStatus.suspended) {
+        throw new UnauthorizedException('Compte temporairement suspendu');
+      }
+      // Google a verifie l adresse : on peut le refleter sur un compte cree
+      // auparavant par mot de passe.
+      if (!user.emailVerified) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: { emailVerified: true },
+        });
+      }
+    } else {
+      // Pas de mot de passe utilisable : on stocke une empreinte aleatoire
+      // plutot qu une valeur vide, pour qu aucune saisie ne puisse y
+      // correspondre par accident.
+      const inutilisable = await bcrypt.hash(randomUUID() + randomUUID(), 12);
+
+      user = await this.prisma.user.create({
+        data: {
+          email,
+          passwordHash: inutilisable,
+          firstName: info.given_name || String(info.name || email).split(' ')[0] || 'Utilisateur',
+          lastName: info.family_name || '',
+          role: UserRole.traveler,
+          status: UserStatus.active,
+          emailVerified: true,
+        },
+      });
+      await this.prisma.travelerPassport.create({ data: { userId: user.id } });
+    }
+
+    const tokens = await this.generateTokens(user.id, user.email, user.role);
+    return { user: this.sanitizeUser(user), ...tokens };
+  }
+
   async oauthLogin(dto: OAuthDto) {
-    // Implementation OAuth2 (Google, Facebook, Apple)
-    // Verifier le token avec l'API du provider
-    // Creer ou connecter l'utilisateur
-    return { user: {}, accessToken: '', refreshToken: '' };
+    // Seul Google est branche : Facebook exigerait une verification
+    // d entreprise, et Instagram ne fournit pas d adresse email.
+    return this.googleLogin(dto.token);
   }
 
   async verifyEmail(token: string) {

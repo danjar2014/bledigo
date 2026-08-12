@@ -3,3 +3,6 @@ node_modules/
 out/
 *.log
 .env.local
+
+# Cache incremental de TypeScript, propre a chaque machine
+*.tsbuildinfo

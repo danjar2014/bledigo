@@ -52,6 +52,12 @@ services:
       # "true" le rallume, sans redeveloppement.
       - key: PAIEMENT_EN_LIGNE
         value: "false"
+      # Identifiant client Google (public, pas un secret). Il sert a verifier
+      # que le jeton recu a bien ete emis POUR BlediGo : sans ce controle, un
+      # jeton valide emis pour une autre application serait accepte.
+      # Vide = connexion Google desactivee, l email reste disponible.
+      - key: GOOGLE_CLIENT_ID
+        sync: false
       # Base existante dans l espace de travail : le nom doit correspondre
       # exactement a celui affiche dans Render.
       - key: DATABASE_URL
@@ -105,3 +111,7 @@ services:
       # de reconstruire le service, pas seulement de le redemarrer.
       - key: NEXT_PUBLIC_API_URL
         value: https://bledigo-api.onrender.com
+      # Meme identifiant que cote API. Fige a la compilation comme toute
+      # variable NEXT_PUBLIC_ : le renseigner impose de reconstruire le front.
+      - key: NEXT_PUBLIC_GOOGLE_CLIENT_ID
+        sync: false

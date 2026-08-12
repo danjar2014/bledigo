@@ -4,7 +4,8 @@ import { AuthService } from './auth.service';
 import { TwoFactorService } from './two-factor.service';
 import {
   RegisterDto, LoginDto, RefreshDto, VerifyEmailDto, VerifyPhoneDto,
-  ForgotPasswordDto, ResetPasswordDto, OAuthDto, TwoFactorEnableDto, TwoFactorVerifyDto,
+  ForgotPasswordDto, ResetPasswordDto, OAuthDto, GoogleLoginDto,
+  TwoFactorEnableDto, TwoFactorVerifyDto,
 } from './dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -54,6 +55,13 @@ export class AuthController {
   @Post('oauth')
   async oauth(@Body() dto: OAuthDto) {
     return this.authService.oauthLogin(dto);
+  }
+
+  @Post('google')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Connexion Google : jeton d identite verifie aupres de Google' })
+  async google(@Body() dto: GoogleLoginDto) {
+    return this.authService.googleLogin(dto.credential);
   }
 
   @Post('verify-email')

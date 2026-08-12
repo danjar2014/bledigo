@@ -73,6 +73,19 @@ export class OAuthDto {
   code?: string;
 }
 
+/**
+ * Jeton d identite renvoye par le bouton Google du navigateur.
+ *
+ * Une classe, et non un type en ligne : le ValidationPipe global ignore
+ * purement et simplement les parametres types par un objet anonyme, ce qui
+ * laisserait passer un corps vide jusqu au service.
+ */
+export class GoogleLoginDto {
+  @IsString()
+  @MinLength(20)
+  credential: string;
+}
+
 export class TwoFactorEnableDto {
   @IsString()
   method: string;

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/store/auth';
 import { Shield } from 'lucide-react';
+import GoogleButton from '@/components/GoogleButton';
 
 const DEMO = [
   { role: 'Voyageur', email: 'traveler@bledigo.com' },
@@ -50,6 +51,9 @@ export default function ConnexionPage() {
             <Shield className="w-6 h-6 text-bledi-gold" />
             Connexion
           </div>
+
+          <GoogleButton onError={setError} />
+
 
           <form onSubmit={submit}>
             <label className="block text-sm font-medium mb-1">Email</label>
