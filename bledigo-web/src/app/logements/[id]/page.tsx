@@ -58,7 +58,10 @@ export default function ListingPage() {
   const booking = useMutation({
     mutationFn: async () => {
       const res = await api.createBooking({ listingId: listing.id, ...form });
-      await api.payIntent(res.booking.id);
+      // En paiement direct il n y a rien a bloquer : appeler la route de
+      // paiement ne servait qu a produire une intention simulee, et confirmait
+      // la demande au passage sans que l hote l ait acceptee.
+      if (res.paiementEnLigne) await api.payIntent(res.booking.id);
       return res;
     },
     onSuccess: () => router.push('/reservations'),

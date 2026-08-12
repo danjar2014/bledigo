@@ -24,8 +24,17 @@ export class PaymentsService {
     }
   }
 
-  async createPaymentIntent(bookingId: string) {
-    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId } });
+  /**
+   * Bloque le montant d une reservation.
+   *
+   * L appelant doit etre partie a la reservation. Sans ce controle, n importe
+   * quel utilisateur authentifie agissait sur la reservation d autrui a partir
+   * de son seul identifiant.
+   */
+  async createPaymentIntent(bookingId: string, userId: string) {
+    const booking = await this.prisma.booking.findFirst({
+      where: { id: bookingId, OR: [{ travelerId: userId }, { ownerId: userId }] },
+    });
     if (!booking) throw new NotFoundException('Reservation non trouvee');
 
     const amountCents = Math.round(Number(booking.totalPrice) * 100);
@@ -59,9 +68,19 @@ export class PaymentsService {
       update: { stripePaymentIntentId: intentId, status: PaymentStatus.held, heldAt: new Date() },
     });
 
+    // Bloquer le montant ne vaut PAS acceptation.
+    //
+    // Ce raccourci datait du temps ou la plateforme tenait l argent : payer
+    // equivalait alors a confirmer. En paiement direct il n y a plus de
+    // paiement, mais le front appelait encore cette route juste apres la
+    // creation — toute demande se confirmait donc seule, et les coordonnees de
+    // l hote partaient au voyageur sans que l hote ait rien accepte.
+    //
+    // L acceptation reste un acte de l hote : bookings.confirm, ou la case
+    // "reservation instantanee" par laquelle il y renonce a l avance.
     await this.prisma.booking.update({
       where: { id: bookingId },
-      data: { paymentStatus: PaymentStatus.held, status: 'confirmed' },
+      data: { paymentStatus: PaymentStatus.held },
     });
 
     return { clientSecret, paymentIntentId: intentId, paymentId: payment.id, simulated: this.simulated };

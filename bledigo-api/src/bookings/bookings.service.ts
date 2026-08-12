@@ -96,14 +96,24 @@ export class BookingsService {
         serviceFee,
         totalPrice,
         currency: listing.currency,
-        status: BookingStatus.pending,
+        // Reservation instantanee : l hote a coche la case, il renonce donc a
+        // valider chaque demande et la reservation est acceptee d emblee. Sans
+        // elle, la demande attend son accord — c est cet accord qui declenche
+        // l echange des coordonnees.
+        status: listing.instantBook ? BookingStatus.confirmed : BookingStatus.pending,
         paymentStatus: PaymentStatus.pending,
         validationStatus: ValidationStatus.pending,
       },
       include: { listing: true },
     });
 
-    return { booking, totalPrice, breakdown: { basePrice, cleaningFee, serviceFee, totalNights } };
+    return {
+      booking,
+      totalPrice,
+      breakdown: { basePrice, cleaningFee, serviceFee, totalNights },
+      /** Le front s en sert pour ne pas appeler la route de paiement en vain. */
+      paiementEnLigne: paiementEnLigne(),
+    };
   }
 
   async findMine(userId: string, role: 'traveler' | 'owner' = 'traveler') {

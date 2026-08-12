@@ -3,6 +3,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { IsString, IsOptional, IsNumber } from 'class-validator';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 export class CreateIntentDto {
   @IsString() bookingId: string;
@@ -20,8 +21,8 @@ export class PaymentsController {
 
   @Post('intent')
   @ApiOperation({ summary: 'Bloquer le paiement (hold) pour une reservation' })
-  createIntent(@Body() dto: CreateIntentDto) {
-    return this.paymentsService.createPaymentIntent(dto.bookingId);
+  createIntent(@CurrentUser('id') me: string, @Body() dto: CreateIntentDto) {
+    return this.paymentsService.createPaymentIntent(dto.bookingId, me);
   }
 
   @Get('booking/:bookingId')
