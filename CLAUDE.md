@@ -57,6 +57,19 @@ front un `Failed to fetch`.
 Les renseigner dans Render ne suffit pas, il faut **reconstruire** le front.
 Concerne aujourd'hui `NEXT_PUBLIC_API_URL` et `NEXT_PUBLIC_GOOGLE_CLIENT_ID`.
 
+### Une variable `sync: false` ajoutée après coup n'apparaît jamais
+
+Render ne demande les valeurs `sync: false` qu'à la **création initiale** du
+blueprint ; sur un blueprint existant, il les ignore à chaque sync. Ajouter une
+telle variable dans `render.yaml` puis relancer Blueprint → Sync ne produit
+rien, et ne produira jamais rien. Il faut la saisir à la main dans
+`Environment`. La déclaration dans le fichier documente l'attendu et sert un
+futur blueprint neuf — elle ne provisionne pas le service en place.
+
+Une variable avec `value:` en clair, elle, est bien propagée par le sync : si
+elle non plus n'apparaît pas, c'est que le service n'est pas rattaché au
+blueprint.
+
 ### Le Shell Render est réservé aux offres payantes
 
 Impossible d'y lancer une commande. Le semis de la base est donc dans le

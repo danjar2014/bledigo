@@ -58,6 +58,13 @@ services:
       # "true" le rallume, sans redeveloppement.
       - key: PAIEMENT_EN_LIGNE
         value: "false"
+      # ATTENTION - une variable `sync: false` ajoutee ici APRES la creation du
+      # blueprint n apparaitra jamais dans le tableau de bord. Render ne demande
+      # ces valeurs qu a la creation initiale et les ignore a chaque sync
+      # ulterieur : relancer le sync ne sert a rien, il faut les saisir a la
+      # main dans Environment. Ce qui suit documente donc l attendu, sans le
+      # provisionner. Voir https://render.com/docs/blueprint-spec
+      #
       # Comptes de demonstration. Le semis ne contient plus aucun mot de passe :
       # sans DEMO_PASSWORD, les comptes existent mais la connexion par mot de
       # passe leur est fermee. A saisir dans l interface Render, jamais ici.
