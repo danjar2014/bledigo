@@ -27,7 +27,6 @@ const TRAVELERS = [
 const OWNERS = [
   { href: '/proprietaire/annonces/nouvelle', label: 'Publier une annonce' },
   { href: '/proprietaire', label: 'Espace proprietaire' },
-  { href: '/proprietaire/credits', label: 'Credits recherche inversee' },
 ];
 
 export default function Footer() {

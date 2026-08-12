@@ -9,7 +9,7 @@ import {
   Users,
   Wallet,
   Shield,
-  CreditCard,
+  Gift,
   Info,
   Check,
   X,
@@ -25,9 +25,8 @@ import { Spinner } from '@/components/ui';
 /**
  * Demandes de location visibles par le proprietaire.
  *
- * La consultation est gratuite : chaque demande apparait resumee. Un credit
- * n est debite qu au deblocage d une demande precise, et une seule fois : une
- * demande deja ouverte ou deja repondue reste accessible sans nouveau cout.
+ * La consultation et l ouverture sont gratuites pendant le lancement. Le
+ * deblocage reste trace, pour savoir ce qui aurait ete facture.
  */
 export default function OwnerRequests() {
   const { money } = usePreferences();
@@ -54,7 +53,6 @@ export default function OwnerRequests() {
   });
 
   const zoneCities = [...new Set((myListings ?? []).map((l: any) => l.city).filter(Boolean))];
-  const remaining = data?.creditsRemaining ?? 0;
   const message = (error as any)?.message as string | undefined;
 
   if (isLoading) return <Spinner label="Chargement des demandes de votre zone..." />;
@@ -78,11 +76,11 @@ export default function OwnerRequests() {
     <div className="space-y-6">
       {/* Contexte : zone couverte et solde */}
       <div className="bg-white rounded-bledi shadow-bledi p-5 flex flex-wrap items-center gap-4">
+        {/* Pendant l amorcage l ouverture est gratuite : afficher un solde
+            suggererait un cout qui n existe pas. */}
         <div className="flex items-center gap-2">
-          <CreditCard className="w-5 h-5 text-bledi-blue" />
-          <span className="text-sm">
-            Credits : <strong>{remaining}</strong>
-          </span>
+          <Gift className="w-5 h-5 text-bledi-gold" />
+          <span className="text-sm text-charcoal">Ouverture gratuite et illimitee</span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -106,20 +104,13 @@ export default function OwnerRequests() {
           </span>
         )}
 
-        <Link
-          href="/proprietaire/credits"
-          className="ms-auto text-sm text-bledi-blue hover:underline"
-        >
-          Acheter des credits
-        </Link>
       </div>
 
       <div className="flex items-start gap-3 text-sm text-slate">
         <Info className="w-4 h-4 text-bledi-blue shrink-0 mt-0.5" />
         <p>
-          Parcourir cette liste est gratuit. Un credit n est debite que lorsque vous ouvrez une
-          demande, et une seule fois : une demande deja ouverte ou a laquelle vous avez repondu
-          reste accessible.
+          Parcourir cette liste et ouvrir une demande sont gratuits pendant le lancement.
+          Une demande deja ouverte reste accessible.
         </p>
       </div>
 
@@ -154,7 +145,7 @@ export default function OwnerRequests() {
                   ) : (
                     <span className="flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-cloud text-slate shrink-0">
                       <Lock className="w-3.5 h-3.5" />
-                      1 credit
+                      A ouvrir
                     </span>
                   )}
                 </div>
@@ -197,20 +188,12 @@ export default function OwnerRequests() {
                   ) : (
                     <button
                       onClick={() => unlock.mutate(s.id)}
-                      disabled={remaining <= 0 || unlock.isPending}
+                      disabled={unlock.isPending}
                       className="btn-primary inline-flex items-center gap-2 text-sm disabled:opacity-50"
                     >
                       <LockOpen className="w-4 h-4" />
-                      {unlock.isPending ? 'Ouverture...' : 'Ouvrir (1 credit)'}
+                      {unlock.isPending ? 'Ouverture...' : 'Ouvrir la demande'}
                     </button>
-                  )}
-                  {!s.unlocked && remaining <= 0 && (
-                    <span className="block text-xs text-red-600 mt-2">
-                      Solde epuise.{' '}
-                      <Link href="/proprietaire/credits" className="underline">
-                        Acheter des credits
-                      </Link>
-                    </span>
                   )}
                 </div>
               </li>

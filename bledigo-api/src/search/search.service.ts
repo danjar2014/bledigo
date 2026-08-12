@@ -31,6 +31,8 @@ export class SearchService {
     propertyType?: string;
     amenities?: string | string[];
     minRating?: number;
+    bedrooms?: number;
+    certificationLevel?: string;
     sortBy?: string;
     lat?: number;
     lng?: number;
@@ -58,6 +60,8 @@ export class SearchService {
     if (q.city) where.city = { contains: q.city };
     if (q.propertyType) where.propertyType = q.propertyType;
     if (q.minRating) where.avgRating = { gte: Number(q.minRating) };
+    if (q.bedrooms) where.bedrooms = { gte: Number(q.bedrooms) };
+    if (q.certificationLevel) where.certificationLevel = q.certificationLevel;
     if (q.guests) where.maxGuests = { gte: Number(q.guests) };
     if (q.minPrice != null || q.maxPrice != null) {
       where.pricePerNight = {

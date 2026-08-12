@@ -3,7 +3,9 @@
 import { Suspense, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { SlidersHorizontal, CalendarDays } from 'lucide-react';
+import { SlidersHorizontal, CalendarDays, ChevronDown, ChevronUp } from 'lucide-react';
+import CityAutocomplete from '@/components/CityAutocomplete';
+import { PROPERTY_TYPES, FEATURED_AMENITIES } from '@/lib/catalog';
 import ListingCard from '@/components/ListingCard';
 import { api } from '@/lib/api';
 import { Spinner, ErrorBox, Empty } from '@/components/ui';
@@ -22,7 +24,15 @@ function Resultats() {
     guests: params.get('guests') || '',
     minPrice: '',
     maxPrice: '',
+    propertyType: '',
+    bedrooms: '',
+    minRating: '',
+    certificationLevel: '',
+    amenities: [] as string[],
   });
+
+  /** Les criteres fins restent replies : ils encombrent le premier regard. */
+  const [avances, setAvances] = useState(false);
 
   // Les dates commandent la disponibilite : sans elles, la liste afficherait
   // des logements que l hote a fermes ou qui sont deja reserves.
@@ -60,9 +70,11 @@ function Resultats() {
       merged.checkOut = lendemain(next.checkIn);
     }
     setFilters(merged);
-    const qs = new URLSearchParams(
-      Object.entries(merged).filter(([, v]) => v) as [string, string][],
-    );
+    const qs = new URLSearchParams();
+    for (const [cle, valeur] of Object.entries(merged)) {
+      if (Array.isArray(valeur)) valeur.forEach((v) => qs.append(cle, v));
+      else if (valeur) qs.set(cle, String(valeur));
+    }
     router.replace(`/recherche?${qs.toString()}`);
   };
 
@@ -82,18 +94,9 @@ function Resultats() {
             </div>
 
             <label className="block text-sm font-medium mb-1">Destination</label>
-            <input
-              className="input-bledi mb-4"
-              list="villes"
-              value={filters.q}
-              onChange={(e) => apply({ q: e.target.value })}
-              placeholder="Toutes les villes"
-            />
-            <datalist id="villes">
-              {(localites ?? []).map((v: any) => (
-                <option key={v.slug} value={v.name} />
-              ))}
-            </datalist>
+            <div className="mb-4">
+              <CityAutocomplete value={filters.q} onChange={(v) => apply({ q: v })} />
+            </div>
 
             <label className="block text-sm font-medium mb-1">Arrivee</label>
             <input
@@ -139,6 +142,106 @@ function Resultats() {
                 onChange={(e) => apply({ maxPrice: e.target.value })}
               />
             </div>
+            {/* Criteres fins, replies par defaut : le voyageur ouvre s il en a besoin. */}
+            <button
+              onClick={() => setAvances((v) => !v)}
+              className="w-full flex items-center justify-between text-sm font-medium text-charcoal py-2 border-t border-cloud"
+            >
+              Filtres avances
+              {avances ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+
+            {avances && (
+              <div className="mb-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Type de logement</label>
+                  <select
+                    className="input-bledi"
+                    value={filters.propertyType}
+                    onChange={(e) => apply({ propertyType: e.target.value })}
+                  >
+                    <option value="">Tous les types</option>
+                    {PROPERTY_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Chambres min.</label>
+                    <input
+                      type="number"
+                      min={0}
+                      className="input-bledi"
+                      value={filters.bedrooms}
+                      onChange={(e) => apply({ bedrooms: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Note min.</label>
+                    <select
+                      className="input-bledi"
+                      value={filters.minRating}
+                      onChange={(e) => apply({ minRating: e.target.value })}
+                    >
+                      <option value="">Toutes</option>
+                      <option value="3">3 et plus</option>
+                      <option value="4">4 et plus</option>
+                      <option value="4.5">4,5 et plus</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Certification</label>
+                  <select
+                    className="input-bledi"
+                    value={filters.certificationLevel}
+                    onChange={(e) => apply({ certificationLevel: e.target.value })}
+                  >
+                    <option value="">Toutes</option>
+                    <option value="diamond">Diamant</option>
+                    <option value="gold">Or</option>
+                    <option value="silver">Argent</option>
+                    <option value="bronze">Bronze</option>
+                  </select>
+                </div>
+
+                <div>
+                  <span className="block text-sm font-medium mb-2">Equipements</span>
+                  <div className="space-y-1.5 max-h-56 overflow-y-auto pe-1">
+                    {FEATURED_AMENITIES.map((a) => {
+                      const actif = filters.amenities.includes(a.key);
+                      return (
+                        <label key={a.key} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={actif}
+                            onChange={() =>
+                              apply({
+                                amenities: actif
+                                  ? filters.amenities.filter((k) => k !== a.key)
+                                  : [...filters.amenities, a.key],
+                              })
+                            }
+                            className="w-4 h-4 accent-bledi-blue"
+                          />
+                          <span className="text-charcoal">{a.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-slate mt-2">
+                    Un logement doit posseder TOUS les equipements coches.
+                  </p>
+                </div>
+              </div>
+            )}
+
+
 
             <button onClick={() => refetch()} className="btn-primary w-full">
               {isFetching ? 'Recherche...' : 'Actualiser'}

@@ -685,7 +685,7 @@ export default function ReverseSearchPage({ reverseSearchId }: ReverseSearchPage
             {submitting ? 'Publication...' : 'Publier ma recherche'}
           </button>
           <p className="text-xs text-slate text-center">
-            Votre recherche reste active 7 jours. Les proprietaires disposant de credits pourront
+            Votre recherche reste active 7 jours. Les proprietaires de votre zone pourront
             vous faire une offre.
           </p>
         </div>

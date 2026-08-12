@@ -14,7 +14,6 @@ import {
   LayoutDashboard,
   CalendarCheck,
   Home,
-  CreditCard,
   Map,
   Search,
   MessageSquare,
@@ -27,10 +26,12 @@ const NAV_BY_MODE = {
     { href: '/besoins', labelKey: 'nav.needs', icon: MessageSquare },
     { href: '/reservations', labelKey: 'nav.bookings', icon: CalendarCheck },
   ],
+  // Les credits sont masques tant qu aucun paiement n est possible : afficher
+  // une boutique qui n encaisse rien decredibilise. Le lien reviendra avec
+  // PAIEMENT_EN_LIGNE.
   owner: [
     { href: '/proprietaire', labelKey: 'nav.owner', icon: Home },
     { href: '/besoins', labelKey: 'nav.requests', icon: MessageSquare },
-    { href: '/proprietaire/credits', labelKey: 'nav.credits', icon: CreditCard },
   ],
 } as const;
 
