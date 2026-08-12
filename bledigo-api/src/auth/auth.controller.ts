@@ -53,15 +53,17 @@ export class AuthController {
   }
 
   @Post('oauth')
-  async oauth(@Body() dto: OAuthDto) {
-    return this.authService.oauthLogin(dto);
+  async oauth(@Body() dto: OAuthDto, @Req() req: Request) {
+    return this.authService.oauthLogin(dto, req.ip || '', String(req.headers['user-agent'] || ''));
   }
 
   @Post('google')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Connexion Google : jeton d identite verifie aupres de Google' })
-  async google(@Body() dto: GoogleLoginDto) {
-    return this.authService.googleLogin(dto.credential);
+  async google(@Body() dto: GoogleLoginDto, @Req() req: Request) {
+    // L origine de l appel est tracee : une connexion Google peut fermer le mot
+    // de passe d un compte non verifie, l audit doit pouvoir dire d ou.
+    return this.authService.googleLogin(dto.credential, req.ip || '', String(req.headers['user-agent'] || ''));
   }
 
   @Post('verify-email')

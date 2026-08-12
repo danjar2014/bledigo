@@ -14,14 +14,44 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
+  /**
+   * Recherche un compte par adresse, en tolerant la casse historique.
+   *
+   * `googleLogin` a toujours normalise l adresse en minuscules, `register` non :
+   * la base peut donc contenir des lignes en casse mixte, et l index unique est
+   * sensible a la casse aussi bien sous PostgreSQL que sous SQLite. On cherche
+   * la forme normalisee, puis la forme exacte saisie, pour ne pas rendre
+   * inaccessible un compte cree avant cette normalisation.
+   *
+   * Pas de `mode: 'insensitive'` ici : SQLite ne le supporte pas et le client
+   * Prisma du developpement local cesserait de compiler.
+   */
+  private async trouverParEmail(saisie: string) {
+    const normalise = this.normaliserEmail(saisie);
+    const user = await this.prisma.user.findUnique({ where: { email: normalise } });
+    if (user || normalise === saisie) return user;
+    return this.prisma.user.findUnique({ where: { email: saisie } });
+  }
+
+  private normaliserEmail(email: string) {
+    return String(email || '').trim().toLowerCase();
+  }
+
+  /** Empreinte qu aucune saisie ne peut reproduire : le compte reste ouvert,
+   *  mais plus par mot de passe. */
+  private empreinteInutilisable() {
+    return bcrypt.hash(randomUUID() + randomUUID(), 12);
+  }
+
   async register(dto: RegisterDto) {
-    const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const email = this.normaliserEmail(dto.email);
+    const existing = await this.trouverParEmail(dto.email);
     if (existing) throw new BadRequestException('Email deja utilise');
 
     const hash = await bcrypt.hash(dto.password, 12);
     const user = await this.prisma.user.create({
       data: {
-        email: dto.email,
+        email,
         passwordHash: hash,
         firstName: dto.firstName,
         lastName: dto.lastName,
@@ -43,7 +73,7 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, ip: string, userAgent: string) {
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const user = await this.trouverParEmail(dto.email);
     if (!user) throw new UnauthorizedException('Identifiants invalides');
 
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
@@ -102,7 +132,7 @@ export class AuthService {
    *  - `email_verified` doit etre vrai, sinon on lierait un compte a une
    *    adresse que Google lui-meme ne garantit pas.
    */
-  async googleLogin(credential: string) {
+  async googleLogin(credential: string, ip = '', userAgent = '') {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) {
       throw new BadRequestException('Connexion Google non configuree sur ce serveur');
@@ -122,8 +152,8 @@ export class AuthService {
       throw new UnauthorizedException('Adresse Google non verifiee');
     }
 
-    const email = String(info.email).toLowerCase();
-    let user = await this.prisma.user.findUnique({ where: { email } });
+    const email = this.normaliserEmail(info.email);
+    let user = await this.trouverParEmail(email);
 
     if (user) {
       if (user.status === UserStatus.banned) {
@@ -132,19 +162,46 @@ export class AuthService {
       if (user.status === UserStatus.suspended) {
         throw new UnauthorizedException('Compte temporairement suspendu');
       }
-      // Google a verifie l adresse : on peut le refleter sur un compte cree
-      // auparavant par mot de passe.
+      // Rattachement a un compte existant : c est le moment dangereux.
+      //
+      // Rien ne verifie l adresse a l inscription par mot de passe
+      // (`verifyEmail` n est encore qu une ebauche). Il suffisait donc
+      // d inscrire l adresse de quelqu un avant lui pour qu il atterrisse, a sa
+      // premiere connexion Google, dans un compte dont on gardait le mot de
+      // passe — et dont on lisait ensuite les messages et les reservations.
+      //
+      // Google vient de prouver la propriete de l adresse ; le mot de passe
+      // preexistant, lui, n a jamais rien prouve. On le rend donc inutilisable.
+      // Personne ne perd l acces au passage : seul quelqu un qui possede cette
+      // adresse chez Google peut arriver jusqu ici, et ce chemin lui reste
+      // ouvert. Un compte deja verifie n est pas concerne.
       if (!user.emailVerified) {
         user = await this.prisma.user.update({
           where: { id: user.id },
-          data: { emailVerified: true },
+          data: {
+            emailVerified: true,
+            passwordHash: await this.empreinteInutilisable(),
+          },
+        });
+        await this.prisma.auditLog.create({
+          data: {
+            userId: user.id,
+            action: 'google_reprise_compte_non_verifie',
+            entityType: 'user',
+            entityId: user.id,
+            details: JSON.stringify({
+              motif: 'compte cree par mot de passe sans verification d adresse',
+            }),
+            ipAddress: ip,
+            userAgent: userAgent || '',
+          },
         });
       }
     } else {
       // Pas de mot de passe utilisable : on stocke une empreinte aleatoire
       // plutot qu une valeur vide, pour qu aucune saisie ne puisse y
       // correspondre par accident.
-      const inutilisable = await bcrypt.hash(randomUUID() + randomUUID(), 12);
+      const inutilisable = await this.empreinteInutilisable();
 
       user = await this.prisma.user.create({
         data: {
@@ -164,10 +221,10 @@ export class AuthService {
     return { user: this.sanitizeUser(user), ...tokens };
   }
 
-  async oauthLogin(dto: OAuthDto) {
+  async oauthLogin(dto: OAuthDto, ip = '', userAgent = '') {
     // Seul Google est branche : Facebook exigerait une verification
     // d entreprise, et Instagram ne fournit pas d adresse email.
-    return this.googleLogin(dto.token);
+    return this.googleLogin(dto.token, ip, userAgent);
   }
 
   async verifyEmail(token: string) {

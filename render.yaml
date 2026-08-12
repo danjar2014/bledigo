@@ -2,8 +2,10 @@
 #
 # Trois ressources : la base PostgreSQL, l API NestJS et le front Next.js.
 #
-# Les URL publiques sont injectees automatiquement d un service a l autre, ce qui
-# evite de coder en dur des adresses qui changent a chaque environnement.
+# Les URL publiques sont ecrites en dur, volontairement : Render n expose que le
+# nom d hote du reseau prive, jamais l adresse publique. Le detail est explique
+# sur FRONTEND_URL et NEXT_PUBLIC_API_URL plus bas — les remplacer par
+# fromService casse le CORS et le front.
 #
 # Mise en place : Render > New > Blueprint, puis pointer sur ce depot.
 
@@ -42,6 +44,10 @@ services:
     # chargerait schema.prisma, reste en sqlite, et refuserait une URL
     # PostgreSQL. Le `|| true` garantit qu un semis en echec n empeche jamais
     # l API de demarrer.
+    #
+    # Ce rejeu a chaque reveil est aussi le seul moyen d agir sur des comptes
+    # deja en base, le Shell etant indisponible : c est par le semis que les
+    # anciens comptes de demonstration sont fermes.
     startCommand: npx prisma migrate deploy --schema=prisma/schema.postgres.prisma && (npx ts-node prisma/seed.ts || true) && node dist/main
     envVars:
       - key: NODE_ENV
@@ -52,6 +58,31 @@ services:
       # "true" le rallume, sans redeveloppement.
       - key: PAIEMENT_EN_LIGNE
         value: "false"
+      # Comptes de demonstration. Le semis ne contient plus aucun mot de passe :
+      # sans DEMO_PASSWORD, les comptes existent mais la connexion par mot de
+      # passe leur est fermee. A saisir dans l interface Render, jamais ici.
+      #
+      # SEED_DEMO=false coupe entierement le jeu de demonstration et ferme les
+      # trois comptes d origine : c est l interrupteur a basculer avant
+      # l ouverture au public.
+      - key: SEED_DEMO
+        value: "true"
+      - key: DEMO_PASSWORD
+        sync: false
+      # Adresses des deux comptes d essai. Les laisser vides garde
+      # owner@bledigo.com et traveler@bledigo.com.
+      - key: DEMO_EMAIL_OWNER
+        sync: false
+      - key: DEMO_EMAIL_TRAVELER
+        sync: false
+      # Administrateur : il n existe QUE si ces deux valeurs sont renseignees.
+      # Il n y a plus de compte admin par defaut — l ancien, admin@bledigo.com,
+      # avait son mot de passe dans le depot. Changer ADMIN_PASSWORD puis
+      # redeployer suffit a le faire tourner.
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
       # Identifiant client Google (public, pas un secret). Il sert a verifier
       # que le jeton recu a bien ete emis POUR BlediGo : sans ce controle, un
       # jeton valide emis pour une autre application serait accepte.
