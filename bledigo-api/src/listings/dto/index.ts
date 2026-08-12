@@ -7,6 +7,16 @@ export class CreateListingDto {
   @IsString() @MaxLength(150) title: string;
   @IsString() description: string;
   @IsString() address: string;
+  /**
+   * Identifiant de la ville dans le referentiel des localites, envoye par le
+   * selecteur. Le service s en sert en priorite pour resoudre la localite,
+   * et retombe sur `city` s il est absent.
+   *
+   * Doit imperativement figurer ici : la validation globale tourne en
+   * forbidNonWhitelisted, donc tout champ non declare fait echouer la requete
+   * avant meme que le service le lise.
+   */
+  @ApiPropertyOptional() @IsOptional() @IsString() citySlug?: string;
   @IsString() city: string;
   @IsString() region: string;
   @IsOptional() @IsString() country?: string;
