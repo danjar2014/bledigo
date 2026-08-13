@@ -127,7 +127,10 @@ export class NotificationFeedService {
         audience: 'owner',
         title: 'Reservation a confirmer',
         body: `${b.totalNights} nuit${b.totalNights > 1 ? 's' : ''} a ${b.listing?.city ?? ''} pour ${b.guestsCount} voyageur${b.guestsCount > 1 ? 's' : ''}, a partir du ${this.date(b.checkIn)}.`,
-        link: '/reservations',
+        // L ancre designe la reservation concernee : une liste de dix
+        // reservations obligeait sinon a retrouver soi-meme celle dont on
+        // vient d etre averti.
+        link: `/reservations#${b.id}`,
         actionRequired: true,
         createdAt: b.createdAt,
       });
@@ -155,7 +158,7 @@ export class NotificationFeedService {
           : refuse
             ? `${b.listing?.title ?? 'Le sejour'} a ete refuse : vous n avez pas ete debite.`
             : `${b.listing?.title ?? 'Le sejour'} — arrivee le ${this.date(b.checkIn)}.`,
-        link: '/reservations',
+        link: `/reservations#${b.id}`,
         // Un refus n est pas une simple information pour l hote : il doit
         // corriger son annonce ou contester, sous peine de recidive.
         actionRequired: refuse && cotePropio,

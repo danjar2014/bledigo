@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useQuery } from '@tanstack/react-query';
@@ -22,6 +22,22 @@ function Reservations() {
     queryKey: ['bookings', 'traveler'],
     queryFn: () => api.bookings('traveler'),
   });
+
+  // La cloche pointe desormais une reservation precise (/reservations#id).
+  // Le defilement natif du navigateur ne suffit pas : au moment ou la page
+  // s affiche, la liste n existe pas encore, elle arrive avec la requete.
+  const [cible, setCible] = useState<string | null>(null);
+  useEffect(() => {
+    if (!data?.length) return;
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    if (!id) return;
+    setCible(id);
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // L eclat s efface de lui-meme : il sert a retrouver la carte, pas a la
+    // marquer durablement.
+    const t = setTimeout(() => setCible(null), 2500);
+    return () => clearTimeout(t);
+  }, [data]);
 
   if (isLoading) return <Spinner />;
   if (error) return <main className="container mx-auto px-4 py-10"><ErrorBox error={error} /></main>;
@@ -48,7 +64,13 @@ function Reservations() {
               const canReview = b.status === 'completed' && b.validationStatus !== 'disputed';
 
               return (
-                <div key={b.id} className="bg-white rounded-bledi shadow-bledi overflow-hidden flex flex-col md:flex-row">
+                <div
+                  key={b.id}
+                  id={b.id}
+                  className={`bg-white rounded-bledi shadow-bledi overflow-hidden flex flex-col md:flex-row scroll-mt-24 transition-shadow ${
+                    cible === b.id ? 'ring-2 ring-bledi-blue' : ''
+                  }`}
+                >
                   <div className="relative w-full md:w-56 h-40 md:h-auto shrink-0">
                     <Image src={photoOf(b.listing)} alt="" fill unoptimized className="object-cover" />
                   </div>
