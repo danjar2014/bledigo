@@ -41,6 +41,14 @@ model User {
   updatedAt         DateTime   @updatedAt @map("updated_at")
   deletedAt         DateTime?  @map("deleted_at")
   identityDocument String? @map("identity_document")
+  /// Canal par lequel l hote souhaite etre joint une fois la demande acceptee.
+  /// phone / whatsapp. Sur l utilisateur et non sur l annonce : un hote a trois
+  /// logements le regle une fois.
+  contactChannel    String     @default("phone") @map("contact_channel")
+  /// Souvent different du numero principal. Volontairement SANS contrainte
+  /// d unicite : le @unique de `phone` a deja fait echouer le semis en silence
+  /// des que deux comptes ont voulu le meme numero.
+  whatsappNumber    String?    @map("whatsapp_number")
 
   // Relations
   travelerPassport  TravelerPassport?
@@ -168,6 +176,18 @@ model Listing {
   minNights             Int               @default(1) @map("min_nights")
   maxNights             Int?              @map("max_nights")
   instantBook           Boolean           @default(false) @map("instant_book")
+  /// Distance maximale a laquelle on peut reserver, en jours. A ne pas
+  /// confondre avec maxNights qui borne la DUREE du sejour, pas son eloignement.
+  /// null = aucune limite.
+  bookingHorizonDays    Int?              @map("booking_horizon_days")
+  /// court / moyen / long : duree de location visee par l hote. Pilote la
+  /// presentation en recherche, pas l acces au logement.
+  rentalProfile         String            @default("court") @map("rental_profile")
+  /// Annulation libre jusqu a X jours de l arrivee. null = libre jusqu au bout.
+  cancellationDeadlineDays Int?           @map("cancellation_deadline_days")
+  /// Majoration exigee si le sejour est raccourci, en pourcentage des nuits
+  /// retirees. null = aucune. Exigible seulement quand le paiement est allume.
+  shortenSurchargePercent  Int?           @map("shorten_surcharge_percent")
 
   // Relations
   owner           User              @relation("OwnerListings", fields: [ownerId], references: [id])
@@ -256,6 +276,18 @@ model Booking {
   updatedAt         DateTime         @updatedAt @map("updated_at")
   securityDeposit Float   @default(0) @map("security_deposit")
   validationData  String? @map("validation_data")
+  /// Le voyageur declare s etre presente. C est le second signal : sans lui,
+  /// une absence de check-in ne prouve rien, le check-in etant declenche par
+  /// l hote seul.
+  arrivalConfirmedAt DateTime? @map("arrival_confirmed_at")
+  /// Declaration de no-show par l hote, datee et attribuee pour etre
+  /// comptabilisee dans son propre score, comme ses refus.
+  noShowDeclaredAt   DateTime? @map("no_show_declared_at")
+  noShowDeclaredBy   String?   @map("no_show_declared_by")
+  /// Qui a annule et quand : sert a appliquer le delai d annulation et a
+  /// informer l autre partie de ce qui lui est oppose.
+  cancelledAt        DateTime? @map("cancelled_at")
+  cancelledBy        String?   @map("cancelled_by")
 
   // Relations
   listing   Listing    @relation(fields: [listingId], references: [id])
