@@ -22,6 +22,10 @@ const EDITABLE_FIELDS = [
   'minNights',
   'maxNights',
   'instantBook',
+  'bookingHorizonDays',
+  'rentalProfile',
+  'cancellationDeadlineDays',
+  'shortenSurchargePercent',
 ] as const;
 
 /** Champs sensibles : leur modification declenche une re-verification si sejours en cours. */

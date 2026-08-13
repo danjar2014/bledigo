@@ -131,7 +131,10 @@ async function main() {
 
   const owner = await prisma.user.upsert({
     where: { email: EMAIL_OWNER },
-    update: { passwordHash: hash },
+    // Le telephone fait partie de l etat declare, pas seulement de la creation :
+    // libererTelephone a pu le retirer a un compte qui redevient ensuite le
+    // titulaire. Sans cela le semis laissait un compte de demo sans numero.
+    update: { passwordHash: hash, phone: TEL_OWNER },
     create: {
       email: EMAIL_OWNER,
       passwordHash: hash,
@@ -149,7 +152,7 @@ async function main() {
 
   const traveler = await prisma.user.upsert({
     where: { email: EMAIL_TRAVELER },
-    update: { passwordHash: hash },
+    update: { passwordHash: hash, phone: TEL_TRAVELER },
     create: {
       email: EMAIL_TRAVELER,
       passwordHash: hash,

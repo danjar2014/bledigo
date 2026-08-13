@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
-import { IsIn, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsOptional, IsString, Matches } from 'class-validator';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -15,6 +15,12 @@ export class UpdateUserDto {
   @IsOptional() @IsString() lastName?: string;
   @IsOptional() @IsString() phone?: string;
   @IsOptional() @IsString() avatarUrl?: string;
+  /** Par ou l hote veut etre joint une fois la demande acceptee. */
+  @IsOptional() @IsIn(['phone', 'whatsapp']) contactChannel?: string;
+  /** Meme format que `phone`, sans contrainte d unicite : deux comptes peuvent
+   *  legitimement partager un numero de contact. */
+  @IsOptional() @Matches(/^\+?[0-9]{8,15}$/, { message: 'Numero WhatsApp invalide' })
+  whatsappNumber?: string;
 }
 
 @ApiTags('users')

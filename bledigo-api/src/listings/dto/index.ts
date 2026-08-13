@@ -1,4 +1,4 @@
-import { IsString, IsInt, IsNumber, IsBoolean, IsArray, IsOptional, IsEnum, Min, MaxLength } from 'class-validator';
+import { IsString, IsInt, IsNumber, IsBoolean, IsArray, IsOptional, IsEnum, IsIn, Min, Max, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PropertyType, Currency, ListingStatus } from '../../common/enums';
@@ -45,6 +45,14 @@ export class CreateListingDto {
   @IsOptional() @IsInt() @Min(1) @Type(() => Number) minNights?: number;
   @IsOptional() @IsInt() @Min(1) @Type(() => Number) maxNights?: number;
   @IsOptional() @IsBoolean() instantBook?: boolean;
+  /** Distance maximale de reservation, en jours. Borne l eloignement, pas la duree. */
+  @IsOptional() @IsInt() @Min(1) @Type(() => Number) bookingHorizonDays?: number;
+  /** court / moyen / long : duree de location visee, pilote la presentation en recherche. */
+  @IsOptional() @IsIn(['court', 'moyen', 'long']) rentalProfile?: string;
+  /** Annulation libre jusqu a X jours de l arrivee. */
+  @IsOptional() @IsInt() @Min(0) @Type(() => Number) cancellationDeadlineDays?: number;
+  /** Majoration si sejour raccourci, en pourcentage des nuits retirees. */
+  @IsOptional() @IsInt() @Min(0) @Max(100) @Type(() => Number) shortenSurchargePercent?: number;
 }
 
 export class UpdateListingDto {
@@ -62,6 +70,14 @@ export class UpdateListingDto {
   @IsOptional() @IsInt() @Min(1) @Type(() => Number) minNights?: number;
   @IsOptional() @IsInt() @Min(1) @Type(() => Number) maxNights?: number;
   @IsOptional() @IsBoolean() instantBook?: boolean;
+  /** Distance maximale de reservation, en jours. Borne l eloignement, pas la duree. */
+  @IsOptional() @IsInt() @Min(1) @Type(() => Number) bookingHorizonDays?: number;
+  /** court / moyen / long : duree de location visee, pilote la presentation en recherche. */
+  @IsOptional() @IsIn(['court', 'moyen', 'long']) rentalProfile?: string;
+  /** Annulation libre jusqu a X jours de l arrivee. */
+  @IsOptional() @IsInt() @Min(0) @Type(() => Number) cancellationDeadlineDays?: number;
+  /** Majoration si sejour raccourci, en pourcentage des nuits retirees. */
+  @IsOptional() @IsInt() @Min(0) @Max(100) @Type(() => Number) shortenSurchargePercent?: number;
   /** Motif enregistre dans l historique de modification. */
   @IsOptional() @IsString() modificationReason?: string;
   @IsOptional() @IsEnum(ListingStatus) status?: ListingStatus;

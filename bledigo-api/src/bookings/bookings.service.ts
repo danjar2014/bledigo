@@ -45,6 +45,19 @@ export class BookingsService {
       throw new BadRequestException(`Capacite maximale : ${listing.maxGuests} voyageurs`);
     }
 
+    // Horizon de reservation : l hote refuse les demandes trop lointaines, pour
+    // ne pas bloquer un logement des mois a l avance. Rien a voir avec
+    // maxNights, qui borne la duree du sejour et non son eloignement.
+    if (listing.bookingHorizonDays != null) {
+      const limite = new Date();
+      limite.setDate(limite.getDate() + listing.bookingHorizonDays);
+      if (checkIn > limite) {
+        throw new BadRequestException(
+          `Ce logement n accepte pas de reservation au-dela de ${listing.bookingHorizonDays} jours`,
+        );
+      }
+    }
+
     // Verifier disponibilite (chevauchement de dates)
     const existing = await this.prisma.booking.findMany({
       where: {
@@ -122,8 +135,18 @@ export class BookingsService {
       include: {
         listing: { include: { photos: true } },
         payment: true,
-        owner: { select: { firstName: true, lastName: true, phone: true, email: true } },
-        traveler: { select: { firstName: true, lastName: true, phone: true, email: true } },
+        owner: {
+          select: {
+            firstName: true, lastName: true, phone: true, email: true,
+            contactChannel: true, whatsappNumber: true,
+          },
+        },
+        traveler: {
+          select: {
+            firstName: true, lastName: true, phone: true, email: true,
+            contactChannel: true, whatsappNumber: true,
+          },
+        },
       },
       orderBy: { checkIn: 'desc' },
     });
@@ -148,6 +171,15 @@ export class BookingsService {
     const contrepartie = role === 'owner' ? booking.traveler : booking.owner;
     const visible = coordonneesAutorisees(acceptee);
 
+    // Canal choisi par la personne a joindre, pas par celle qui regarde.
+    const canal = contrepartie?.contactChannel === 'whatsapp' ? 'whatsapp' : 'phone';
+    // Beaucoup d hotes utilisent leur numero principal sur WhatsApp sans en
+    // renseigner un second : on y retombe plutot que de n afficher aucun moyen
+    // de joindre, ce qui viderait de son sens tout le paiement direct.
+    const numero =
+      (canal === 'whatsapp' ? contrepartie?.whatsappNumber ?? contrepartie?.phone : contrepartie?.phone) ??
+      null;
+
     return {
       ...booking,
       owner: undefined,
@@ -156,7 +188,8 @@ export class BookingsService {
       contact: visible
         ? {
             nom: `${contrepartie?.firstName ?? ''} ${contrepartie?.lastName ?? ''}`.trim(),
-            telephone: contrepartie?.phone ?? null,
+            canal,
+            numero,
             email: contrepartie?.email ?? null,
             role: role === 'owner' ? 'voyageur' : 'hote',
           }
@@ -172,8 +205,18 @@ export class BookingsService {
       include: {
         listing: true,
         payment: true,
-        owner: { select: { firstName: true, lastName: true, phone: true, email: true } },
-        traveler: { select: { firstName: true, lastName: true, phone: true, email: true } },
+        owner: {
+          select: {
+            firstName: true, lastName: true, phone: true, email: true,
+            contactChannel: true, whatsappNumber: true,
+          },
+        },
+        traveler: {
+          select: {
+            firstName: true, lastName: true, phone: true, email: true,
+            contactChannel: true, whatsappNumber: true,
+          },
+        },
       },
     });
     if (!booking) throw new NotFoundException('Reservation non trouvee');

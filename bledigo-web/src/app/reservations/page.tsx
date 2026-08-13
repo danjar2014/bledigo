@@ -142,11 +142,22 @@ function Reservations() {
                         </p>
                         <p className="text-sm text-charcoal">
                           {b.contact.nom}
-                          {b.contact.telephone && (
+                          {b.contact.numero && (
                             <>
                               {' · '}
-                              <a href={`tel:${b.contact.telephone}`} className="font-medium underline">
-                                {b.contact.telephone}
+                              {/* wa.me n accepte que des chiffres : ni +, ni espaces. */}
+                              <a
+                                href={
+                                  b.contact.canal === 'whatsapp'
+                                    ? `https://wa.me/${b.contact.numero.replace(/\D/g, '')}`
+                                    : `tel:${b.contact.numero}`
+                                }
+                                target={b.contact.canal === 'whatsapp' ? '_blank' : undefined}
+                                rel={b.contact.canal === 'whatsapp' ? 'noopener noreferrer' : undefined}
+                                className="font-medium underline"
+                              >
+                                {b.contact.canal === 'whatsapp' ? 'WhatsApp ' : ''}
+                                {b.contact.numero}
                               </a>
                             </>
                           )}
