@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ProviderStatus, ProviderType, UserRole, UserStatus } from '../common/enums';
 import { CreateProviderDto, UpdateProviderDto } from './dto';
 import { distanceKm } from '../common/geo';
+import { findLocality, resolveLocality } from '../common/localities';
 import { toDbJson } from '../common/json';
 
 /**
@@ -42,6 +43,14 @@ export class ProvidersService {
     const existant = await this.prisma.user.findUnique({ where: { email } });
     if (existant) throw new BadRequestException('Email deja utilise');
 
+    // La ville suffit : ses coordonnees viennent du referentiel, comme pour une
+    // annonce. Sans elles, la proximite ne se calcule pas et le prestataire
+    // serait propose dans toute la Tunisie — un loueur de Djerba apparaitrait a
+    // un voyageur de Tunis. Des coordonnees explicites restent prioritaires.
+    const locality = findLocality(dto.city) ?? resolveLocality(dto.city);
+    const latitude = dto.latitude ?? locality?.lat;
+    const longitude = dto.longitude ?? locality?.lng;
+
     const motDePasse = this.motDePasseInitial();
     const user = await this.prisma.user.create({
       data: {
@@ -64,10 +73,10 @@ export class ProvidersService {
         type: dto.type,
         companyName: dto.companyName,
         registrationNumber: dto.registrationNumber,
-        city: dto.city,
-        region: dto.region,
-        latitude: dto.latitude,
-        longitude: dto.longitude,
+        city: locality?.name ?? dto.city,
+        region: dto.region ?? locality?.region,
+        latitude,
+        longitude,
         serviceRadiusKm: dto.serviceRadiusKm ?? 30,
         phone: dto.phone,
         // Cree en attente : c est la verification qui l active, pas la creation.

@@ -18,6 +18,9 @@ const TABS = [
   // Rien ne leve une mesure conservatoire automatiquement : sans cet ecran,
   // les fonds geles resteraient immobilises indefiniment.
   ['sanctions', 'Sanctions et fonds geles'],
+  // Tant qu il n y a ni abonnement ni verification automatique, c est le seul
+  // moyen de creer un compte prestataire : il n existe aucune inscription libre.
+  ['providers', 'Prestataires'],
   ['users', 'Utilisateurs'],
   ['logs', 'Journal'],
 ] as const;
@@ -48,6 +51,7 @@ function Admin() {
         {tab === 'listings' && <ListingsTab />}
         {tab === 'disputes' && <DisputesTab />}
         {tab === 'sanctions' && <SanctionsTab />}
+        {tab === 'providers' && <ProvidersTab />}
         {tab === 'users' && <UsersTab />}
         {tab === 'logs' && <LogsTab />}
       </div>
@@ -273,6 +277,304 @@ function DisputesTab() {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Comptes prestataires.
+ *
+ * Phase 1 : il n existe aucune inscription libre. On cree le compte APRES avoir
+ * constate le statut d agence — registre de commerce, carte professionnelle —
+ * puis on transmet les identifiants a l interesse.
+ *
+ * Le mot de passe genere n est affiche qu ici et qu une fois : ni l envoi
+ * d email ni la reinitialisation ne sont branches. D ou le bouton qui en
+ * regenere un, seule voie de recuperation.
+ */
+function ProvidersTab() {
+  const queryClient = useQueryClient();
+  const [filtre, setFiltre] = useState<string>('');
+  /** Identifiants a montrer une fois, puis a oublier. */
+  const [identifiants, setIdentifiants] = useState<{ email: string; motDePasse: string } | null>(null);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['admin-providers', filtre],
+    queryFn: () => api.adminProviders(filtre ? { type: filtre } : {}),
+  });
+
+  const rafraichir = () => queryClient.invalidateQueries({ queryKey: ['admin-providers'] });
+
+  const creer = useMutation({
+    mutationFn: (dto: any) => api.adminCreateProvider(dto),
+    onSuccess: (r: any) => {
+      setIdentifiants(r.identifiants);
+      rafraichir();
+    },
+  });
+  const verifier = useMutation({
+    mutationFn: (id: string) => api.adminVerifyProvider(id),
+    onSuccess: rafraichir,
+  });
+  const suspendre = useMutation({
+    mutationFn: (id: string) => api.adminSuspendProvider(id, 'Suspendu depuis le back-office'),
+    onSuccess: rafraichir,
+  });
+  const regenerer = useMutation({
+    mutationFn: (id: string) => api.adminResetProviderPassword(id),
+    onSuccess: (r: any) => setIdentifiants(r.identifiants),
+  });
+
+  if (isLoading) return <Spinner />;
+  if (error) return <ErrorBox error={error} />;
+
+  return (
+    <section>
+      <FormulairePrestataire
+        pending={creer.isPending}
+        erreur={(creer.error as any)?.message}
+        onSubmit={(dto) => creer.mutate(dto)}
+      />
+
+      {/* Affiche une seule fois : ces identifiants ne sont plus recuperables. */}
+      {identifiants && (
+        <div className="mt-4 p-4 rounded-bledi bg-amber-50 border-2 border-amber-300">
+          <p className="font-medium text-amber-900 mb-1">
+            Identifiants a transmettre maintenant
+          </p>
+          <p className="text-sm text-amber-900">
+            Adresse : <strong>{identifiants.email}</strong>
+            <br />
+            Mot de passe : <strong className="font-mono">{identifiants.motDePasse}</strong>
+          </p>
+          <p className="text-xs text-amber-800/80 mt-2">
+            Ce mot de passe n est plus consultable une fois cet encart ferme. En cas de perte, il
+            faudra en regenerer un.
+          </p>
+          <button
+            onClick={() => setIdentifiants(null)}
+            className="mt-2 text-sm underline text-amber-900"
+          >
+            J ai transmis les identifiants
+          </button>
+        </div>
+      )}
+
+      <div className="flex gap-2 my-4">
+        {[
+          ['', 'Tous'],
+          ['location_voiture', 'Location de voiture'],
+          ['menage', 'Menage et entretien'],
+        ].map(([v, label]) => (
+          <button
+            key={v || 'tous'}
+            onClick={() => setFiltre(v)}
+            className={`px-3 py-1.5 rounded-full text-sm ${
+              filtre === v ? 'bg-bledi-blue text-white' : 'bg-white text-slate hover:bg-cloud'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {!data?.length ? (
+        <Empty>Aucun prestataire enregistre.</Empty>
+      ) : (
+        <div className="bg-white rounded-bledi shadow-bledi overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-cream text-left">
+              <tr>
+                <th className="p-3">Societe</th>
+                <th className="p-3">Metier</th>
+                <th className="p-3">Zone</th>
+                <th className="p-3">Statut</th>
+                <th className="p-3">Note</th>
+                <th className="p-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((p: any) => (
+                <tr key={p.id} className="border-t border-cloud">
+                  <td className="p-3">
+                    <div className="font-medium text-charcoal">{p.companyName}</div>
+                    <div className="text-xs text-slate">{p.user?.email}</div>
+                    {p.registrationNumber && (
+                      <div className="text-xs text-slate">RC {p.registrationNumber}</div>
+                    )}
+                  </td>
+                  <td className="p-3">
+                    {p.type === 'location_voiture' ? 'Location de voiture' : 'Menage'}
+                  </td>
+                  <td className="p-3">
+                    {p.city || '—'}
+                    {p.serviceRadiusKm ? ` · ${p.serviceRadiusKm} km` : ''}
+                  </td>
+                  <td className="p-3">
+                    <span
+                      className={`px-2 py-1 rounded-bledi-sm text-xs font-medium ${
+                        p.status === 'active'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : p.status === 'pending'
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-red-100 text-red-800'
+                      }`}
+                    >
+                      {p.status === 'active'
+                        ? `verifie le ${date(p.verifiedAt)}`
+                        : p.status === 'pending'
+                          ? 'a verifier'
+                          : 'suspendu'}
+                    </span>
+                  </td>
+                  <td className="p-3">
+                    {p.totalReviews ? `${p.avgRating} (${p.totalReviews})` : '—'}
+                  </td>
+                  <td className="p-3">
+                    <div className="flex flex-wrap gap-2">
+                      {p.status !== 'active' && (
+                        <button
+                          onClick={() => verifier.mutate(p.id)}
+                          className="text-xs bg-emerald-600 text-white px-2 py-1 rounded-bledi-sm"
+                        >
+                          Verifier
+                        </button>
+                      )}
+                      {p.status === 'active' && (
+                        <button
+                          onClick={() => suspendre.mutate(p.id)}
+                          className="text-xs border border-red-300 text-red-700 px-2 py-1 rounded-bledi-sm"
+                        >
+                          Suspendre
+                        </button>
+                      )}
+                      <button
+                        onClick={() => regenerer.mutate(p.id)}
+                        className="text-xs border border-cloud px-2 py-1 rounded-bledi-sm"
+                      >
+                        Nouveau mot de passe
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function FormulairePrestataire({
+  pending,
+  erreur,
+  onSubmit,
+}: {
+  pending: boolean;
+  erreur?: string;
+  onSubmit: (dto: any) => void;
+}) {
+  const [f, setF] = useState({
+    companyName: '',
+    type: 'location_voiture',
+    email: '',
+    firstName: '',
+    lastName: '',
+    registrationNumber: '',
+    city: '',
+    phone: '',
+    serviceRadiusKm: '30',
+  });
+  const set = (p: Partial<typeof f>) => setF((v) => ({ ...v, ...p }));
+  const complet = f.companyName && f.email && f.firstName && f.lastName;
+
+  return (
+    <div className="bg-white rounded-bledi shadow-bledi p-4">
+      <h2 className="font-display font-semibold mb-1">Creer un compte prestataire</h2>
+      <p className="text-sm text-slate mb-3">
+        A ne faire qu apres avoir constate le statut de l entreprise. Le compte est cree en
+        attente : il faudra ensuite le verifier pour qu il devienne utilisable.
+      </p>
+      <div className="grid md:grid-cols-3 gap-3">
+        <input
+          className="input-bledi"
+          placeholder="Raison sociale"
+          value={f.companyName}
+          onChange={(e) => set({ companyName: e.target.value })}
+        />
+        <select
+          className="input-bledi"
+          value={f.type}
+          onChange={(e) => set({ type: e.target.value })}
+        >
+          <option value="location_voiture">Location de voiture</option>
+          <option value="menage">Menage et entretien</option>
+        </select>
+        <input
+          className="input-bledi"
+          placeholder="Adresse email de connexion"
+          value={f.email}
+          onChange={(e) => set({ email: e.target.value })}
+        />
+        <input
+          className="input-bledi"
+          placeholder="Prenom du contact"
+          value={f.firstName}
+          onChange={(e) => set({ firstName: e.target.value })}
+        />
+        <input
+          className="input-bledi"
+          placeholder="Nom du contact"
+          value={f.lastName}
+          onChange={(e) => set({ lastName: e.target.value })}
+        />
+        <input
+          className="input-bledi"
+          placeholder="Registre de commerce"
+          value={f.registrationNumber}
+          onChange={(e) => set({ registrationNumber: e.target.value })}
+        />
+        <input
+          className="input-bledi"
+          placeholder="Ville"
+          value={f.city}
+          onChange={(e) => set({ city: e.target.value })}
+        />
+        <input
+          className="input-bledi"
+          placeholder="Telephone"
+          value={f.phone}
+          onChange={(e) => set({ phone: e.target.value })}
+        />
+        <input
+          className="input-bledi"
+          type="number"
+          placeholder="Rayon d intervention (km)"
+          value={f.serviceRadiusKm}
+          onChange={(e) => set({ serviceRadiusKm: e.target.value })}
+        />
+      </div>
+      <button
+        disabled={!complet || pending}
+        onClick={() =>
+          onSubmit({
+            companyName: f.companyName,
+            type: f.type,
+            email: f.email,
+            firstName: f.firstName,
+            lastName: f.lastName,
+            registrationNumber: f.registrationNumber || undefined,
+            city: f.city || undefined,
+            phone: f.phone || undefined,
+            serviceRadiusKm: Number(f.serviceRadiusKm) || 30,
+          })
+        }
+        className="btn-primary mt-3 disabled:opacity-50"
+      >
+        Creer le compte
+      </button>
+      {erreur && <p className="text-sm text-red-600 mt-2">{erreur}</p>}
     </div>
   );
 }
