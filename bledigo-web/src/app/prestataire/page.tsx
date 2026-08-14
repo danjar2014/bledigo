@@ -136,8 +136,12 @@ function EspacePrestataire() {
                       <p className="font-medium text-charcoal">
                         {d.vehicle ? `${d.vehicle.brand} ${d.vehicle.model}` : 'Prestation de menage'}
                       </p>
+                      {/* Un menage tient dans la journee : afficher « du X au X »
+                          se lit comme une erreur de saisie. */}
                       <p className="text-sm text-slate">
-                        du {date(d.startDate)} au {date(d.endDate)}
+                        {date(d.startDate) === date(d.endDate)
+                          ? `le ${date(d.startDate)}`
+                          : `du ${date(d.startDate)} au ${date(d.endDate)}`}
                         {d.price ? ` · ${d.price} ${d.currency}` : ''}
                       </p>
                       {d.note && <p className="text-sm text-charcoal mt-1">« {d.note} »</p>}

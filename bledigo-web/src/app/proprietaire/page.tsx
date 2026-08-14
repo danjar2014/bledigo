@@ -7,6 +7,7 @@ import { Plus, KeyRound, Check, CalendarDays, Users, Gauge, ShieldAlert, Pencil 
 import { api } from '@/lib/api';
 import { useAuth } from '@/store/auth';
 import RequireAuth from '@/components/RequireAuth';
+import CleaningServices from '@/components/CleaningServices';
 import { Spinner, ErrorBox, Empty } from '@/components/ui';
 import { date, photoOf, BOOKING_STATUS, CERTIFICATIONS } from '@/lib/format';
 import { useMoney } from '@/store/preferences';
@@ -133,6 +134,11 @@ function Dashboard() {
             })}
           </div>
         )}
+
+        {/* Le menage se demande depuis le tableau de bord et non depuis chaque
+            annonce : un hote enchaine les interventions sur plusieurs logements
+            avec le meme prestataire. */}
+        <CleaningServices listings={listings || []} />
 
         {/* Mes annonces */}
         <h2 className="font-display font-semibold text-xl text-charcoal mb-3">Mes annonces</h2>
