@@ -71,6 +71,9 @@ model User {
   contactAttempts     ContactAttempt[]
   reverseSearchCredit ReverseSearchCredit?
   unlocks             ReverseSearchUnlock[] @relation("OwnerUnlocks")
+  /// Compte prestataire. Cree par l administration, jamais auto-attribue.
+  serviceProvider     ServiceProvider?      @relation("ProviderAccount")
+  serviceRequests     ServiceBooking[]      @relation("ServiceRequests")
 
   @@index([email])
   @@index([role])
@@ -759,4 +762,176 @@ model ListingCalendar {
   @@index([listingId])
   @@index([listingId, startDate, endDate])
   @@map("listing_calendar")
+}
+
+// ---------------------------------------------------------------------------
+// Prestataires de services
+//
+// Deux metiers derriere un meme socle : le menage et l entretien, proposes aux
+// hotes ; la location de voiture, proposee au voyageur une fois son sejour
+// reserve. Ils partagent le compte, la verification, la zone servie et la
+// notation — rien d autre.
+//
+// Phase d amorcage : ANNUAIRE. Aucun montant ne transite, exactement comme pour
+// le sejour, et les coordonnees ne s echangent qu apres acceptation. La
+// prestation est neanmoins modelisee comme une reservation, pour que le
+// paiement s allume plus tard sans reconstruction.
+// ---------------------------------------------------------------------------
+
+model ServiceProvider {
+  id            String    @id @default(uuid())
+  /// Compte de connexion. En phase 1 il est cree par l administration, apres
+  /// constatation du statut d agence : `provider` n est pas auto-attribuable.
+  userId        String    @unique @map("user_id")
+  /// menage | location_voiture
+  type          String
+  companyName   String    @map("company_name")
+  /// pending tant que l administration n a pas constate le statut.
+  status        String    @default("pending")
+  verifiedAt    DateTime? @map("verified_at")
+  verifiedBy    String?   @map("verified_by")
+  /// Matricule fiscal ou registre de commerce, constate a la main en phase 1.
+  registrationNumber String? @map("registration_number")
+  city          String?
+  region        String?
+  latitude      Float?
+  longitude     Float?
+  /// Rayon d intervention. La proximite se calcule en Haversine, comme la
+  /// recherche de logements : pas de dependance geospatiale supplementaire.
+  serviceRadiusKm Int     @default(30) @map("service_radius_km")
+  phone         String?
+  description   String?
+  /// Meme trio que les annonces : la confiance se lit pareil des deux cotes.
+  trustScore    Float     @default(0) @map("trust_score")
+  avgRating     Float     @default(0) @map("avg_rating")
+  totalReviews  Int       @default(0) @map("total_reviews")
+  totalJobs     Int       @default(0) @map("total_jobs")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  user     User             @relation("ProviderAccount", fields: [userId], references: [id])
+  vehicles Vehicle[]
+  services ServiceBooking[]
+  reviews  ServiceReview[]
+
+  @@index([type, status])
+  @@index([city])
+  @@index([latitude, longitude])
+  @@map("service_providers")
+}
+
+model Vehicle {
+  id             String   @id @default(uuid())
+  providerId     String   @map("provider_id")
+  brand          String
+  model          String
+  year           Int?
+  /// Immatriculation, sans contrainte d unicite : c est une donnee saisie, pas
+  /// un identifiant. Le @unique de `phone` a deja coute assez cher.
+  plate          String?
+  /// citadine | berline | suv | utilitaire | luxe
+  category       String   @default("citadine")
+  transmission   String   @default("manuelle")
+  fuel           String   @default("essence")
+  seats          Int      @default(5)
+  airConditioned Boolean  @default(true) @map("air_conditioned")
+  pricePerDay    Float    @map("price_per_day")
+  deposit        Float    @default(0)
+  photoUrl       String?  @map("photo_url")
+  /// active | maintenance | retire
+  status         String   @default("active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  provider ServiceProvider  @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  calendar VehicleCalendar[]
+  services ServiceBooking[]
+
+  @@index([providerId])
+  @@index([status])
+  @@map("vehicles")
+}
+
+/// Meme forme que ListingCalendar, deliberement : l agence ferme des dates et
+/// substitue un tarif de la meme facon qu un hote. Bornes : debut incluse, fin
+/// exclue.
+model VehicleCalendar {
+  id          String   @id @default(uuid())
+  vehicleId   String   @map("vehicle_id")
+  startDate   DateTime @map("start_date")
+  endDate     DateTime @map("end_date")
+  blocked     Boolean  @default(false)
+  pricePerDay Float?   @map("price_per_day")
+  note        String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([vehicleId, startDate, endDate])
+  @@map("vehicle_calendar")
+}
+
+model ServiceBooking {
+  id          String   @id @default(uuid())
+  providerId  String   @map("provider_id")
+  /// menage | location_voiture
+  type        String
+  /// Le sejour auquel la prestation se rattache. Renseigne pour une location de
+  /// voiture, qui n est proposee qu apres reservation du logement.
+  bookingId   String?  @map("booking_id")
+  /// Le logement concerne, pour une prestation de menage.
+  listingId   String?  @map("listing_id")
+  vehicleId   String?  @map("vehicle_id")
+  /// Voyageur ou hote selon le metier.
+  requesterId String   @map("requester_id")
+  startDate   DateTime @map("start_date")
+  endDate     DateTime @map("end_date")
+  price       Float
+  currency    String   @default("TND")
+  /// pending | confirmed | cancelled | completed
+  status      String   @default("pending")
+  /// Les coordonnees ne s echangent qu apres acceptation, comme pour le sejour.
+  contactSharedAt DateTime? @map("contact_shared_at")
+  cancelledAt DateTime? @map("cancelled_at")
+  cancelledBy String?   @map("cancelled_by")
+  note        String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  provider  ServiceProvider @relation(fields: [providerId], references: [id])
+  vehicle   Vehicle?        @relation(fields: [vehicleId], references: [id])
+  requester User            @relation("ServiceRequests", fields: [requesterId], references: [id])
+  review    ServiceReview?
+
+  @@index([providerId])
+  @@index([requesterId])
+  @@index([bookingId])
+  @@index([status])
+  @@map("service_bookings")
+}
+
+/// Notation MUTUELLE : le prestataire note aussi son client. Un hote qui laisse
+/// un logement dans un etat impraticable doit etre visible, sans quoi seuls les
+/// prestataires portent le risque de la relation.
+model ServiceReview {
+  id               String   @id @default(uuid())
+  serviceBookingId String   @unique @map("service_booking_id")
+  providerId       String   @map("provider_id")
+  authorId         String   @map("author_id")
+  /// client_vers_prestataire | prestataire_vers_client
+  direction        String
+  rating           Int
+  comment          String?
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  serviceBooking ServiceBooking  @relation(fields: [serviceBookingId], references: [id], onDelete: Cascade)
+  provider       ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId])
+  @@index([authorId])
+  @@map("service_reviews")
 }

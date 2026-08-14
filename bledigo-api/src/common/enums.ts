@@ -8,6 +8,28 @@ export enum UserRole {
   admin = 'admin',
   agent = 'agent',
   support = 'support',
+  /**
+   * Prestataire de services : menage/entretien ou location de voiture.
+   *
+   * A ne pas confondre avec `agency`, qui designe une agence immobiliere gerant
+   * des logements pour des proprietaires. Un prestataire ne publie pas
+   * d annonce, il rend un service autour du sejour.
+   */
+  provider = 'provider',
+}
+
+/** Metiers ouverts a un compte prestataire. */
+export enum ProviderType {
+  menage = 'menage',
+  location_voiture = 'location_voiture',
+}
+
+/** Cycle de vie d un compte prestataire. */
+export enum ProviderStatus {
+  /** Cree, statut d agence pas encore constate par l administration. */
+  pending = 'pending',
+  active = 'active',
+  suspended = 'suspended',
 }
 
 export enum UserStatus {

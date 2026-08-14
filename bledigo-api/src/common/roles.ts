@@ -40,11 +40,24 @@ export function hasAnyRole(
   return roles.some((r) => owned.includes(r));
 }
 
-/** Roles qu un utilisateur peut s attribuer lui-meme, sans validation admin. */
+/**
+ * Roles qu un utilisateur peut s attribuer lui-meme, sans validation admin.
+ *
+ * `provider` en est volontairement absent : un compte prestataire n existe
+ * qu apres constatation du statut d agence par l administration. C est la seule
+ * verification disponible tant que l abonnement et le controle automatique ne
+ * sont pas en place.
+ */
 export const SELF_ASSIGNABLE_ROLES: string[] = [UserRole.traveler, UserRole.owner];
 
 /** Modes d interface exposes au front. */
 export function availableModes(user: { role?: string; secondaryRoles?: unknown } | null): string[] {
   const roles = effectiveRoles(user);
-  return roles.filter((r) => r === UserRole.traveler || r === UserRole.owner || r === UserRole.agency);
+  return roles.filter(
+    (r) =>
+      r === UserRole.traveler ||
+      r === UserRole.owner ||
+      r === UserRole.agency ||
+      r === UserRole.provider,
+  );
 }
