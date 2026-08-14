@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ServicesModule } from './services/services.module';
 import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { PrismaModule } from './prisma/prisma.module';
@@ -44,6 +45,7 @@ import { InsuranceModule } from './insurance/insurance.module';
     MediaModule,
     SubscriptionsModule,
     InsuranceModule,
+    ServicesModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

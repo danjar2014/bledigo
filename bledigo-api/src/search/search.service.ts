@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CalendarService } from '../listings/calendar.service';
 import { ListingStatus } from '../common/enums';
 import { filterByAmenities } from '../common/amenities';
+import { distanceKm } from '../common/geo';
 
 /** Au-dela d une semaine on quitte le court sejour, au-dela d un mois le moyen. */
 const SEUIL_MOYEN_NUITS = 7;
@@ -38,15 +39,8 @@ export class SearchService {
     private readonly calendar: CalendarService,
   ) {}
 
-  private distanceKm(lat1: number, lon1: number, lat2: number, lon2: number) {
-    const R = 6371;
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLon = ((lon2 - lon1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
-    return 2 * R * Math.asin(Math.sqrt(a));
-  }
+  /** Le calcul vit dans common/geo : trois endroits en avaient besoin. */
+  private distanceKm = distanceKm;
 
   async search(q: {
     q?: string;

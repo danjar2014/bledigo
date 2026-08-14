@@ -133,6 +133,20 @@ visiteur reste prioritaire et écrase cet ordre.
 déjà au-delà. Une sanction qu'on découvre après coup n'est pas une sanction,
 c'est une surprise — et elle est inopposable.
 
+**Un compte prestataire ne s'attribue pas, il se constate.** `provider` est
+volontairement hors de `SELF_ASSIGNABLE_ROLES` : en phase 1, l'administration
+crée le compte après avoir constaté le statut d'agence, et le mot de passe
+initial n'est affiché **qu'une fois**. Ce détour existe parce que ni l'envoi
+d'email ni la réinitialisation ne sont branchés — d'où `regenererMotDePasse`,
+seule voie de récupération. La phase 2 (abonnement, vérification automatique)
+remplacera la porte d'entrée sans toucher au modèle. Un compte `pending` peut
+se connecter mais ne peut rien publier.
+
+**Ne pas transposer `refusal-guard` aux prestataires.** Toute sa logique repose
+sur l'idée que le duo qui se répète est suspect. Pour un prestataire, **le duo
+qui se répète est le cas sain** — un hôte fidèle à sa femme de ménage. Copier ce
+modèle signalerait tous les prestataires honnêtes.
+
 **Anti-collusion centré sur l'acteur, pas sur le duo.** Un hôte qui organise des
 refus pour échapper à la commission change de complice : modéliser
 l'affinité de paire passerait à côté. `src/bookings/refusal-guard.service.ts`
