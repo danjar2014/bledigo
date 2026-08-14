@@ -8,9 +8,10 @@ import { UserRole, ProviderType } from '../common/enums';
 import { ProvidersService } from './providers.service';
 import { VehiclesService } from './vehicles.service';
 import { ServiceBookingsService } from './service-bookings.service';
+import { ServiceReviewsService } from './reviews.service';
 import {
   CreateProviderDto, UpdateProviderDto, VehicleDto, UpdateVehicleDto, VehiclePeriodDto,
-  DemandeServiceDto,
+  DemandeServiceDto, NoterPrestationDto,
 } from './dto';
 
 /**
@@ -146,6 +147,7 @@ export class ServicesController {
     private readonly providers: ProvidersService,
     private readonly vehicles: VehiclesService,
     private readonly demandes: ServiceBookingsService,
+    private readonly avis: ServiceReviewsService,
   ) {}
 
   @Get('voitures/pour-sejour/:bookingId')
@@ -186,5 +188,24 @@ export class ServicesController {
   @Post('mes-commandes/:id/annuler')
   annuler(@CurrentUser('id') me: string, @Param('id') id: string) {
     return this.demandes.annuler(me, id);
+  }
+
+  @Post('prestations/:id/avis')
+  @ApiOperation({
+    summary:
+      'Noter une prestation terminee. Le sens de l avis se deduit de qui appelle : le client note le prestataire, le prestataire note son client.',
+  })
+  noter(
+    @CurrentUser('id') me: string,
+    @Param('id') id: string,
+    @Body() dto: NoterPrestationDto,
+  ) {
+    return this.avis.noter(me, id, dto.rating, dto.comment);
+  }
+
+  @Get('prestataires/:id/avis')
+  @ApiOperation({ summary: 'Avis publics d un prestataire : uniquement ceux de ses clients' })
+  avisPrestataire(@Param('id') id: string) {
+    return this.avis.avisDuPrestataire(id);
   }
 }

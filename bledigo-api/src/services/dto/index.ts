@@ -64,6 +64,17 @@ export class VehiclePeriodDto {
   @IsOptional() @IsString() @MaxLength(200) note?: string;
 }
 
+/**
+ * Avis sur une prestation terminee.
+ *
+ * Le sens n est PAS un champ du corps : il se deduit de qui appelle. Le laisser
+ * choisir permettrait a un prestataire de deposer un avis au nom de son client.
+ */
+export class NoterPrestationDto {
+  @IsInt() @Min(1) @Max(5) @Type(() => Number) rating: number;
+  @IsOptional() @IsString() @MaxLength(1000) comment?: string;
+}
+
 /** Demande de prestation, cote voyageur ou cote hote. */
 export class DemandeServiceDto {
   @IsOptional() @IsString() vehicleId?: string;
