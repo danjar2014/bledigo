@@ -37,6 +37,24 @@ export class BookingsController {
     return this.bookingsService.cancel(me, id);
   }
 
+  @Post(':id/arrivee')
+  @ApiOperation({
+    summary:
+      'Declaration d arrivee (voyageur) : second signal, sans lequel une absence ne peut pas etre etablie',
+  })
+  arrivee(@CurrentUser('id') me: string, @Param('id') id: string) {
+    return this.bookingsService.confirmerArrivee(me, id);
+  }
+
+  @Post(':id/absence')
+  @ApiOperation({
+    summary:
+      'Declaration d absence (proprietaire) : possible apres le delai de grace, sans effet si le voyageur a declare son arrivee',
+  })
+  absence(@CurrentUser('id') me: string, @Param('id') id: string) {
+    return this.bookingsService.declarerNoShow(me, id);
+  }
+
   @Post(':id/check-in')
   @ApiOperation({ summary: 'Check-in (proprietaire) : ouvre la fenetre de validation de 30 min' })
   checkIn(@CurrentUser('id') me: string, @Param('id') id: string) {

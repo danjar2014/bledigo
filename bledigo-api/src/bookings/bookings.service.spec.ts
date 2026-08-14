@@ -35,6 +35,7 @@ describe('BookingsService - statut a la creation', () => {
       {} as any,
       calendar as any,
       {} as any,
+      {} as any,
     );
     return { service, create };
   }

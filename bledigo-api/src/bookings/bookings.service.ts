@@ -11,6 +11,7 @@ import {
 import { CreateBookingDto, ValidateBookingDto, RefuseBookingDto } from './dto';
 import { AntiFraudService } from '../anti-fraud/anti-fraud.service';
 import { RefusalGuardService } from './refusal-guard.service';
+import { NoShowGuardService } from './no-show-guard.service';
 import { CalendarService } from '../listings/calendar.service';
 import { ScoringService } from '../ai/scoring.service';
 import { toDbJson } from '../common/json';
@@ -29,6 +30,7 @@ export class BookingsService {
     private readonly refusalGuard: RefusalGuardService,
     private readonly calendar: CalendarService,
     private readonly scoring: ScoringService,
+    private readonly noShowGuard: NoShowGuardService,
   ) {}
 
   async create(travelerId: string, dto: CreateBookingDto) {
@@ -196,6 +198,20 @@ export class BookingsService {
         : null,
       /** L interface adapte son vocabulaire et ses boutons a partir de ceci. */
       paiementEnLigne: paiementEnLigne(),
+      /**
+       * Conditions d annulation, servies AVANT toute annulation.
+       *
+       * Une sanction non annoncee est arbitraire : le voyageur doit pouvoir
+       * lire ce qui lui sera oppose au moment ou il decide, pas apres.
+       */
+      annulation: {
+        delaiJours: booking.listing?.cancellationDeadlineDays ?? null,
+        libreJusquA: this.limiteAnnulation(booking.listing?.cancellationDeadlineDays, booking.checkIn),
+        tardiveMaintenant: (() => {
+          const l = this.limiteAnnulation(booking.listing?.cancellationDeadlineDays, booking.checkIn);
+          return l != null && new Date() > l;
+        })(),
+      },
     };
   }
 
@@ -232,18 +248,146 @@ export class BookingsService {
     });
   }
 
+  /**
+   * Date jusqu a laquelle l annulation reste libre. `null` = libre jusqu au
+   * bout, ce qui reste le defaut d une annonce qui n a rien declare.
+   */
+  private limiteAnnulation(delaiJours: number | null | undefined, checkIn: Date) {
+    if (delaiJours == null) return null;
+    return new Date(new Date(checkIn).getTime() - delaiJours * 24 * 60 * 60 * 1000);
+  }
+
   async cancel(userId: string, id: string) {
     const booking = await this.prisma.booking.findFirst({
       where: { id, OR: [{ travelerId: userId }, { ownerId: userId }] },
+      include: { listing: true },
     });
     if (!booking) throw new NotFoundException('Reservation non trouvee');
     if ([BookingStatus.completed, BookingStatus.disputed].includes(booking.status as BookingStatus)) {
       throw new BadRequestException('Reservation non annulable a ce stade');
     }
-    return this.prisma.booking.update({
+
+    // L annulation n est jamais refusee : bloquer quelqu un dans un sejour qu il
+    // ne fera pas n arrange personne, et libere d autant plus tard les dates.
+    // Elle est en revanche datee, attribuee, et qualifiee de tardive ou non.
+    const limite = this.limiteAnnulation(booking.listing?.cancellationDeadlineDays, booking.checkIn);
+    const tardive = limite != null && new Date() > limite;
+    const parLeVoyageur = booking.travelerId === userId;
+
+    const annulee = await this.prisma.booking.update({
       where: { id },
-      data: { status: BookingStatus.cancelled },
+      data: { status: BookingStatus.cancelled, cancelledAt: new Date(), cancelledBy: userId },
     });
+
+    // Les dates se liberent d elles-memes : une reservation annulee est exclue
+    // du test de chevauchement. Rien a republier.
+    await this.prisma.auditLog.create({
+      data: {
+        userId,
+        action: tardive ? 'booking.annulation_tardive' : 'booking.annulation',
+        entityType: 'booking',
+        entityId: id,
+        details: toDbJson({
+          parLeVoyageur,
+          limite,
+          delaiJours: booking.listing?.cancellationDeadlineDays ?? null,
+        }),
+        ipAddress: 'system',
+        userAgent: 'system',
+      },
+    });
+
+    return { ...annulee, tardive, limiteAnnulation: limite };
+  }
+
+  /**
+   * Le voyageur declare son arrivee.
+   *
+   * C est le signal qui manquait. Le check-in etant declenche par l hote, son
+   * absence ne prouve rien contre le voyageur : sans cette declaration, une
+   * sanction reposerait sur la seule parole de celui qui a interet a liberer
+   * ses dates.
+   */
+  async confirmerArrivee(travelerId: string, bookingId: string) {
+    const booking = await this.prisma.booking.findFirst({ where: { id: bookingId, travelerId } });
+    if (!booking) throw new NotFoundException('Reservation non trouvee');
+    if (booking.arrivalConfirmedAt) return booking;
+
+    // Une reservation annulee PAR une declaration d absence reste contestable :
+    // c est meme le seul moyen pour le voyageur d opposer sa parole a celle de
+    // l hote. La fermer ici reviendrait a donner raison au premier qui parle.
+    const contestationDAbsence = booking.noShowDeclaredAt != null;
+    if (
+      !contestationDAbsence &&
+      [BookingStatus.cancelled, BookingStatus.completed].includes(booking.status as BookingStatus)
+    ) {
+      throw new BadRequestException('Reservation close');
+    }
+    // Declarer son arrivee la veille n aurait aucune valeur de preuve.
+    if (new Date() < new Date(booking.checkIn)) {
+      throw new BadRequestException('Arrivee declarable a partir de la date d arrivee');
+    }
+
+    const majour = await this.prisma.booking.update({
+      where: { id: bookingId },
+      data: { arrivalConfirmedAt: new Date() },
+    });
+
+    // La contestation change le verdict : l absence n est plus etablie, les
+    // deux paroles se contredisent. Les sanctions deja appliquees ne sont pas
+    // levees ici — c est un acte d administration, volontairement humain.
+    if (contestationDAbsence) await this.noShowGuard.evaluer(bookingId);
+
+    return majour;
+  }
+
+  /**
+   * L hote declare que le voyageur ne s est pas presente.
+   *
+   * Possible seulement une fois le delai de grace ecoule : un avion en retard
+   * ou une route coupee ne font pas un voyageur de mauvaise foi. Si le voyageur
+   * a declare son arrivee, les deux paroles se contredisent — la declaration
+   * est enregistree et comptee contre l hote, mais personne n est sanctionne.
+   */
+  async declarerNoShow(ownerId: string, bookingId: string) {
+    const booking = await this.prisma.booking.findFirst({ where: { id: bookingId, ownerId } });
+    if (!booking) throw new NotFoundException('Reservation non trouvee');
+    if (booking.noShowDeclaredAt) throw new BadRequestException('Absence deja declaree');
+    if (
+      [BookingStatus.cancelled, BookingStatus.completed].includes(booking.status as BookingStatus)
+    ) {
+      throw new BadRequestException('Reservation close');
+    }
+
+    const finGrace = NoShowGuardService.finDuDelaiDeGrace(booking.checkIn);
+    if (new Date() < finGrace) {
+      throw new BadRequestException(
+        `Absence declarable a partir du ${finGrace.toISOString().slice(0, 16).replace('T', ' ')}, le voyageur disposant d un delai apres l heure d arrivee`,
+      );
+    }
+
+    await this.prisma.booking.update({
+      where: { id: bookingId },
+      data: { noShowDeclaredAt: new Date(), noShowDeclaredBy: ownerId },
+    });
+
+    const verdict = await this.noShowGuard.evaluer(bookingId);
+
+    // Absence etablie : la reservation tombe et les dates se liberent. En cas
+    // de contradiction on ne touche a rien — le voyageur affirme etre la, et
+    // rien ne permet de trancher a sa place.
+    if (verdict.etabli) {
+      await this.prisma.booking.update({
+        where: { id: bookingId },
+        data: { status: BookingStatus.cancelled, cancelledAt: new Date(), cancelledBy: ownerId },
+      });
+    }
+
+    return {
+      etabli: verdict.etabli,
+      contradiction: verdict.contradiction,
+      sanctions: verdict.sanctions.length,
+    };
   }
 
   /** Check-in declenche par le proprietaire : ouvre la fenetre de validation de 30 min */

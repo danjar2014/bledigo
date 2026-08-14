@@ -143,8 +143,15 @@ export class NotificationFeedService {
 
       // Un refus n est pas une annulation ordinaire : cote proprietaire c est
       // un signal a traiter, pas une simple information.
+      // Une absence declaree n est pas une annulation ordinaire non plus : elle
+      // se retourne contre le voyageur, qui doit donc l apprendre explicitement
+      // et savoir ce qu elle lui coute. Une sanction qu on decouvre en se
+      // faisant bloquer n est pas une sanction, c est une surprise.
+      const absence = !!b.noShowDeclaredAt;
+
       let title: string;
       if (refuse) title = cotePropio ? 'Logement refuse a l arrivee' : 'Sejour refuse, aucun debit';
+      else if (absence) title = cotePropio ? 'Absence declaree' : 'Absence signalee a l arrivee';
       else if (annulee) title = 'Reservation annulee';
       else title = cotePropio ? 'Reservation a venir' : 'Reservation confirmee';
 
@@ -157,7 +164,11 @@ export class NotificationFeedService {
           ? `${b.listing?.title ?? 'Votre logement'} a ete refuse a l arrivee : reservation annulee, paiement rendu. Le motif vous est communique. Chaque refus est controle — au deuxieme, le compte est suspendu le temps d une verification.`
           : refuse
             ? `${b.listing?.title ?? 'Le sejour'} a ete refuse : vous n avez pas ete debite.`
-            : `${b.listing?.title ?? 'Le sejour'} — arrivee le ${this.date(b.checkIn)}.`,
+            : absence && cotePropio
+              ? `Vous avez declare l absence du voyageur pour ${b.listing?.title ?? 'votre logement'}. Les dates sont liberees. Chaque declaration est comptee : un taux eleve rapporte a vos sejours aboutis declenche une verification.`
+              : absence
+                ? `L hote a declare que vous ne vous etes pas presente pour ${b.listing?.title ?? 'ce sejour'}. Si vous etiez sur place, declarez votre arrivee : votre parole vaut la sienne et aucune sanction n est prise en cas de contradiction. Sans reponse, une seconde absence entraine la suspension de votre compte.`
+                : `${b.listing?.title ?? 'Le sejour'} — arrivee le ${this.date(b.checkIn)}.`,
         link: `/reservations#${b.id}`,
         // Un refus n est pas une simple information pour l hote : il doit
         // corriger son annonce ou contester, sous peine de recidive.

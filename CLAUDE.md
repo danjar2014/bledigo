@@ -108,6 +108,31 @@ création, donc **toute** demande s'acceptait seule. En paiement direct il n'y a
 plus rien à bloquer — la route n'est plus appelée, et elle ne confirme plus
 rien.
 
+**Une absence à l'arrivée exige deux signaux qui ne viennent pas de la même
+main.** Sans paiement en ligne, la seule sanction possible porte sur le compte
+du voyageur — elle ne peut donc pas reposer sur la parole de l'hôte, qui a
+intérêt à libérer ses dates, ni sur l'absence de check-in, que l'hôte seul
+déclenche. Le voyageur déclare son arrivée (`POST /bookings/:id/arrivee`),
+l'hôte déclare l'absence (`POST /bookings/:id/absence`) et seulement après un
+délai de grâce de 24 h. Les deux se contredisent : aucune sanction, la
+déclaration de l'hôte est comptée contre lui. Une absence déjà établie reste
+contestable — fermer la réservation donnerait raison au premier qui parle. Les
+sanctions déjà appliquées ne se lèvent qu'en administration, volontairement à
+la main. Voir `src/bookings/no-show-guard.service.ts`, qui reprend la forme de
+`refusal-guard` : acteur récurrent, taux rapporté aux séjours aboutis, fenêtre
+de 180 jours.
+
+**Le profil de location ordonne, il n'exclut jamais.** Un hôte qui vise la
+longue durée n'a pas refusé les séjours courts, il a exprimé une préférence :
+`profilAdapte` remonte les annonces faites pour la durée demandée et signale la
+correspondance, sans retirer personne des résultats. Un tri explicite du
+visiteur reste prioritaire et écrase cet ordre.
+
+**Les conditions d'annulation sont servies avant l'annulation.** Le bloc
+`annulation` de chaque réservation dit le délai, la date limite et si l'on est
+déjà au-delà. Une sanction qu'on découvre après coup n'est pas une sanction,
+c'est une surprise — et elle est inopposable.
+
 **Anti-collusion centré sur l'acteur, pas sur le duo.** Un hôte qui organise des
 refus pour échapper à la commission change de complice : modéliser
 l'affinité de paire passerait à côté. `src/bookings/refusal-guard.service.ts`
@@ -206,57 +231,9 @@ le code existant, pour que la mise en œuvre ne les redécouvre pas.
       `calendar.tarifer` — une extension peut mordre sur une période
       saisonnière au tarif différent.
 
-- [ ] **Horizon de réservation : bloquer au-delà de X jours.** À distinguer de
-      `maxNights`, qui borne la *durée* d'un séjour, pas la *distance* à
-      laquelle on peut réserver. `ListingCalendar` ne sait exprimer que des
-      périodes fixes : un horizon glissant demande un champ sur `Listing`, pas
-      une ligne de calendrier qu'il faudrait recalculer chaque jour.
-
-- [ ] **Visibilité selon le profil de location choisi par l'hôte** : longue
-      durée, ou quelques semaines / mois. Touche la recherche, qui est adossée
-      au calendrier — un profil « longue durée » ne doit pas disparaître des
-      résultats d'une recherche courte, mais s'y présenter autrement.
-
-- [ ] **Canal de contact choisi par l'hôte : WhatsApp ou téléphone.** Le bloc
-      de coordonnées existe déjà (`avecContact`), il n'expose qu'un numéro et
-      un email. Rien à inventer côté révélation : la règle reste que rien ne
-      sort avant acceptation.
-
-- [ ] **Les alertes de la cloche ne mènent nulle part de précis.**
-      `feed.service.ts:130` et `:158` renvoient `/reservations` en dur, alors
-      que les offres de recherche inversée savent pointer l'événement
-      (`/besoins/{id}/offres`). Il manque soit une ancre sur la réservation
-      concernée, soit une page de détail.
-
 - [ ] **Majoration si le séjour est raccourci.** Optionnelle, à la main de
       l'hôte. Exigible seulement quand `PAIEMENT_EN_LIGNE=true` : sans
       encaissement, une majoration n'est qu'une phrase.
-
-- [ ] **Date limite d'annulation, no-show et sanction du voyageur.** Le plus
-      délicat, parce que sans paiement il n'existe aucun levier financier.
-
-      Ce qui marche déjà : une réservation `cancelled` est exclue du test de
-      chevauchement, les dates se relibèrent donc d'elles-mêmes. Reste à
-      prévenir l'hôte.
-
-      Le seul levier disponible est le compte du voyageur : `UserStatus`
-      (`watched`, `limited`, `suspended`) et le modèle `Sanction` existent
-      déjà. La forme à reprendre est celle de `refusal-guard.service.ts` — un
-      taux rapporté aux séjours aboutis, sur une fenêtre glissante, centré sur
-      l'acteur — plutôt qu'un second mécanisme parallèle.
-
-      Deux conditions non négociables :
-
-      1. **Le voyageur doit être prévenu avant**, à la réservation puis à
-         l'annulation. Une sanction non annoncée est arbitraire, et
-         inopposable.
-      2. **Une absence de check-in ne prouve pas un no-show.** `checkIn` est
-         déclenché par l'hôte (`bookings.service.ts:197`) : un séjour sans
-         check-in peut tout aussi bien être un hôte qui n'a pas appuyé sur le
-         bouton. Sanctionner automatiquement là-dessus punit le voyageur pour
-         l'inaction de l'hôte. Il faut un signal des deux côtés, ou une
-         déclaration de l'hôte qui compte elle-même dans son propre score —
-         exactement comme ses refus.
 
 ---
 

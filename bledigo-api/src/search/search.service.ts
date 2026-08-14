@@ -4,6 +4,29 @@ import { CalendarService } from '../listings/calendar.service';
 import { ListingStatus } from '../common/enums';
 import { filterByAmenities } from '../common/amenities';
 
+/** Au-dela d une semaine on quitte le court sejour, au-dela d un mois le moyen. */
+const SEUIL_MOYEN_NUITS = 7;
+const SEUIL_LONG_NUITS = 30;
+
+/** Profil que la duree demandee appelle naturellement. */
+export function profilAttendu(nuits: number): 'court' | 'moyen' | 'long' {
+  if (nuits <= SEUIL_MOYEN_NUITS) return 'court';
+  if (nuits <= SEUIL_LONG_NUITS) return 'moyen';
+  return 'long';
+}
+
+/**
+ * Le profil de l annonce correspond-il a la duree demandee ?
+ *
+ * Sert a ORDONNER et a signaler, jamais a exclure : un hote qui vise la longue
+ * duree n a pas refuse les sejours courts, il a exprime une preference. Le
+ * faire disparaitre d une recherche de trois nuits priverait le voyageur d une
+ * offre disponible et l hote d une reservation qu il aurait acceptee.
+ */
+export function profilAdapte(profilAnnonce: string | null | undefined, nuits: number) {
+  return (profilAnnonce || 'court') === profilAttendu(nuits);
+}
+
 /**
  * Recherche full-text + geo. En prod : Elasticsearch (voir ELASTICSEARCH_URL).
  * En local : requetes Prisma + filtre distance calcule en memoire (Haversine).
@@ -100,6 +123,24 @@ export class SearchService {
         new Date(q.checkOut),
       );
       results = results.filter((l: any) => !indisponibles.has(l.id));
+
+      // Profil de location : on signale la correspondance et on remonte les
+      // annonces faites pour cette duree. Aucune n est retiree — voir
+      // profilAdapte pour le pourquoi.
+      const nuits = Math.max(
+        1,
+        Math.round((+new Date(q.checkOut) - +new Date(q.checkIn)) / 86400000),
+      );
+      results = results.map((l: any) => ({
+        ...l,
+        profilAdapte: profilAdapte(l.rentalProfile, nuits),
+        profilAttendu: profilAttendu(nuits),
+      }));
+      // Le tri explicite du visiteur reste prioritaire : il n est applique
+      // qu ensuite, et ecrase alors volontairement cet ordre.
+      if (!q.sortBy) {
+        results.sort((a: any, b: any) => Number(b.profilAdapte) - Number(a.profilAdapte));
+      }
     }
 
     // Tri demande par l utilisateur
