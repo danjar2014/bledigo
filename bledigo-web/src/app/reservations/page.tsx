@@ -8,6 +8,7 @@ import { CalendarDays, Users, Lock, ShieldCheck, Star } from 'lucide-react';
 import { api } from '@/lib/api';
 import RequireAuth from '@/components/RequireAuth';
 import ValidationModal from '@/components/ValidationModal';
+import CarOffers from '@/components/CarOffers';
 import ReviewModal from '@/components/ReviewModal';
 import { Spinner, ErrorBox, Empty } from '@/components/ui';
 import { date, photoOf, BOOKING_STATUS } from '@/lib/format';
@@ -168,6 +169,10 @@ function Reservations() {
                         </p>
                       </div>
                     )}
+
+                    {/* La location n est proposee qu une fois le sejour accepte :
+                        avant, le voyage n est pas certain. */}
+                    {['confirmed', 'checked_in'].includes(b.status) && <CarOffers booking={b} />}
 
                     {b.status === 'confirmed' && b.paiementEnLigne && (
                       <p className="text-xs text-slate mt-3">

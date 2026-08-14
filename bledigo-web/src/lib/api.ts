@@ -375,6 +375,98 @@ export const api = {
     }),
   users: (params: Record<string, any> = {}) =>
     request<any>(`/api/v1/users?${new URLSearchParams(clean(params))}`),
+
+  // ------------------------------------------------------------- Prestataires
+  //
+  // Espace du prestataire connecte. Le compte est cree par l administration
+  // apres constatation du statut d agence : il n existe aucune inscription
+  // libre a appeler ici.
+  providerMe: () => request<any>('/api/v1/prestataire/moi', { auth: true }),
+  providerUpdate: (dto: any) =>
+    request<any>('/api/v1/prestataire/moi', { method: 'PATCH', auth: true, body: body(dto) }),
+  providerFleet: () => request<any[]>('/api/v1/prestataire/vehicules', { auth: true }),
+  providerAddVehicle: (dto: any) =>
+    request<any>('/api/v1/prestataire/vehicules', { method: 'POST', auth: true, body: body(dto) }),
+  providerUpdateVehicle: (id: string, dto: any) =>
+    request<any>(`/api/v1/prestataire/vehicules/${id}`, {
+      method: 'PATCH',
+      auth: true,
+      body: body(dto),
+    }),
+  providerRemoveVehicle: (id: string) =>
+    request<any>(`/api/v1/prestataire/vehicules/${id}`, { method: 'DELETE', auth: true }),
+  providerVehicleCalendar: (id: string) =>
+    request<any[]>(`/api/v1/prestataire/vehicules/${id}/calendrier`, { auth: true }),
+  providerAddPeriod: (id: string, dto: any) =>
+    request<any>(`/api/v1/prestataire/vehicules/${id}/calendrier`, {
+      method: 'POST',
+      auth: true,
+      body: body(dto),
+    }),
+  providerRemovePeriod: (id: string, periodeId: string) =>
+    request<any>(`/api/v1/prestataire/vehicules/${id}/calendrier/${periodeId}`, {
+      method: 'DELETE',
+      auth: true,
+    }),
+  providerRequests: () => request<any[]>('/api/v1/prestataire/demandes', { auth: true }),
+  providerAccept: (id: string) =>
+    request<any>(`/api/v1/prestataire/demandes/${id}/accepter`, { method: 'POST', auth: true }),
+  providerRefuse: (id: string, motif?: string) =>
+    request<any>(`/api/v1/prestataire/demandes/${id}/refuser`, {
+      method: 'POST',
+      auth: true,
+      body: body({ motif }),
+    }),
+
+  // ----------------------------------------------------------------- Services
+  /** Vehicules proposables pour un sejour deja accepte. */
+  carsForBooking: (bookingId: string) =>
+    request<any>(`/api/v1/services/voitures/pour-sejour/${bookingId}`, { auth: true }),
+  requestCar: (bookingId: string, dto: any) =>
+    request<any>(`/api/v1/services/voitures/pour-sejour/${bookingId}`, {
+      method: 'POST',
+      auth: true,
+      body: body(dto),
+    }),
+  cleanersNear: (listingId: string) =>
+    request<any[]>(`/api/v1/services/menage/autour-de/${listingId}`, { auth: true }),
+  requestCleaning: (listingId: string, dto: any) =>
+    request<any>(`/api/v1/services/menage/${listingId}`, {
+      method: 'POST',
+      auth: true,
+      body: body(dto),
+    }),
+  myServiceOrders: () => request<any[]>('/api/v1/services/mes-commandes', { auth: true }),
+  cancelServiceOrder: (id: string) =>
+    request<any>(`/api/v1/services/mes-commandes/${id}/annuler`, { method: 'POST', auth: true }),
+  /** Le sens de l avis se deduit de l appelant, il ne se choisit pas. */
+  rateService: (id: string, rating: number, comment?: string) =>
+    request<any>(`/api/v1/services/prestations/${id}/avis`, {
+      method: 'POST',
+      auth: true,
+      body: body({ rating, comment }),
+    }),
+  providerReviews: (providerId: string) =>
+    request<any[]>(`/api/v1/services/prestataires/${providerId}/avis`, { auth: true }),
+
+  // ------------------------------------------------------- Administration
+  adminProviders: (params: Record<string, any> = {}) =>
+    request<any[]>(`/api/v1/admin/prestataires?${new URLSearchParams(clean(params))}`, {
+      auth: true,
+    }),
+  /** Renvoie les identifiants une seule fois : ils ne sont plus recuperables ensuite. */
+  adminCreateProvider: (dto: any) =>
+    request<any>('/api/v1/admin/prestataires', { method: 'POST', auth: true, body: body(dto) }),
+  adminVerifyProvider: (id: string) =>
+    request<any>(`/api/v1/admin/prestataires/${id}/verifier`, { method: 'POST', auth: true }),
+  adminSuspendProvider: (id: string, motif?: string) =>
+    request<any>(`/api/v1/admin/prestataires/${id}/suspendre`, {
+      method: 'POST',
+      auth: true,
+      body: body({ motif }),
+    }),
+  adminResetProviderPassword: (id: string) =>
+    request<any>(`/api/v1/admin/prestataires/${id}/mot-de-passe`, { method: 'POST', auth: true }),
 };
 
 function clean(params: Record<string, any>) {

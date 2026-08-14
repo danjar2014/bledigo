@@ -11,6 +11,7 @@ import NotificationBell from '@/components/NotificationBell';
 import {
   Shield,
   LogOut,
+  Briefcase,
   LayoutDashboard,
   CalendarCheck,
   Home,
@@ -38,6 +39,16 @@ const NAV_BY_MODE = {
 /** Liens reserves au back-office, independants du mode. */
 const ADMIN_ROLES = ['admin', 'support', 'agent'];
 
+/**
+ * Le prestataire n a pas de « mode » : ni voyageur ni hote, il ne reserve rien
+ * et ne publie pas de logement. Son lien suit donc la meme regle que celui de
+ * l administration — attache au role, independant du mode.
+ */
+function estPrestataire(user: { role?: string; roles?: string[] } | null) {
+  if (!user) return false;
+  return (user.roles ?? (user.role ? [user.role] : [])).includes('provider');
+}
+
 export default function Header() {
   const { user, logout, loading } = useAuth();
   const t = usePreferences((s) => s.t);
@@ -46,8 +57,12 @@ export default function Header() {
 
   const available = modesOf(user);
   const effectiveMode = available.includes(mode) ? mode : available[0] ?? 'traveler';
-  const links = user ? NAV_BY_MODE[effectiveMode] : [];
+  // Un compte purement prestataire n a aucun mode disponible : lui servir la
+  // navigation voyageur par defaut l envoyait vers des ecrans qui ne le
+  // concernent pas.
+  const links = user && available.length ? NAV_BY_MODE[effectiveMode] : [];
   const isAdmin = user && ADMIN_ROLES.includes(user.role);
+  const isProvider = estPrestataire(user);
 
   return (
     <header className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-cloud">
@@ -89,6 +104,16 @@ export default function Header() {
                 {t(l.labelKey)}
               </Link>
             ))}
+
+          {isProvider && (
+            <Link
+              href="/prestataire"
+              className="hidden md:flex items-center gap-1.5 text-slate hover:text-bledi-blue px-2 py-1"
+            >
+              <Briefcase className="w-4 h-4" />
+              Mon espace
+            </Link>
+          )}
 
           {isAdmin && (
             <Link
