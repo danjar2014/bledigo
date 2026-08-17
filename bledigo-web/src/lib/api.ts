@@ -472,6 +472,82 @@ export const api = {
       body: body(dto),
     }),
   myServiceOrders: () => request<any[]>('/api/v1/services/mes-commandes', { auth: true }),
+
+  // --- negociation du tarif de menage ---
+  /** Le sens se deduit de l appelant, cote serveur : chaque camp garde sa colonne. */
+  counterServicePrice: (id: string, price: number, message?: string) =>
+    request<any>(`/api/v1/services/mes-commandes/${id}/contre-proposer`, {
+      method: 'POST',
+      auth: true,
+      body: body({ price, message }),
+    }),
+  acceptServicePrice: (id: string) =>
+    request<any>(`/api/v1/services/mes-commandes/${id}/accepter`, { method: 'POST', auth: true }),
+
+  // --- sinistres ---
+  serviceIncidents: (id: string) =>
+    request<any[]>(`/api/v1/services/mes-commandes/${id}/sinistres`, { auth: true }),
+  contestIncident: (id: string, motif: string) =>
+    request<any>(`/api/v1/services/sinistres/${id}/contester`, {
+      method: 'POST',
+      auth: true,
+      body: body({ motif }),
+    }),
+
+  // --- espace prestataire ---
+  /** Ce que le prestataire sait du demandeur AVANT d accepter. Sans coordonnees. */
+  providerClientProfile: (demandeId: string) =>
+    request<any>(`/api/v1/prestataire/demandes/${demandeId}/client`, { auth: true }),
+  providerCounterPrice: (demandeId: string, price: number, message?: string) =>
+    request<any>(`/api/v1/prestataire/demandes/${demandeId}/contre-proposer`, {
+      method: 'POST',
+      auth: true,
+      body: body({ price, message }),
+    }),
+  declareIncident: (demandeId: string, dto: any) =>
+    request<any>(`/api/v1/prestataire/demandes/${demandeId}/sinistre`, {
+      method: 'POST',
+      auth: true,
+      body: body(dto),
+    }),
+  withdrawIncident: (id: string) =>
+    request<any>(`/api/v1/prestataire/sinistres/${id}`, { method: 'DELETE', auth: true }),
+  addVehiclePhoto: (vehicleId: string, url: string, isPrimary?: boolean) =>
+    request<any>(`/api/v1/prestataire/vehicules/${vehicleId}/photos`, {
+      method: 'POST',
+      auth: true,
+      body: body({ url, isPrimary }),
+    }),
+  removeVehiclePhoto: (vehicleId: string, photoId: string) =>
+    request<any>(`/api/v1/prestataire/vehicules/${vehicleId}/photos/${photoId}`, {
+      method: 'DELETE',
+      auth: true,
+    }),
+
+  // --- envoi de fichiers ---
+  /**
+   * Demande une URL d envoi signee, puis televerse DIRECTEMENT vers le
+   * stockage : le fichier ne transite jamais par l API, qui tourne sur une
+   * instance gratuite.
+   */
+  uploadFile: async (file: File, dossier: string) => {
+    const { uploadUrl, publicUrl, simulated } = await request<any>('/api/v1/media/presign', {
+      method: 'POST',
+      auth: true,
+      body: body({ fileName: file.name, contentType: file.type, dossier }),
+    });
+    // En mode simule il n y a rien a televerser : le serveur a deja rendu une
+    // image de substitution, et appeler uploadUrl echouerait.
+    if (simulated) return publicUrl as string;
+
+    const envoi = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type },
+      body: file,
+    });
+    if (!envoi.ok) throw new Error("L envoi de l image a echoue");
+    return publicUrl as string;
+  },
   cancelServiceOrder: (id: string) =>
     request<any>(`/api/v1/services/mes-commandes/${id}/annuler`, { method: 'POST', auth: true }),
   /** Le sens de l avis se deduit de l appelant, il ne se choisit pas. */

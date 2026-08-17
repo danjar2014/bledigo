@@ -10,6 +10,7 @@ import AmenityPicker from '@/components/AmenityPicker';
 import HouseRulesPicker, { type RuleValue } from '@/components/HouseRulesPicker';
 import { PROPERTY_TYPES, PROXIMITY } from '@/lib/catalog';
 import AmenityIcon from '@/components/AmenityIcon';
+import PhotoUploader from '@/components/PhotoUploader';
 import LocalityPicker, { type Locality } from '@/components/LocalityPicker';
 import { useMoney } from '@/store/preferences';
 
@@ -131,8 +132,18 @@ function Formulaire() {
   const toggleProximity = (key: string) =>
     setProximity((p) => (p.includes(key) ? p.filter((x) => x !== key) : [...p, key]));
 
-  const addDemoPhoto = () =>
-    setPhotos((p) => [...p, `https://picsum.photos/seed/bledigo-${Date.now()}-${p.length}/1200/800`]);
+  /**
+   * Envoi reel, enfin.
+   *
+   * Ce bouton empilait des URL picsum : un hote qui croyait publier sa villa
+   * publiait l interieur de quelqu un d autre, et les annonces de production en
+   * portent encore les traces. Le stockage vit desormais chez Supabase, sur le
+   * meme projet que la base.
+   */
+  const ajouterPhoto = async (file: File) => {
+    const url = await api.uploadFile(file, 'logements');
+    setPhotos((p) => [...p, url]);
+  };
 
   const canSubmit =
     form.citySlug !== '' &&
@@ -477,43 +488,14 @@ function Formulaire() {
           {/* --- 5. Photos --- */}
           {step === 4 && (
             <div>
-              <div className="flex flex-wrap gap-3 items-center mb-3">
-                {photos.map((p, i) => (
-                  <div key={p} className="relative group">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p} alt="" className="w-32 h-24 object-cover rounded-bledi-sm" />
-                    {i === 0 && (
-                      <span className="absolute top-1 left-1 bg-bledi-blue text-white text-[10px] px-1.5 py-0.5 rounded">
-                        Principale
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setPhotos((ps) => ps.filter((x) => x !== p))}
-                      className="absolute top-1 right-1 bg-white/90 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                      aria-label="Retirer la photo"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={addDemoPhoto}
-                  className="flex items-center gap-2 border-2 border-dashed border-cloud text-slate px-4 py-6 rounded-bledi-sm hover:border-bledi-blue hover:text-bledi-blue"
-                >
-                  <ImagePlus className="w-4 h-4" />
-                  Ajouter une image de demonstration
-                </button>
-              </div>
-              {/* Dire ce que ce bouton fait vraiment. Il n envoie aucun fichier : il
-                  empile une image de stock aleatoire. Un hote qui croit avoir mis
-                  les photos de sa villa publie l interieur de quelqu un d autre. */}
-              <p className="text-xs text-red-700 bg-red-50 rounded p-2">
-                L envoi de vos propres photos n est pas encore disponible : ce bouton ajoute une
-                image de stock, le temps que le stockage soit raccorde. 3 images minimum, la
-                premiere sert de visuel principal.
-              </p>
+              <PhotoUploader
+                photos={photos.map((url) => ({ url }))}
+                dossier="logements"
+                max={12}
+                aide="3 photos minimum. La premiere sert de visuel principal. Montrez les pieces, pas seulement la facade."
+                onAdd={ajouterPhoto}
+                onRemove={(p: { url: string }) => setPhotos((ps) => ps.filter((x) => x !== p.url))}
+              />
 
               {/* Recapitulatif */}
               <div className="mt-6 border-t border-cloud pt-4">

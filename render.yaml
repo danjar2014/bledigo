@@ -138,6 +138,24 @@ services:
       # https://bledigo-web.onrender.com, que le CORS rejetterait.
       - key: FRONTEND_URL
         value: https://bledigo-web.onrender.com
+      # Stockage des photos, chez Supabase, sur le MEME projet que la base : ni
+      # compte a creer ni service tiers a payer. C est ce qui a rendu le
+      # raccordement possible sans decision d infrastructure.
+      #
+      # SUPABASE_SERVICE_KEY est la cle `service_role`, a saisir a la main dans
+      # Environment — comme toute variable `sync: false` ajoutee apres la
+      # creation du blueprint, elle ne sera JAMAIS provisionnee par un sync.
+      # Elle ne quitte jamais le serveur : le navigateur ne recoit qu une URL
+      # d envoi signee, valable une fois et dix minutes.
+      #
+      # Absentes = mode simule, l API demarre et rend des images de
+      # substitution. Le developpement local n a donc rien a configurer.
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_BUCKET
+        value: medias
       # Services externes : vides = mode simule, l API demarre sans eux
       - key: STRIPE_SECRET_KEY
         sync: false

@@ -13,6 +13,14 @@ import { coordonneesAutorisees } from '../common/mode-plateforme';
  * protege du demarchage — un annuaire qui donnerait les numeros a la simple
  * consultation ne serait qu une liste de contacts a aspirer.
  */
+
+/**
+ * Propositions de tarif admises sur une demande de menage, les deux camps
+ * confondus. Trois suffisent a converger : proposition, contre-proposition,
+ * dernier mot. Au-dela, ce n est plus une negociation mais une demande qui
+ * n aboutit pas, et le prestataire garde un creneau libre pour rien.
+ */
+const TOURS_DE_NEGOCIATION = 3;
 @Injectable()
 export class ServiceBookingsService {
   constructor(
@@ -134,6 +142,7 @@ export class ServiceBookingsService {
 
     const debut = new Date(dto.startDate);
     const fin = dto.endDate ? new Date(dto.endDate) : new Date(debut.getTime() + 2 * 60 * 60 * 1000);
+    if (fin <= debut) throw new BadRequestException('La fin du creneau doit suivre son debut');
 
     return this.prisma.serviceBooking.create({
       data: {
@@ -143,11 +152,71 @@ export class ServiceBookingsService {
         requesterId: ownerId,
         startDate: debut,
         endDate: fin,
-        // Le tarif d un menage se convient entre les parties : la plateforme
-        // n encaisse rien et n a aucune raison d imposer un prix.
+        // La plateforme n encaisse toujours rien : `price` reste a 0 tant que
+        // rien n est convenu, et l acceptation y recopie le montant retenu. Ce
+        // qui change, c est qu il y a desormais quelque chose a retenir.
         price: 0,
+        proposedPrice: dto.proposedPrice ?? null,
         currency: listing.currency,
+        // La ville et le gouvernorat viennent du LOGEMENT, jamais du corps de la
+        // requete : les accepter du client permettrait d annoncer une zone qui
+        // n est pas celle du bien, et de faire deplacer quelqu un pour rien. Le
+        // quartier, lui, n existe pas sur l annonce et se saisit.
+        city: listing.city,
+        region: listing.region,
+        district: dto.district ?? null,
+        addressHint: dto.addressHint ?? null,
         note: dto.note,
+      },
+    });
+  }
+
+  /**
+   * Contre-proposition de tarif.
+   *
+   * Les deux parties passent par ici, et le sens se deduit de l appelant comme
+   * pour les avis : le laisser choisir permettrait a un prestataire de repondre
+   * au nom de son client.
+   *
+   * `negotiationRound` borne les allers-retours. Sans borne, une demande reste
+   * ouverte indefiniment et le prestataire ne sait jamais s il doit garder le
+   * creneau libre.
+   */
+  async contreProposer(userId: string, id: string, price: number, message?: string) {
+    const demande = await this.prisma.serviceBooking.findFirst({
+      where: { id, OR: [{ requesterId: userId }, { provider: { userId } }] },
+      include: { provider: true },
+    });
+    if (!demande) throw new NotFoundException('Demande non trouvee');
+
+    if (demande.type !== ProviderType.menage) {
+      throw new BadRequestException(
+        'La negociation ne concerne que le menage : une location est tarifee par le calendrier du vehicule',
+      );
+    }
+    // Une demande acceptee ne se renegocie pas. C est le pendant du prix fige
+    // d une extension de sejour : ce qui a ete accepte l a ete a un montant, et
+    // le rouvrir permettrait d en changer les termes apres coup.
+    if (demande.status !== 'pending') {
+      throw new BadRequestException('Demande deja traitee, le tarif est fige');
+    }
+    if (demande.negotiationRound >= TOURS_DE_NEGOCIATION) {
+      throw new BadRequestException(
+        `Negociation close apres ${TOURS_DE_NEGOCIATION} propositions : acceptez ou refusez`,
+      );
+    }
+
+    const parLePrestataire = demande.provider.userId === userId;
+    return this.prisma.serviceBooking.update({
+      where: { id },
+      data: {
+        // Chaque camp garde sa colonne : le prestataire ecrit `counterPrice`,
+        // l hote revient sur `proposedPrice`. Le dernier chiffre de chacun
+        // reste ainsi lisible sans reconstituer un historique.
+        ...(parLePrestataire ? { counterPrice: price } : { proposedPrice: price }),
+        counterAt: new Date(),
+        negotiationRound: { increment: 1 },
+        note: message ?? demande.note,
       },
     });
   }
@@ -204,6 +273,84 @@ export class ServiceBookingsService {
     };
   }
 
+  /**
+   * Ce que le prestataire sait de son client AVANT d accepter.
+   *
+   * Jusqu ici il decidait a l aveugle : le nom n apparaissait qu une fois la
+   * demande acceptee, c est-a-dire une fois la decision prise. Or c est
+   * exactement au moment de decider qu il a besoin de savoir a qui il confie
+   * une voiture ou les cles d un logement.
+   *
+   * La regle des coordonnees ne bouge pas pour autant : identite et historique
+   * avant, telephone et email seulement apres acceptation. On donne de quoi
+   * decider, pas de quoi demarcher — c est toute la difference entre un
+   * annuaire et une place de marche.
+   */
+  async ficheClient(userId: string, demandeId: string) {
+    const demande = await this.demandeDuPrestataire(userId, demandeId);
+
+    const client = await this.prisma.user.findUnique({
+      where: { id: demande.requesterId },
+      select: { id: true, firstName: true, lastName: true, phone: true, email: true, createdAt: true },
+    });
+    if (!client) throw new NotFoundException('Client non trouve');
+
+    const [prestations, avisRecus, sinistres] = await Promise.all([
+      this.prisma.serviceBooking.groupBy({
+        by: ['status'],
+        where: { requesterId: client.id },
+        _count: true,
+      }),
+      // Uniquement les avis que des PRESTATAIRES ont laisses sur lui. Sa note
+      // d hote ou de voyageur ne dit rien de la facon dont il rend une voiture.
+      this.prisma.serviceReview.findMany({
+        where: {
+          direction: 'prestataire_vers_client',
+          serviceBooking: { requesterId: client.id },
+        },
+        select: { rating: true },
+      }),
+      this.prisma.vehicleIncident.findMany({
+        where: { serviceBooking: { requesterId: client.id } },
+        select: { resolution: true, type: true, declaredAt: true },
+        orderBy: { declaredAt: 'desc' },
+      }),
+    ]);
+
+    const parStatut = (s: string) => prestations.find((p) => p.status === s)?._count ?? 0;
+    const total = prestations.reduce((n, p) => n + p._count, 0);
+    const note = avisRecus.length
+      ? Math.round((avisRecus.reduce((s, a) => s + a.rating, 0) / avisRecus.length) * 10) / 10
+      : null;
+
+    const acceptee = ['confirmed', 'completed'].includes(demande.status);
+    return {
+      nom: `${client.firstName ?? ''} ${client.lastName ?? ''}`.trim(),
+      membreDepuis: client.createdAt,
+      prestations: {
+        total,
+        terminees: parStatut('completed'),
+        enCours: parStatut('confirmed'),
+        annulees: parStatut('cancelled'),
+      },
+      note,
+      avisRecus: avisRecus.length,
+      sinistres: {
+        total: sinistres.length,
+        // Un sinistre conteste reste affiche : l information utile au
+        // prestataire suivant est qu il y a eu desaccord, pas seulement qui a
+        // eu gain de cause. Le masquer reviendrait a effacer la moitie du fait.
+        etablis: sinistres.filter((s) => s.resolution === 'etabli').length,
+        contestes: sinistres.filter((s) => s.resolution === 'conteste').length,
+        derniers: sinistres.slice(0, 5),
+      },
+      // Meme frontiere que partout ailleurs : rien avant acceptation.
+      contact: coordonneesAutorisees(acceptee)
+        ? { telephone: client.phone ?? null, email: client.email }
+        : null,
+    };
+  }
+
   private async demandeDuPrestataire(userId: string, id: string) {
     const provider = await this.prisma.serviceProvider.findUnique({ where: { userId } });
     if (!provider) throw new ForbiddenException('Aucun compte prestataire');
@@ -214,12 +361,51 @@ export class ServiceBookingsService {
     return demande;
   }
 
+  /**
+   * Acceptation, par l une ou l autre partie.
+   *
+   * Symetrique de `contreProposer`, et pour la meme raison : apres un
+   * aller-retour, c est l hote qui doit pouvoir accepter le chiffre du
+   * prestataire. Une acceptation reservee au prestataire laisserait sa
+   * contre-proposition sans issue — il ne peut pas accepter son propre prix.
+   *
+   * Le montant retenu est TOUJOURS le dernier chiffre de l AUTRE camp : on
+   * n accepte que ce qu on n a pas ecrit soi-meme.
+   */
   async accepter(userId: string, id: string) {
-    const demande = await this.demandeDuPrestataire(userId, id);
+    const demande = await this.prisma.serviceBooking.findFirst({
+      where: { id, OR: [{ requesterId: userId }, { provider: { userId } }] },
+      include: { provider: true },
+    });
+    if (!demande) throw new NotFoundException('Demande non trouvee');
     if (demande.status !== 'pending') throw new BadRequestException('Demande deja traitee');
+
+    const parLePrestataire = demande.provider.userId === userId;
+
+    // Une location est tarifee par le calendrier du vehicule, pas negociee :
+    // le client n a rien a y accepter, il a demande a ce prix-la.
+    if (demande.type !== ProviderType.menage) {
+      if (!parLePrestataire) throw new ForbiddenException('Seule l agence accepte une location');
+      return this.prisma.serviceBooking.update({
+        where: { id },
+        data: { status: 'confirmed', contactSharedAt: new Date() },
+      });
+    }
+
+    const retenu = parLePrestataire ? demande.proposedPrice : demande.counterPrice;
+    if (retenu == null) {
+      throw new BadRequestException(
+        parLePrestataire
+          ? 'Aucun tarif propose : contre-proposez un montant plutot que d accepter dans le vide'
+          : 'Le prestataire n a pas encore propose de tarif',
+      );
+    }
+
+    // Le montant est recopie dans `price` et fige : c est lui qui fait foi, et
+    // plus les colonnes de negociation qui gardent seulement la trace du chemin.
     return this.prisma.serviceBooking.update({
       where: { id },
-      data: { status: 'confirmed', contactSharedAt: new Date() },
+      data: { status: 'confirmed', contactSharedAt: new Date(), price: retenu },
     });
   }
 

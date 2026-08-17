@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ProviderStatus, ProviderType } from '../common/enums';
 import { VehicleDto, UpdateVehicleDto, VehiclePeriodDto } from './dto';
 import { distanceKm } from '../common/geo';
+import { toDbJson } from '../common/json';
 
 const JOUR_MS = 24 * 60 * 60 * 1000;
 
@@ -44,9 +45,22 @@ export class VehiclesService {
     const provider = await this.providerDe(userId);
     return this.prisma.vehicle.findMany({
       where: { providerId: provider.id, deletedAt: null },
-      include: { _count: { select: { calendar: true, services: true } } },
+      include: {
+        photos: { orderBy: [{ isPrimary: 'desc' }, { position: 'asc' }] },
+        _count: { select: { calendar: true, services: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  /**
+   * `options` arrive en tableau et se range en JSON : la liste des extras varie
+   * d une agence a l autre, et une colonne par option couterait une migration a
+   * chaque nouveau siege bebe.
+   */
+  private aPlat(dto: VehicleDto | UpdateVehicleDto) {
+    const { options, ...reste } = dto as any;
+    return options === undefined ? reste : { ...reste, options: toDbJson(options) };
   }
 
   async ajouter(userId: string, dto: VehicleDto) {
@@ -54,12 +68,60 @@ export class VehiclesService {
     if (provider.status !== ProviderStatus.active) {
       throw new ForbiddenException('Compte en attente de verification');
     }
-    return this.prisma.vehicle.create({ data: { ...dto, providerId: provider.id } });
+    return this.prisma.vehicle.create({
+      data: { ...this.aPlat(dto), providerId: provider.id },
+    });
   }
 
   async modifier(userId: string, vehicleId: string, dto: UpdateVehicleDto) {
     await this.vehiculeDe(userId, vehicleId);
-    return this.prisma.vehicle.update({ where: { id: vehicleId }, data: { ...dto } });
+    return this.prisma.vehicle.update({ where: { id: vehicleId }, data: this.aPlat(dto) });
+  }
+
+  /**
+   * Galerie du vehicule.
+   *
+   * Une seule photo ne montre ni l interieur, ni l etat de la carrosserie, ni
+   * le coffre — c est-a-dire rien de ce qu on regarde avant de louer. La
+   * premiere ajoutee devient principale d office : sans cela une flotte entiere
+   * s afficherait sans visuel parce que personne n a coche la case.
+   */
+  async ajouterPhoto(userId: string, vehicleId: string, url: string, isPrimary?: boolean) {
+    await this.vehiculeDe(userId, vehicleId);
+    const existantes = await this.prisma.vehiclePhoto.count({ where: { vehicleId } });
+    const principale = isPrimary ?? existantes === 0;
+
+    if (principale && existantes > 0) {
+      await this.prisma.vehiclePhoto.updateMany({ where: { vehicleId }, data: { isPrimary: false } });
+    }
+
+    return this.prisma.vehiclePhoto.create({
+      data: { vehicleId, url, isPrimary: principale, position: existantes },
+    });
+  }
+
+  async supprimerPhoto(userId: string, vehicleId: string, photoId: string) {
+    await this.vehiculeDe(userId, vehicleId);
+    const photo = await this.prisma.vehiclePhoto.findFirst({ where: { id: photoId, vehicleId } });
+    if (!photo) throw new NotFoundException('Photo non trouvee');
+
+    await this.prisma.vehiclePhoto.delete({ where: { id: photoId } });
+
+    // Supprimer la principale laisserait le vehicule sans visuel alors qu il
+    // lui reste des photos : la suivante prend la place.
+    if (photo.isPrimary) {
+      const suivante = await this.prisma.vehiclePhoto.findFirst({
+        where: { vehicleId },
+        orderBy: { position: 'asc' },
+      });
+      if (suivante) {
+        await this.prisma.vehiclePhoto.update({
+          where: { id: suivante.id },
+          data: { isPrimary: true },
+        });
+      }
+    }
+    return { supprimee: photoId };
   }
 
   /** Retrait logique : les prestations passees gardent leur vehicule. */
@@ -173,7 +235,13 @@ export class VehiclesService {
         deletedAt: null,
       },
       include: {
-        vehicles: { where: { status: 'active', deletedAt: null } },
+        vehicles: {
+          where: { status: 'active', deletedAt: null },
+          // Les photos et les conditions partent avec le vehicule : le voyageur
+          // doit pouvoir voir la voiture et lire ce qui l engage AVANT de
+          // demander, pas au comptoir.
+          include: { photos: { orderBy: [{ isPrimary: 'desc' }, { position: 'asc' }] } },
+        },
       },
     });
 

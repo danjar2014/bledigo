@@ -8,6 +8,18 @@ export function date(value: string | Date) {
   );
 }
 
+/**
+ * Heure seule, pour les creneaux d intervention.
+ *
+ * Un menage se convient sur une plage horaire, pas sur une journee : afficher
+ * la seule date obligerait le prestataire a rappeler pour savoir quand venir.
+ */
+export function heure(value: string | Date) {
+  return new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(
+    new Date(value),
+  );
+}
+
 export function nights(checkIn: string | Date, checkOut: string | Date) {
   return Math.max(
     1,

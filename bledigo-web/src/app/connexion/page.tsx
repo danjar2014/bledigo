@@ -34,6 +34,9 @@ const HOME_BY_ROLE: Record<string, string> = {
   agency: '/proprietaire',
   admin: '/admin',
   support: '/admin',
+  // Sans cette entree, une agence tombait sur l accueil apres connexion et
+  // devait deviner l existence de son espace.
+  provider: '/prestataire',
 };
 
 export default function ConnexionPage() {

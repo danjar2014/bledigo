@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Car, Star, Phone, X } from 'lucide-react';
+import { Car, Star, Phone, X, ShieldAlert } from 'lucide-react';
 import { api } from '@/lib/api';
 import { date } from '@/lib/format';
 import { notable, maNote } from '@/lib/prestations';
 import ServiceReviewModal from './ServiceReviewModal';
+import IncidentModal from './IncidentModal';
 
 /**
  * Locations de voiture du voyageur.
@@ -18,6 +19,7 @@ import ServiceReviewModal from './ServiceReviewModal';
 export default function ServiceOrders() {
   const queryClient = useQueryClient();
   const [aNoter, setANoter] = useState<any>(null);
+  const [sinistresDe, setSinistresDe] = useState<any>(null);
 
   const { data } = useQuery({
     queryKey: ['service-orders'],
@@ -79,6 +81,18 @@ export default function ServiceOrders() {
                       {note}/5 donne
                     </span>
                   )}
+                  {/* Une declaration de sinistre serait sans valeur si le
+                      voyageur ne pouvait pas la voir ni la contredire : le
+                      bouton reste accessible une fois le vehicule rendu, meme
+                      quand rien n a ete declare. */}
+                  {new Date(c.endDate) <= new Date() && c.status !== 'cancelled' && (
+                    <button
+                      onClick={() => setSinistresDe(c)}
+                      className="text-xs flex items-center gap-1 border border-cloud px-2 py-1 rounded-bledi-sm hover:bg-cream"
+                    >
+                      <ShieldAlert className="w-3 h-3" /> Etat du vehicule
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -100,6 +114,13 @@ export default function ServiceOrders() {
 
       {aNoter && (
         <ServiceReviewModal prestation={aNoter} role="client" onClose={() => setANoter(null)} />
+      )}
+      {sinistresDe && (
+        <IncidentModal
+          prestation={sinistresDe}
+          role="client"
+          onClose={() => setSinistresDe(null)}
+        />
       )}
     </section>
   );

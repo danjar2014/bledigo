@@ -11,9 +11,11 @@ import { ProvidersService } from './providers.service';
 import { VehiclesService } from './vehicles.service';
 import { ServiceBookingsService } from './service-bookings.service';
 import { ServiceReviewsService } from './reviews.service';
+import { IncidentsService } from './incidents.service';
 import {
   CreateProviderDto, UpdateProviderDto, VehicleDto, UpdateVehicleDto, VehiclePeriodDto,
-  DemandeServiceDto, NoterPrestationDto, CandidatureDto,
+  DemandeServiceDto, NoterPrestationDto, CandidatureDto, ContreProposerDto,
+  DeclarerSinistreDto, ContesterSinistreDto, VehiclePhotoDto,
 } from './dto';
 
 /**
@@ -71,6 +73,7 @@ export class ProviderSpaceController {
     private readonly providers: ProvidersService,
     private readonly vehicles: VehiclesService,
     private readonly demandes: ServiceBookingsService,
+    private readonly incidents: IncidentsService,
   ) {}
 
   @Get('moi')
@@ -101,6 +104,25 @@ export class ProviderSpaceController {
   @Delete('vehicules/:id')
   retirer(@CurrentUser('id') me: string, @Param('id') id: string) {
     return this.vehicles.retirer(me, id);
+  }
+
+  @Post('vehicules/:id/photos')
+  @ApiOperation({ summary: 'Ajouter une photo. La premiere devient principale d office.' })
+  ajouterPhoto(
+    @CurrentUser('id') me: string,
+    @Param('id') id: string,
+    @Body() dto: VehiclePhotoDto,
+  ) {
+    return this.vehicles.ajouterPhoto(me, id, dto.url, dto.isPrimary);
+  }
+
+  @Delete('vehicules/:id/photos/:photoId')
+  supprimerPhoto(
+    @CurrentUser('id') me: string,
+    @Param('id') id: string,
+    @Param('photoId') photoId: string,
+  ) {
+    return this.vehicles.supprimerPhoto(me, id, photoId);
   }
 
   @Get('vehicules/:id/calendrier')
@@ -136,6 +158,47 @@ export class ProviderSpaceController {
   @Post('demandes/:id/refuser')
   refuser(@CurrentUser('id') me: string, @Param('id') id: string, @Body('motif') motif?: string) {
     return this.demandes.refuser(me, id, motif);
+  }
+
+  @Post('demandes/:id/sinistre')
+  @ApiOperation({
+    summary:
+      'Declarer un sinistre au retour du vehicule. Possible une fois restitue et dans les 7 jours. Consigne et contestable, ne sanctionne rien par lui-meme.',
+  })
+  declarerSinistre(
+    @CurrentUser('id') me: string,
+    @Param('id') id: string,
+    @Body() dto: DeclarerSinistreDto,
+  ) {
+    return this.incidents.declarer(me, id, dto);
+  }
+
+  @Delete('sinistres/:id')
+  @ApiOperation({ summary: 'Retirer sa declaration : se retracter ne nuit a personne' })
+  retirerSinistre(@CurrentUser('id') me: string, @Param('id') id: string) {
+    return this.incidents.retirer(me, id);
+  }
+
+  @Post('demandes/:id/contre-proposer')
+  @ApiOperation({
+    summary:
+      'Contre-proposer un tarif de menage. Borne a 3 propositions tous camps confondus, et impossible une fois la demande acceptee.',
+  })
+  contreProposer(
+    @CurrentUser('id') me: string,
+    @Param('id') id: string,
+    @Body() dto: ContreProposerDto,
+  ) {
+    return this.demandes.contreProposer(me, id, dto.price, dto.message);
+  }
+
+  @Get('demandes/:id/client')
+  @ApiOperation({
+    summary:
+      'Fiche du demandeur : historique, note recue en tant que client, sinistres. Sans coordonnees tant que la demande n est pas acceptee.',
+  })
+  ficheClient(@CurrentUser('id') me: string, @Param('id') id: string) {
+    return this.demandes.ficheClient(me, id);
   }
 }
 
@@ -176,6 +239,7 @@ export class ServicesController {
     private readonly vehicles: VehiclesService,
     private readonly demandes: ServiceBookingsService,
     private readonly avis: ServiceReviewsService,
+    private readonly incidents: IncidentsService,
   ) {}
 
   @Get('voitures/pour-sejour/:bookingId')
@@ -216,6 +280,44 @@ export class ServicesController {
   @Post('mes-commandes/:id/annuler')
   annuler(@CurrentUser('id') me: string, @Param('id') id: string) {
     return this.demandes.annuler(me, id);
+  }
+
+  @Get('mes-commandes/:id/sinistres')
+  @ApiOperation({ summary: 'Sinistres attaches a une location, visibles des deux parties' })
+  sinistres(@CurrentUser('id') me: string, @Param('id') id: string) {
+    return this.incidents.parLocation(me, id);
+  }
+
+  @Post('sinistres/:id/contester')
+  @ApiOperation({
+    summary:
+      'Contester un sinistre. La contestation ne l efface pas, elle l oppose : les deux versions restent lisibles et l administration tranche.',
+  })
+  contesterSinistre(
+    @CurrentUser('id') me: string,
+    @Param('id') id: string,
+    @Body() dto: ContesterSinistreDto,
+  ) {
+    return this.incidents.contester(me, id, dto.motif);
+  }
+
+  @Post('mes-commandes/:id/contre-proposer')
+  @ApiOperation({ summary: 'Repondre au tarif propose par le prestataire' })
+  contreProposer(
+    @CurrentUser('id') me: string,
+    @Param('id') id: string,
+    @Body() dto: ContreProposerDto,
+  ) {
+    return this.demandes.contreProposer(me, id, dto.price, dto.message);
+  }
+
+  @Post('mes-commandes/:id/accepter')
+  @ApiOperation({
+    summary:
+      'Accepter le tarif du prestataire. Sans cette route, une contre-proposition resterait sans issue : son auteur ne peut pas accepter son propre prix.',
+  })
+  accepterTarif(@CurrentUser('id') me: string, @Param('id') id: string) {
+    return this.demandes.accepter(me, id);
   }
 
   @Post('prestations/:id/avis')

@@ -5,6 +5,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Car, Check, MapPin, Star } from 'lucide-react';
 import { api } from '@/lib/api';
 
+/** Politiques de carburant, dites en francais plutot qu en code. */
+const POLITIQUES: Record<string, string> = {
+  plein_a_plein: 'rendu avec le plein',
+  plein_a_vide: 'plein paye au depart',
+  identique: 'rendu au meme niveau',
+};
+
 /**
  * Vehicules proposes au voyageur, une fois son sejour accepte.
  *
@@ -63,8 +70,31 @@ export default function CarOffers({ booking }: { booking: any }) {
         {data?.vehicules?.map((v: any) => (
           <div
             key={v.id}
-            className="flex flex-wrap items-center justify-between gap-3 bg-white rounded-bledi-sm p-3"
+            className="flex flex-wrap items-start justify-between gap-3 bg-white rounded-bledi-sm p-3"
           >
+            <div className="flex gap-3 flex-1 min-w-[240px]">
+              {/* La photo d abord : on ne loue pas une voiture qu on ne voit
+                  pas, et une galerie vide se remarque tout de suite. */}
+              {v.photos?.length ? (
+                <div className="flex gap-1 shrink-0">
+                  {v.photos.slice(0, 2).map((p: any) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={p.id}
+                      src={p.url}
+                      alt=""
+                      className="w-20 h-16 object-cover rounded-bledi-sm bg-cloud"
+                    />
+                  ))}
+                  {v.photos.length > 2 && (
+                    <span className="self-end text-[10px] text-slate">+{v.photos.length - 2}</span>
+                  )}
+                </div>
+              ) : (
+                <div className="w-20 h-16 rounded-bledi-sm bg-cloud flex items-center justify-center shrink-0">
+                  <Car className="w-6 h-6 text-slate/50" />
+                </div>
+              )}
             <div>
               <p className="font-medium text-charcoal">
                 {v.brand} {v.model}
@@ -73,6 +103,39 @@ export default function CarOffers({ booking }: { booking: any }) {
                 {v.category} · {v.transmission} · {v.seats} places
                 {v.airConditioned ? ' · clim' : ''}
               </p>
+
+              {/* Les conditions AVANT la demande, jamais au comptoir : une
+                  condition decouverte apres coup est inopposable, c est le meme
+                  raisonnement que les conditions d annulation d un sejour. */}
+              <ul className="text-xs text-slate mt-1 space-y-0.5">
+                <li>
+                  {v.kmPerDay ? `${v.kmPerDay} km/jour inclus` : 'Kilometrage illimite'}
+                  {v.kmPerDay && v.extraKmPrice != null
+                    ? `, puis ${v.extraKmPrice} TND/km`
+                    : ''}
+                </li>
+                <li>
+                  Age minimum {v.minDriverAge} ans · permis depuis {v.minLicenceYears} an
+                  {v.minLicenceYears > 1 ? 's' : ''}
+                </li>
+                <li>
+                  Carburant : {POLITIQUES[v.fuelPolicy] ?? v.fuelPolicy}
+                  {v.deposit > 0 ? ` · caution ${v.deposit} TND` : ''}
+                </li>
+                {v.pickupLocation && (
+                  <li>
+                    Prise en charge : {v.pickupLocation}
+                    {v.returnLocation && v.returnLocation !== v.pickupLocation
+                      ? ` · restitution : ${v.returnLocation}`
+                      : ''}
+                  </li>
+                )}
+                {v.deliveryAvailable && (
+                  <li>
+                    Livraison possible{v.deliveryFee > 0 ? ` (${v.deliveryFee} TND)` : ' (offerte)'}
+                  </li>
+                )}
+              </ul>
               <p className="text-xs text-slate mt-1 flex items-center gap-2 flex-wrap">
                 <span className="inline-flex items-center gap-1">
                   <MapPin className="w-3 h-3" />
@@ -86,6 +149,7 @@ export default function CarOffers({ booking }: { booking: any }) {
                   </span>
                 )}
               </p>
+            </div>
             </div>
             <div className="text-right">
               <p className="font-semibold text-charcoal">

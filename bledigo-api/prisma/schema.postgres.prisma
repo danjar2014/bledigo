@@ -826,7 +826,37 @@ model Vehicle {
   airConditioned Boolean  @default(true) @map("air_conditioned")
   pricePerDay    Float    @map("price_per_day")
   deposit        Float    @default(0)
+  /// OBSOLETE depuis VehiclePhoto. Conservee parce qu elle porte des valeurs :
+  /// meme traitement que control_visits_count. Lire `photos` a la place.
   photoUrl       String?  @map("photo_url")
+
+  /// --- Conditions de location, servies AVANT la demande ---
+  ///
+  /// Elles suivent la meme regle que les conditions d annulation d un sejour :
+  /// une condition decouverte au comptoir n est pas une condition, c est une
+  /// mauvaise surprise, et elle est inopposable.
+  ///
+  /// Kilometrage inclus par jour. `null` = illimite, ce que pratiquent la
+  /// plupart des agences : le defaut ne doit pas etre 0, qui signifierait
+  /// « aucun kilometre autorise ».
+  kmPerDay          Int?     @map("km_per_day")
+  /// Prix du kilometre au-dela du forfait. Annoncer un forfait sans lui ne dit
+  /// rien : le locataire ignore ce que coute le depassement.
+  extraKmPrice      Float?   @map("extra_km_price")
+  minDriverAge      Int      @default(21) @map("min_driver_age")
+  minLicenceYears   Int      @default(2)  @map("min_licence_years")
+  /// plein_a_plein | plein_a_vide | identique
+  fuelPolicy        String   @default("plein_a_plein") @map("fuel_policy")
+  /// Options facturees en sus, en JSON : [{ code, label, pricePerDay }].
+  /// Un JSON plutot que des colonnes : la liste varie d une agence a l autre,
+  /// et chaque nouvelle option couterait sinon une migration.
+  options           String?
+  pickupLocation    String?  @map("pickup_location")
+  /// Restitution ailleurs qu au depart. `null` = meme lieu que la prise.
+  returnLocation    String?  @map("return_location")
+  deliveryAvailable Boolean  @default(false) @map("delivery_available")
+  deliveryFee       Float    @default(0) @map("delivery_fee")
+
   /// active | maintenance | retire
   status         String   @default("active")
   createdAt      DateTime @default(now()) @map("created_at")
@@ -836,10 +866,66 @@ model Vehicle {
   provider ServiceProvider  @relation(fields: [providerId], references: [id], onDelete: Cascade)
   calendar VehicleCalendar[]
   services ServiceBooking[]
+  photos   VehiclePhoto[]
 
   @@index([providerId])
   @@index([status])
   @@map("vehicles")
+}
+
+/// Galerie d un vehicule. Meme forme que ListingPhoto : on ne loue pas une
+/// voiture qu on ne voit pas, et une seule photo ne montre ni l interieur ni
+/// l etat de la carrosserie.
+model VehiclePhoto {
+  id        String   @id @default(uuid())
+  vehicleId String   @map("vehicle_id")
+  url       String
+  isPrimary Boolean  @default(false) @map("is_primary")
+  position  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("vehicle_photos")
+}
+
+/// Sinistre constate au retour du vehicule.
+///
+/// Il est CONSIGNE, jamais sanctionnant par lui-meme. Le projet a deja refuse
+/// qu une sanction repose sur la parole d une seule partie — c est tout le sens
+/// du double signal a l arrivee d un sejour. Une agence qui declare seule ne
+/// peut donc pas fermer un compte : elle inscrit un fait, que le client peut
+/// contredire, et l administration tranche a la main.
+model VehicleIncident {
+  id               String   @id @default(uuid())
+  serviceBookingId String   @map("service_booking_id")
+  vehicleId        String?  @map("vehicle_id")
+  /// Compte de l agence declarante, trace pour que ses declarations soient
+  /// comptables contre elle si elle en abuse.
+  declaredBy       String   @map("declared_by")
+  declaredAt       DateTime @default(now()) @map("declared_at")
+  /// rayure | choc | mecanique | retard | carburant | proprete | autre
+  type             String
+  description      String
+  estimatedCost    Float?   @map("estimated_cost")
+  /// URLs des photos du dommage, en JSON. La preuve vaut mieux que l assertion.
+  photos           String?
+  contestedAt      DateTime? @map("contested_at")
+  contestReason    String?   @map("contest_reason")
+  /// etabli | conteste | abandonne. `etabli` par defaut : sans contestation, la
+  /// declaration tient. Contester ne l efface pas, elle l oppose.
+  resolution       String    @default("etabli")
+  resolvedAt       DateTime? @map("resolved_at")
+  resolvedBy       String?   @map("resolved_by")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  serviceBooking ServiceBooking @relation(fields: [serviceBookingId], references: [id], onDelete: Cascade)
+
+  @@index([serviceBookingId])
+  @@index([resolution])
+  @@map("vehicle_incidents")
 }
 
 /// Meme forme que ListingCalendar, deliberement : l agence ferme des dates et
@@ -876,10 +962,40 @@ model ServiceBooking {
   vehicleId   String?  @map("vehicle_id")
   /// Voyageur ou hote selon le metier.
   requesterId String   @map("requester_id")
+  /// Debut et fin PORTENT L HEURE, pas seulement le jour : un menage se
+  /// convient sur un creneau. Pas de colonnes startTime/endTime separees, qui
+  /// diraient la meme chose une seconde fois et pourraient la contredire.
   startDate   DateTime @map("start_date")
   endDate     DateTime @map("end_date")
+  /// Montant retenu. Reste a 0 tant que rien n est convenu ; l acceptation y
+  /// recopie le tarif retenu et le fige.
   price       Float
   currency    String   @default("TND")
+
+  /// --- Ou intervenir, pour une prestation de menage ---
+  ///
+  /// Le prestataire decidait auparavant sans savoir ou. La ville et le
+  /// gouvernorat se pre-remplissent depuis le logement via common/localities,
+  /// le quartier se saisit — aucun referentiel supplementaire a construire.
+  city        String?
+  /// Gouvernorat, meme unite administrative que Listing.region.
+  region      String?
+  /// Quartier ou zone, la maille que connaissent les prestataires.
+  district    String?
+  /// Precision d acces : etage, code, point de rendez-vous. Pas l adresse
+  /// exacte, qui ne se livre qu apres acceptation comme le reste.
+  addressHint String?  @map("address_hint")
+
+  /// --- Tarif et negociation ---
+  ///
+  /// Meme vocabulaire que ReverseOffer, deliberement : il n y a aucune raison
+  /// qu une negociation de menage s apprenne differemment d une negociation de
+  /// sejour.
+  proposedPrice    Float?    @map("proposed_price")
+  counterPrice     Float?    @map("counter_price")
+  counterAt        DateTime? @map("counter_at")
+  /// Borne les allers-retours. Sans elle une demande reste ouverte indefiniment.
+  negotiationRound Int       @default(0) @map("negotiation_round")
   /// pending | confirmed | cancelled | completed
   status      String   @default("pending")
   /// Les coordonnees ne s echangent qu apres acceptation, comme pour le sejour.
@@ -894,6 +1010,7 @@ model ServiceBooking {
   vehicle   Vehicle?        @relation(fields: [vehicleId], references: [id])
   requester User            @relation("ServiceRequests", fields: [requesterId], references: [id])
   reviews   ServiceReview[]
+  incidents VehicleIncident[]
 
   @@index([providerId])
   @@index([requesterId])

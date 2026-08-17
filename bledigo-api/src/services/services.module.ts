@@ -4,6 +4,7 @@ import { ProvidersService } from './providers.service';
 import { VehiclesService } from './vehicles.service';
 import { ServiceBookingsService } from './service-bookings.service';
 import { ServiceReviewsService } from './reviews.service';
+import { IncidentsService } from './incidents.service';
 import {
   AdminProvidersController,
   ProviderSpaceController,
@@ -13,7 +14,13 @@ import {
 
 @Module({
   imports: [PrismaModule],
-  providers: [ProvidersService, VehiclesService, ServiceBookingsService, ServiceReviewsService],
+  providers: [
+    ProvidersService,
+    VehiclesService,
+    ServiceBookingsService,
+    ServiceReviewsService,
+    IncidentsService,
+  ],
   controllers: [
     AdminProvidersController,
     ProviderSpaceController,
