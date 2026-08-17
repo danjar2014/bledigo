@@ -219,6 +219,57 @@ seule voie de récupération. La phase 2 (abonnement, vérification automatique)
 remplacera la porte d'entrée sans toucher au modèle. Un compte `pending` peut
 se connecter mais ne peut rien publier.
 
+**Un sinistre se constate, il ne sanctionne pas.** Une agence qui déclare un
+dommage récupère une caution : c'est exactement le genre d'intérêt qui interdit
+de la croire sur parole, et le projet a déjà tranché ce point pour les absences
+à l'arrivée. `VehicleIncident` est donc **consigné, visible sur la fiche du
+client, et contestable** — jamais suspensif par lui-même. Déclarable une fois le
+véhicule restitué et dans les 7 jours (au-delà, il a pu être reloué, plus rien
+ne rattache le dommage à *ce* client) ; contestable sous 14 jours à compter de
+la déclaration, pas de la fin de location — on ne conteste pas ce dont on n'a
+pas été informé. Contester n'efface pas la déclaration, cela l'oppose : les deux
+versions restent lisibles, et seule l'administration arbitre.
+
+Un sinistre contesté reste **affiché** sur la fiche du client. L'information
+utile au prestataire suivant est qu'il y a eu désaccord, pas seulement qui a eu
+gain de cause.
+
+**Le prestataire décide en sachant qui il accepte.** Il acceptait à l'aveugle :
+le nom n'apparaissait qu'après l'acceptation, c'est-à-dire après la décision.
+`GET /prestataire/demandes/:id/client` sert l'historique, la note reçue *en tant
+que client*, les sinistres et l'ancienneté — **sans coordonnées tant que la
+demande est `pending`**. De quoi décider, pas de quoi démarcher : c'est toute la
+différence entre une place de marché et un annuaire à aspirer.
+
+**L'acceptation d'un tarif est symétrique.** Chacun accepte le dernier chiffre
+de l'**autre** camp : le prestataire prend `proposedPrice`, l'hôte prend
+`counterPrice`. Une acceptation réservée au prestataire laisserait sa
+contre-proposition sans issue — il ne peut pas accepter son propre prix. La
+négociation est bornée à trois propositions tous camps confondus, sinon une
+demande reste ouverte indéfiniment et le créneau est bloqué pour rien. À
+l'acceptation, le montant est recopié dans `price` et **figé** : toute
+renégociation ultérieure est refusée.
+
+**La zone d'une prestation vient du logement, jamais du client.** `city` et
+`region` sont recopiés de l'annonce côté serveur ; accepter ces champs dans le
+corps de la requête permettrait d'annoncer une zone qui n'est pas celle du bien,
+et de faire déplacer quelqu'un pour rien. Seuls le quartier et la précision
+d'accès sont saisis.
+
+**Le créneau passe par `startDate` et `endDate`**, qui portent déjà l'heure.
+Deux colonnes `startTime`/`endTime` auraient dit la même chose et pu la
+contredire. Corollaire d'affichage : ne montrer l'heure que pour le **ménage** —
+sur une location, ce sont des minuits UTC convertis, et `02:00–02:00` se lit
+comme un bogue.
+
+**Les photos ne transitent jamais par l'API.** `src/media` signe une URL
+d'envoi Supabase valable une fois et dix minutes ; le navigateur téléverse
+directement. Faire passer des fichiers par une instance gratuite à 512 Mo serait
+la meilleure façon de la faire tomber. Sans `SUPABASE_URL` ni
+`SUPABASE_SERVICE_KEY`, le service bascule en **mode simulé** et rend une image
+de substitution — le développement local n'a rien à configurer, mais une
+production sans ces variables affiche des photos qui n'existent pas.
+
 **Ne pas transposer `refusal-guard` aux prestataires.** Toute sa logique repose
 sur l'idée que le duo qui se répète est suspect. Pour un prestataire, **le duo
 qui se répète est le cas sain** — un hôte fidèle à sa femme de ménage. Copier ce
