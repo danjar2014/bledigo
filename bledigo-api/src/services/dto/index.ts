@@ -1,5 +1,6 @@
 import {
-  IsString, IsOptional, IsInt, IsNumber, IsBoolean, IsEmail, IsIn, Min, Max, IsDateString, MaxLength,
+  IsString, IsOptional, IsInt, IsNumber, IsBoolean, IsEmail, IsIn, Min, Max, IsDateString,
+  MaxLength, Matches,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ProviderType } from '../../common/enums';
@@ -19,6 +20,19 @@ export class CreateProviderDto {
   @IsOptional() @IsNumber() @Type(() => Number) longitude?: number;
   @IsOptional() @IsInt() @Min(1) @Max(500) @Type(() => Number) serviceRadiusKm?: number;
   @IsOptional() @IsString() phone?: string;
+}
+
+/**
+ * Candidature spontanee depuis la page publique.
+ *
+ * Le telephone est OBLIGATOIRE ici, alors qu il est facultatif pour une
+ * creation par l administration : sans envoi d email, c est le seul moyen de
+ * recontacter la societe pour lui transmettre ses identifiants.
+ */
+export class CandidatureDto extends CreateProviderDto {
+  @Matches(/^\+?[0-9]{8,15}$/, { message: 'Numero de telephone invalide' })
+  phone: string;
+  @IsOptional() @IsString() @MaxLength(1000) description?: string;
 }
 
 /** Ce qu un prestataire peut changer lui-meme. Ni son type, ni son statut. */

@@ -360,6 +360,15 @@ function ProvidersTab() {
         </div>
       )}
 
+      {/* Une candidature spontanee arrive sans mot de passe, par construction :
+          le compte existe mais la connexion lui est fermee. Verifier ne suffit
+          donc pas a l ouvrir, il faut generer les identifiants. */}
+      <p className="text-sm text-slate mt-4">
+        Les demandes venues de la page publique arrivent « a verifier » et <strong>sans mot de
+        passe</strong> : apres verification, cliquez sur « Nouveau mot de passe » pour ouvrir
+        reellement le compte, puis appelez la societe.
+      </p>
+
       <div className="flex gap-2 my-4">
         {[
           ['', 'Tous'],

@@ -377,6 +377,17 @@ export const api = {
     request<any>(`/api/v1/users?${new URLSearchParams(clean(params))}`),
 
   // ------------------------------------------------------------- Prestataires
+  /**
+   * Candidature publique, sans authentification : une agence n a evidemment pas
+   * de compte avant d en demander un. La reponse ne contient aucun identifiant —
+   * ils sont transmis par telephone apres verification.
+   */
+  applyAsProvider: (dto: any) =>
+    request<{ recue: boolean; message: string }>('/api/v1/prestataires/candidature', {
+      method: 'POST',
+      body: body(dto),
+    }),
+
   //
   // Espace du prestataire connecte. Le compte est cree par l administration
   // apres constatation du statut d agence : il n existe aucune inscription

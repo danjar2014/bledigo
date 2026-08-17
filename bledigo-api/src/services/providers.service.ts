@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProviderStatus, ProviderType, UserRole, UserStatus } from '../common/enums';
 import { CreateProviderDto, UpdateProviderDto } from './dto';
@@ -98,6 +98,82 @@ export class ProvidersService {
 
     // Le mot de passe n est retourne qu ici, et n est jamais journalise.
     return { provider, identifiants: { email, motDePasse } };
+  }
+
+  /**
+   * Candidature spontanee, depuis la page publique.
+   *
+   * Le compte est cree AVEC UNE EMPREINTE INUTILISABLE : la societe ne peut donc
+   * pas se connecter. C est le point essentiel — la verification humaine du
+   * statut d agence reste la regle, une candidature ne l a jamais remplacee.
+   *
+   * Le parcours est : candidature ici, constatation par l administration, puis
+   * generation du mot de passe qui ouvre reellement le compte.
+   *
+   * Pourquoi creer un compte plutot qu une table de candidatures : le statut
+   * `pending` signifie deja « pas encore constate », et une empreinte
+   * inutilisable ferme la porte aussi surement qu une ligne dans une autre
+   * table. Une table de plus n aurait rien ajoute qu un modele a maintenir.
+   */
+  async candidater(dto: CreateProviderDto & { phone: string }) {
+    const email = dto.email.trim().toLowerCase();
+    const existant = await this.prisma.user.findUnique({ where: { email } });
+    if (existant) {
+      throw new BadRequestException(
+        'Une demande existe deja pour cette adresse. Nous vous recontactons au numero indique.',
+      );
+    }
+
+    const locality = findLocality(dto.city) ?? resolveLocality(dto.city);
+
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        // Aucune connexion possible avant constatation du statut.
+        passwordHash: await bcrypt.hash(randomUUID() + randomUUID(), 12),
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        role: UserRole.provider,
+        status: UserStatus.active,
+        emailVerified: false,
+      },
+    });
+
+    const provider = await this.prisma.serviceProvider.create({
+      data: {
+        userId: user.id,
+        type: dto.type,
+        companyName: dto.companyName,
+        registrationNumber: dto.registrationNumber,
+        city: locality?.name ?? dto.city,
+        region: locality?.region,
+        latitude: locality?.lat,
+        longitude: locality?.lng,
+        serviceRadiusKm: dto.serviceRadiusKm ?? 30,
+        // Le telephone est obligatoire ici : sans envoi d email, c est le seul
+        // moyen de recontacter une candidature.
+        phone: dto.phone,
+        description: (dto as any).description,
+        status: ProviderStatus.pending,
+      },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        action: 'provider.candidature',
+        entityType: 'service_provider',
+        entityId: provider.id,
+        details: toDbJson({ email, type: dto.type, companyName: dto.companyName, phone: dto.phone }),
+        ipAddress: 'public',
+        userAgent: 'public',
+      },
+    });
+
+    return {
+      recue: true,
+      message:
+        'Demande enregistree. Nous verifions votre statut d entreprise puis vous transmettons vos identifiants par telephone.',
+    };
   }
 
   /** Constatation du statut d agence : le compte devient utilisable. */

@@ -8,12 +8,18 @@ import {
   AdminProvidersController,
   ProviderSpaceController,
   ServicesController,
+  ProviderApplicationController,
 } from './services.controller';
 
 @Module({
   imports: [PrismaModule],
   providers: [ProvidersService, VehiclesService, ServiceBookingsService, ServiceReviewsService],
-  controllers: [AdminProvidersController, ProviderSpaceController, ServicesController],
+  controllers: [
+    AdminProvidersController,
+    ProviderSpaceController,
+    ServicesController,
+    ProviderApplicationController,
+  ],
   exports: [ProvidersService, VehiclesService, ServiceReviewsService],
 })
 export class ServicesModule {}

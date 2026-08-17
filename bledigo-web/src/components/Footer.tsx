@@ -27,6 +27,9 @@ const TRAVELERS = [
 const OWNERS = [
   { href: '/proprietaire/annonces/nouvelle', label: 'Publier une annonce' },
   { href: '/proprietaire', label: 'Espace proprietaire' },
+  // Seule porte d entree pour une entreprise de service : sans ce lien, elle
+  // n avait aucun moyen de se signaler.
+  { href: '/devenir-prestataire', label: 'Devenir prestataire' },
 ];
 
 export default function Footer() {

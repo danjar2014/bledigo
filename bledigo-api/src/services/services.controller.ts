@@ -1,4 +1,6 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards, HttpCode, HttpStatus,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -11,7 +13,7 @@ import { ServiceBookingsService } from './service-bookings.service';
 import { ServiceReviewsService } from './reviews.service';
 import {
   CreateProviderDto, UpdateProviderDto, VehicleDto, UpdateVehicleDto, VehiclePeriodDto,
-  DemandeServiceDto, NoterPrestationDto,
+  DemandeServiceDto, NoterPrestationDto, CandidatureDto,
 } from './dto';
 
 /**
@@ -134,6 +136,32 @@ export class ProviderSpaceController {
   @Post('demandes/:id/refuser')
   refuser(@CurrentUser('id') me: string, @Param('id') id: string, @Body('motif') motif?: string) {
     return this.demandes.refuser(me, id, motif);
+  }
+}
+
+/**
+ * Candidature publique.
+ *
+ * Seul point d entree pour une societe qui veut travailler avec BlediGo. Sans
+ * authentification, deliberement : une agence de location n a evidemment pas de
+ * compte avant d en demander un.
+ *
+ * Le compte cree ici ne permet PAS de se connecter — voir `candidater`. La
+ * constatation du statut d entreprise reste la regle.
+ */
+@ApiTags('candidature-prestataire')
+@Controller('api/v1/prestataires')
+export class ProviderApplicationController {
+  constructor(private readonly providers: ProvidersService) {}
+
+  @Post('candidature')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({
+    summary:
+      'Demander a devenir prestataire. Enregistre la demande, n ouvre aucun acces avant verification.',
+  })
+  candidater(@Body() dto: CandidatureDto) {
+    return this.providers.candidater(dto as any);
   }
 }
 
