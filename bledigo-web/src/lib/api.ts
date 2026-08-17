@@ -213,6 +213,30 @@ export const api = {
       { method: 'POST', auth: true, body: body(dto) },
     ),
 
+  // --- extension d un sejour ---
+  /** Devis servi AVANT la demande : le voyageur voit le prix avant de s engager. */
+  extensionQuote: (id: string, checkOut: string) =>
+    request<{
+      checkOutActuel: string;
+      checkOutDemande: string;
+      nuitsAjoutees: number;
+      prix: number;
+      prixMoyenParNuit: number;
+      totalApresExtension: number;
+      currency: string;
+      accordRequis: boolean;
+    }>(`/api/v1/bookings/${id}/extension?checkOut=${encodeURIComponent(checkOut)}`, { auth: true }),
+  requestExtension: (id: string, checkOut: string) =>
+    request<{ applique: boolean; booking: any; devis: any }>(`/api/v1/bookings/${id}/extension`, {
+      method: 'POST',
+      auth: true,
+      body: body({ checkOut }),
+    }),
+  acceptExtension: (id: string) =>
+    request<any>(`/api/v1/bookings/${id}/extension/accept`, { method: 'POST', auth: true }),
+  refuseExtension: (id: string) =>
+    request<any>(`/api/v1/bookings/${id}/extension/refuse`, { method: 'POST', auth: true }),
+
   // --- paiements ---
   payIntent: (bookingId: string) =>
     request<any>('/api/v1/payments/intent', { method: 'POST', auth: true, body: body({ bookingId }) }),

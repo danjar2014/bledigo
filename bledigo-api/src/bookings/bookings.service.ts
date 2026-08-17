@@ -249,6 +249,254 @@ export class BookingsService {
   }
 
   /**
+   * ------------------------------------------------------------------ Extension
+   *
+   * Rester deux nuits de plus, sans repasser par une seconde reservation.
+   *
+   * Trois regles gouvernent tout ce qui suit.
+   *
+   * 1. **L hote accorde les nuits supplementaires.** Ce sont ses dates : la
+   *    regle qui veut que l acceptation lui appartienne ne souffre pas
+   *    d exception ici. Seul `instantBook` court-circuite, comme a la
+   *    reservation — il y a explicitement renonce.
+   *
+   * 2. **Le prix est fige a la demande, la disponibilite ne l est pas.** Le
+   *    voyageur s engage sur un montant qu il a vu ; l hote ne peut pas le
+   *    changer entre-temps. Mais les dates, elles, ont pu etre prises par
+   *    quelqu un d autre pendant qu il reflechissait : on les reverifie au
+   *    moment d accepter, sans quoi on vendrait deux fois les memes nuits.
+   *
+   * 3. **Ni menage ni frais de service en double.** Le logement n est pas
+   *    nettoye une seconde fois parce que son occupant reste : ces frais
+   *    valent pour un sejour, pas pour une nuit.
+   */
+
+  /**
+   * Devis d extension : ce que couteraient des nuits supplementaires, et si
+   * elles sont seulement possibles.
+   *
+   * Servi AVANT la demande, pour la meme raison que les conditions
+   * d annulation le sont avant l annulation : un prix decouvert apres coup
+   * n est pas un prix, c est une surprise.
+   */
+  async devisExtension(userId: string, bookingId: string, nouveauCheckOut: Date) {
+    const booking = await this.prisma.booking.findFirst({
+      where: { id: bookingId, OR: [{ travelerId: userId }, { ownerId: userId }] },
+      include: { listing: true },
+    });
+    if (!booking) throw new NotFoundException('Reservation non trouvee');
+
+    return this.chiffrerExtension(booking, nouveauCheckOut);
+  }
+
+  /**
+   * Coeur commun au devis, a la demande et a l acceptation : les trois doivent
+   * repondre exactement la meme chose, sans quoi on accepterait une extension
+   * que le devis annoncait impossible.
+   */
+  private async chiffrerExtension(booking: any, nouveauCheckOut: Date) {
+    // On n etend pas une demande que personne n a acceptee : on la modifie.
+    // Et on n etend pas un sejour clos, annule ou conteste.
+    const extensible = [BookingStatus.confirmed, BookingStatus.checked_in].includes(
+      booking.status as BookingStatus,
+    );
+    if (!extensible) {
+      throw new BadRequestException(
+        'Seul un sejour accepte et non termine peut etre prolonge',
+      );
+    }
+
+    const debut = new Date(booking.checkOut);
+    if (nouveauCheckOut <= debut) {
+      throw new BadRequestException('La nouvelle date de depart doit etre posterieure a l actuelle');
+    }
+
+    // Le chevauchement se teste comme a la creation, mais sur les seules nuits
+    // AJOUTEES, et en s excluant soi-meme : la reservation qu on prolonge
+    // occupe evidemment ses propres dates.
+    const occupe = await this.prisma.booking.findFirst({
+      where: {
+        listingId: booking.listingId,
+        id: { not: booking.id },
+        status: { notIn: [BookingStatus.cancelled, BookingStatus.disputed] },
+        AND: [{ checkIn: { lt: nouveauCheckOut } }, { checkOut: { gt: debut } }],
+      },
+    });
+    if (occupe) throw new BadRequestException('Ces nuits sont deja reservees');
+
+    const ferme = await this.prisma.listingCalendar.findFirst({
+      where: {
+        listingId: booking.listingId,
+        blocked: true,
+        AND: [{ startDate: { lt: nouveauCheckOut } }, { endDate: { gt: debut } }],
+      },
+    });
+    if (ferme) throw new BadRequestException('Le proprietaire a ferme ces dates');
+
+    // Retarification nuit par nuit : une extension peut mordre sur une periode
+    // saisonniere au tarif different de celui du sejour initial.
+    const tarification = await this.calendar.tarifer(booking.listingId, debut, nouveauCheckOut);
+
+    // minNights n est PAS oppose ici, et c est delibere. Il borne la duree d un
+    // sejour, or le sejour s allonge : refuser une nuit de plus sous pretexte
+    // qu une periode en exige sept reviendrait a exiger sept nuits de PLUS de
+    // quelqu un qui est deja sur place depuis dix.
+    return {
+      checkOutActuel: debut,
+      checkOutDemande: nouveauCheckOut,
+      nuitsAjoutees: tarification.nuits,
+      prix: tarification.basePrice,
+      prixMoyenParNuit: tarification.prixMoyen,
+      /** Ni menage ni frais de service : ils valent pour le sejour, pas la nuit. */
+      totalApresExtension: Number(booking.totalPrice) + tarification.basePrice,
+      currency: booking.currency,
+      /** L hote garde la main, sauf s il y a renonce en cochant instantBook. */
+      accordRequis: !booking.listing?.instantBook,
+    };
+  }
+
+  /**
+   * Le voyageur demande a rester plus longtemps.
+   *
+   * C est son sejour : l hote ne prolonge pas quelqu un contre son gre, et
+   * personne d autre ne le demande a sa place.
+   */
+  async demanderExtension(travelerId: string, bookingId: string, nouveauCheckOut: Date) {
+    const booking = await this.prisma.booking.findFirst({
+      where: { id: bookingId, travelerId },
+      include: { listing: true },
+    });
+    if (!booking) throw new NotFoundException('Reservation non trouvee');
+
+    const devis = await this.chiffrerExtension(booking, nouveauCheckOut);
+
+    // Reservation instantanee : l hote a renonce a examiner chaque demande. Le
+    // faire attendre ici contredirait la case qu il a cochee.
+    if (!devis.accordRequis) {
+      const prolonge = await this.appliquerExtension(
+        booking,
+        nouveauCheckOut,
+        devis.prix,
+        devis.nuitsAjoutees,
+      );
+      await this.tracerExtension(travelerId, bookingId, 'booking.extension_instantanee', devis);
+      return { applique: true, booking: prolonge, devis };
+    }
+
+    // Une nouvelle demande remplace la precedente : le voyageur qui se ravise
+    // n a pas a attendre un refus pour proposer d autres dates.
+    const enAttente = await this.prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        extensionCheckOut: nouveauCheckOut,
+        extensionPrice: devis.prix,
+        extensionRequestedAt: new Date(),
+      },
+    });
+
+    await this.tracerExtension(travelerId, bookingId, 'booking.extension_demandee', devis);
+    return { applique: false, booking: enAttente, devis };
+  }
+
+  /**
+   * L hote accorde les nuits supplementaires.
+   *
+   * La disponibilite est reverifiee ICI, et c est le point essentiel : entre la
+   * demande et la reponse, un autre voyageur a pu reserver ces nuits. Appliquer
+   * l extension sur la foi du devis vendrait deux fois les memes dates.
+   */
+  async accepterExtension(ownerId: string, bookingId: string) {
+    const booking = await this.prisma.booking.findFirst({
+      where: { id: bookingId, ownerId },
+      include: { listing: true },
+    });
+    if (!booking) throw new NotFoundException('Reservation non trouvee');
+    if (!booking.extensionCheckOut) throw new BadRequestException('Aucune extension en attente');
+
+    // Reverification complete, sauf le prix : celui-la reste celui que le
+    // voyageur a accepte, meme si les tarifs ont change depuis.
+    const devis = await this.chiffrerExtension(booking, booking.extensionCheckOut);
+
+    const prix = Number(booking.extensionPrice ?? 0);
+    const prolonge = await this.appliquerExtension(
+      booking,
+      booking.extensionCheckOut,
+      prix,
+      devis.nuitsAjoutees,
+    );
+
+    await this.tracerExtension(ownerId, bookingId, 'booking.extension_acceptee', {
+      checkOutDemande: booking.extensionCheckOut,
+      prix,
+    });
+    return prolonge;
+  }
+
+  /** L hote refuse : la demande disparait, le sejour initial n est pas touche. */
+  async refuserExtension(ownerId: string, bookingId: string) {
+    const booking = await this.prisma.booking.findFirst({ where: { id: bookingId, ownerId } });
+    if (!booking) throw new NotFoundException('Reservation non trouvee');
+    if (!booking.extensionCheckOut) throw new BadRequestException('Aucune extension en attente');
+
+    const refusee = await this.prisma.booking.update({
+      where: { id: bookingId },
+      data: { extensionCheckOut: null, extensionPrice: null, extensionRequestedAt: null },
+    });
+
+    await this.tracerExtension(ownerId, bookingId, 'booking.extension_refusee', {
+      checkOutDemande: booking.extensionCheckOut,
+      prix: booking.extensionPrice,
+    });
+    return refusee;
+  }
+
+  /**
+   * Ecriture de l extension sur la reservation.
+   *
+   * Les nuits et le prix s AJOUTENT, ils ne se recalculent pas : le sejour
+   * initial a ete tarife a ses propres conditions, qu une periode saisonniere
+   * apparue depuis ne doit pas retroactivement modifier.
+   *
+   * Le nombre de nuits vient de `tarifer`, qui les compte en parcourant le
+   * calendrier. Le rededuire d une soustraction de millisecondes donnerait un
+   * second resultat, et deux sources pour le meme nombre finissent toujours
+   * par diverger — sur un changement d heure, par exemple.
+   */
+  private async appliquerExtension(
+    booking: any,
+    nouveauCheckOut: Date,
+    prix: number,
+    nuitsAjoutees: number,
+  ) {
+    return this.prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        checkOut: nouveauCheckOut,
+        totalNights: booking.totalNights + nuitsAjoutees,
+        basePrice: Number(booking.basePrice) + prix,
+        totalPrice: Number(booking.totalPrice) + prix,
+        extensionCheckOut: null,
+        extensionPrice: null,
+        extensionRequestedAt: null,
+      },
+    });
+  }
+
+  private async tracerExtension(userId: string, bookingId: string, action: string, details: any) {
+    await this.prisma.auditLog.create({
+      data: {
+        userId,
+        action,
+        entityType: 'booking',
+        entityId: bookingId,
+        details: toDbJson(details),
+        ipAddress: 'system',
+        userAgent: 'system',
+      },
+    });
+  }
+
+  /**
    * Date jusqu a laquelle l annulation reste libre. `null` = libre jusqu au
    * bout, ce qui reste le defaut d une annonce qui n a rien declare.
    */

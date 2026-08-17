@@ -8,6 +8,18 @@ export class CreateBookingDto {
   @IsInt() @Min(1) @Type(() => Number) guestsCount: number;
 }
 
+/**
+ * Extension d un sejour : seule la date de depart change.
+ *
+ * Ni le nombre de voyageurs ni la date d arrivee ne sont acceptes ici. Modifier
+ * l arrivee d un sejour commence n a pas de sens, et changer le nombre
+ * d occupants est une autre decision, avec sa propre limite de capacite — les
+ * melanger ferait passer une hausse d effectif pour une simple prolongation.
+ */
+export class ExtendBookingDto {
+  @IsDateString() checkOut: string;
+}
+
 export class ValidateBookingDto {
   @IsBoolean() conform: boolean;
   @IsBoolean() photosConform: boolean;

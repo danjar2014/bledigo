@@ -4,10 +4,11 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useQuery } from '@tanstack/react-query';
-import { CalendarDays, Users, Lock, ShieldCheck, Star } from 'lucide-react';
+import { CalendarDays, Users, Lock, ShieldCheck, Star, CalendarPlus } from 'lucide-react';
 import { api } from '@/lib/api';
 import RequireAuth from '@/components/RequireAuth';
 import ValidationModal from '@/components/ValidationModal';
+import ExtensionModal from '@/components/ExtensionModal';
 import CarOffers from '@/components/CarOffers';
 import ServiceOrders from '@/components/ServiceOrders';
 import ReviewModal from '@/components/ReviewModal';
@@ -19,6 +20,7 @@ function Reservations() {
   const money = useMoney();
   const [validating, setValidating] = useState<any>(null);
   const [reviewing, setReviewing] = useState<any>(null);
+  const [extending, setExtending] = useState<any>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['bookings', 'traveler'],
@@ -64,6 +66,9 @@ function Reservations() {
               const status = BOOKING_STATUS[b.status] || { label: b.status, className: 'bg-cloud' };
               const canValidate = b.status === 'checked_in' && b.validationStatus === 'pending';
               const canReview = b.status === 'completed' && b.validationStatus !== 'disputed';
+              // On ne prolonge qu un sejour accepte et pas encore clos : une
+              // demande en attente se modifie, elle ne s etend pas.
+              const canExtend = ['confirmed', 'checked_in'].includes(b.status);
 
               return (
                 <div
@@ -131,8 +136,31 @@ function Reservations() {
                             Laisser un avis
                           </button>
                         )}
+                        {canExtend && !b.extensionCheckOut && (
+                          <button
+                            onClick={() => setExtending(b)}
+                            className="flex items-center gap-2 border border-cloud text-charcoal px-4 py-2 rounded-bledi-sm text-sm font-medium hover:border-bledi-blue hover:text-bledi-blue"
+                          >
+                            <CalendarPlus className="w-4 h-4" />
+                            Rester plus longtemps
+                          </button>
+                        )}
                       </div>
                     </div>
+
+                    {/* Demande en attente : l hote decide, et le voyageur doit
+                        voir ce qu il a demande plutot qu un silence. */}
+                    {b.extensionCheckOut && (
+                      <div className="mt-3 p-3 rounded-bledi-sm bg-amber-50 border border-amber-200 text-sm">
+                        <p className="font-medium text-amber-900">
+                          Prolongation demandee jusqu au {date(b.extensionCheckOut)}
+                        </p>
+                        <p className="text-amber-800/90 mt-1">
+                          {money(Number(b.extensionPrice))} en plus, en attente de la reponse de
+                          l hote. Ce montant est fige : il ne changera pas d ici la.
+                        </p>
+                      </div>
+                    )}
 
                     {/* Paiement direct : une fois la demande acceptee, les deux parties
                         se joignent et reglent entre elles. Ce bloc disparait de lui-meme
@@ -196,6 +224,7 @@ function Reservations() {
 
       {validating && <ValidationModal booking={validating} onClose={() => setValidating(null)} />}
       {reviewing && <ReviewModal booking={reviewing} onClose={() => setReviewing(null)} />}
+      {extending && <ExtensionModal booking={extending} onClose={() => setExtending(null)} />}
     </main>
   );
 }

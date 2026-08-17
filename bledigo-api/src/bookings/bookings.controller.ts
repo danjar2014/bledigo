@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { BookingsService } from './bookings.service';
-import { CreateBookingDto, ValidateBookingDto, RefuseBookingDto } from './dto';
+import { CreateBookingDto, ValidateBookingDto, RefuseBookingDto, ExtendBookingDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
@@ -35,6 +35,47 @@ export class BookingsController {
   @Post(':id/cancel')
   cancel(@CurrentUser('id') me: string, @Param('id') id: string) {
     return this.bookingsService.cancel(me, id);
+  }
+
+  @Get(':id/extension')
+  @ApiOperation({
+    summary:
+      'Devis d extension : nuits ajoutees et prix, servis AVANT la demande pour qu aucun montant ne soit decouvert apres coup',
+  })
+  devisExtension(
+    @CurrentUser('id') me: string,
+    @Param('id') id: string,
+    @Query('checkOut') checkOut: string,
+  ) {
+    return this.bookingsService.devisExtension(me, id, new Date(checkOut));
+  }
+
+  @Post(':id/extension')
+  @ApiOperation({
+    summary:
+      'Demande d extension (voyageur) : attend l accord de l hote, sauf reservation instantanee',
+  })
+  demanderExtension(
+    @CurrentUser('id') me: string,
+    @Param('id') id: string,
+    @Body() dto: ExtendBookingDto,
+  ) {
+    return this.bookingsService.demanderExtension(me, id, new Date(dto.checkOut));
+  }
+
+  @Post(':id/extension/accept')
+  @ApiOperation({
+    summary:
+      'Acceptation de l extension (proprietaire) : la disponibilite est reverifiee, le prix reste celui annonce au voyageur',
+  })
+  accepterExtension(@CurrentUser('id') me: string, @Param('id') id: string) {
+    return this.bookingsService.accepterExtension(me, id);
+  }
+
+  @Post(':id/extension/refuse')
+  @ApiOperation({ summary: 'Refus de l extension (proprietaire) : le sejour initial n est pas touche' })
+  refuserExtension(@CurrentUser('id') me: string, @Param('id') id: string) {
+    return this.bookingsService.refuserExtension(me, id);
   }
 
   @Post(':id/arrivee')

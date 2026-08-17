@@ -40,6 +40,17 @@ function Dashboard() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bookings'] }),
   });
 
+  // Accorder des nuits supplementaires reste une decision de l hote, au meme
+  // titre que l acceptation initiale : ce sont ses dates.
+  const accepterExtension = useMutation({
+    mutationFn: (id: string) => api.acceptExtension(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bookings'] }),
+  });
+  const refuserExtension = useMutation({
+    mutationFn: (id: string) => api.refuseExtension(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bookings'] }),
+  });
+
   const revenue = (bookings || [])
     .filter((b: any) => b.payment?.status === 'captured')
     .reduce((sum: number, b: any) => sum + Number(b.totalPrice), 0);
@@ -82,7 +93,8 @@ function Dashboard() {
             {bookings.map((b: any) => {
               const status = BOOKING_STATUS[b.status] || { label: b.status, className: 'bg-cloud' };
               return (
-                <div key={b.id} className="bg-white rounded-bledi shadow-bledi p-4 flex flex-wrap items-center gap-4">
+                <div key={b.id} className="bg-white rounded-bledi shadow-bledi p-4">
+                  <div className="flex flex-wrap items-center gap-4">
                   <div className="flex-1 min-w-[240px]">
                     <div className="font-medium text-charcoal">{b.listing?.title}</div>
                     <div className="flex flex-wrap gap-3 text-sm text-slate mt-1">
@@ -129,6 +141,47 @@ function Dashboard() {
                       </span>
                     )}
                   </div>
+                  </div>
+
+                  {/* Demande de prolongation. Elle vit sous la reservation
+                      concernee plutot que dans une liste separee : c est la
+                      meme personne, le meme logement, et l hote decide en
+                      voyant les dates qu il a deja accordees. */}
+                  {b.extensionCheckOut && (
+                    <div className="mt-3 pt-3 border-t border-cloud flex flex-wrap items-center gap-3">
+                      <div className="flex-1 min-w-[240px] text-sm">
+                        <span className="font-medium text-charcoal">
+                          Prolongation demandee jusqu au {date(b.extensionCheckOut)}
+                        </span>
+                        <span className="text-slate">
+                          {' '}
+                          — {money(Number(b.extensionPrice))} en plus
+                        </span>
+                      </div>
+                      <div className="flex gap-2 ml-auto">
+                        <button
+                          onClick={() => accepterExtension.mutate(b.id)}
+                          disabled={accepterExtension.isPending || refuserExtension.isPending}
+                          className="flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-1.5 rounded-bledi-sm text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
+                        >
+                          <Check className="w-4 h-4" />
+                          Accorder
+                        </button>
+                        <button
+                          onClick={() => refuserExtension.mutate(b.id)}
+                          disabled={accepterExtension.isPending || refuserExtension.isPending}
+                          className="border border-cloud text-slate px-3 py-1.5 rounded-bledi-sm text-sm font-medium hover:text-charcoal disabled:opacity-50"
+                        >
+                          Refuser
+                        </button>
+                      </div>
+                      {accepterExtension.error && (
+                        <p className="w-full text-sm text-red-700 bg-red-50 rounded p-2">
+                          {(accepterExtension.error as Error).message}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

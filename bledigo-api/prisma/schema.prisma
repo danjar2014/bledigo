@@ -282,6 +282,13 @@ model Booking {
   /// informer l autre partie de ce qui lui est oppose.
   cancelledAt        DateTime? @map("cancelled_at")
   cancelledBy        String?   @map("cancelled_by")
+  /// Extension demandee par le voyageur, en attente de l accord de l hote.
+  /// Le prix est FIGE a la demande : c est le montant que le voyageur a vu et
+  /// accepte. Le recalculer a l acceptation laisserait l hote encaisser un
+  /// tarif que l autre n a jamais eu sous les yeux.
+  extensionCheckOut    DateTime? @map("extension_check_out")
+  extensionPrice       Float?    @map("extension_price")
+  extensionRequestedAt DateTime? @map("extension_requested_at")
 
   // Relations
   listing   Listing    @relation(fields: [listingId], references: [id])
