@@ -1,12 +1,24 @@
 'use client';
 
-import { Shield, Camera, MapPin, Clock, Lock, Award } from 'lucide-react';
+import { Shield, ClipboardCheck, MapPin, Clock, Lock, Award } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+/**
+ * Ce que la plateforme fait REELLEMENT.
+ *
+ * Trois promesses ont ete retirees d ici parce que rien ne les tenait : des
+ * agents verifiant les logements (le modele a ete abandonne, il n a jamais
+ * existe de compte agent), des photos prises par des controleurs terrain
+ * (aucun code ne certifie une photo), et un GPS verifie (les coordonnees sont
+ * celles de la ville declaree, `dto.latitude ?? locality.lat`).
+ *
+ * Une promesse invendable est pire qu une promesse absente : le voyageur qui
+ * la decouvre fausse cesse de croire les autres, y compris les vraies.
+ */
 const indicators = [
-  { icon: Shield, title: 'Zero arnaque', desc: 'Tous les logements verifies par nos agents' },
-  { icon: Camera, title: 'Photos certifiees', desc: 'Prises par nos controleurs terrain' },
-  { icon: MapPin, title: 'Emplacement garanti', desc: 'GPS verifie, pas de faux emplacements' },
+  { icon: Shield, title: 'Fraude surveillee', desc: 'Refus repetes et absences declarees a tort entrainent des sanctions' },
+  { icon: ClipboardCheck, title: 'Sejours valides', desc: 'Le voyageur confirme sur place ce que l annonce promettait' },
+  { icon: MapPin, title: 'Situe sur la carte', desc: 'Chaque annonce est placee dans sa ville, visible avant de reserver' },
   { icon: Clock, title: 'Reponse rapide', desc: 'L hote accepte, vous le contactez' },
   { icon: Lock, title: 'Sans commission', desc: 'Vous reglez directement avec l hote' },
   { icon: Award, title: 'Certification', desc: 'Bronze, Silver, Gold, Diamond' },

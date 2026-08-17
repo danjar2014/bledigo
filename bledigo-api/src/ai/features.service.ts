@@ -36,6 +36,13 @@ export type ListingFeatures = {
 
   /** --- Elements verifiables par la plateforme. --- */
   photos: number;
+  /**
+   * Collectee mais NON notee depuis heuristique-v4, comme criteresEchoues :
+   * aucun code ne met `isCertified` a vrai en dehors du semis de demonstration.
+   * La variable reste observee pour la phase 2, au cas ou une certification des
+   * photos existerait un jour — elle ne rapporte plus de points tant que rien
+   * ne la produit.
+   */
   photosCertifiees: number;
   niveauCertification: string;
 

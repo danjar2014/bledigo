@@ -503,12 +503,16 @@ function Formulaire() {
                   className="flex items-center gap-2 border-2 border-dashed border-cloud text-slate px-4 py-6 rounded-bledi-sm hover:border-bledi-blue hover:text-bledi-blue"
                 >
                   <ImagePlus className="w-4 h-4" />
-                  Ajouter une photo
+                  Ajouter une image de demonstration
                 </button>
               </div>
-              <p className="text-xs text-slate">
-                3 photos minimum. La premiere sert de visuel principal. En production, l envoi passe
-                par une URL S3 presignee et nos agents verifient la conformite.
+              {/* Dire ce que ce bouton fait vraiment. Il n envoie aucun fichier : il
+                  empile une image de stock aleatoire. Un hote qui croit avoir mis
+                  les photos de sa villa publie l interieur de quelqu un d autre. */}
+              <p className="text-xs text-red-700 bg-red-50 rounded p-2">
+                L envoi de vos propres photos n est pas encore disponible : ce bouton ajoute une
+                image de stock, le temps que le stockage soit raccorde. 3 images minimum, la
+                premiere sert de visuel principal.
               </p>
 
               {/* Recapitulatif */}

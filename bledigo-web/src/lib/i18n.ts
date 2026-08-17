@@ -37,7 +37,7 @@ const fr: Dict = {
   'nav.theme': 'Theme',
 
   'home.hero.title': 'Louez en Tunisie, en toute confiance',
-  'home.hero.subtitle': 'Appartements, villas, maisons d hotes — verifies par nos agents',
+  'home.hero.subtitle': 'Appartements, villas, maisons d hotes — notes par ceux qui y ont sejourne',
   'home.types.title': 'Decouvrez nos types de logements',
   'home.cities.title': 'Destinations populaires',
   'home.cities.subtitle': 'Les villes ou nos voyageurs reservent le plus',
@@ -92,7 +92,7 @@ const en: Dict = {
   'nav.theme': 'Theme',
 
   'home.hero.title': 'Rent in Tunisia, with confidence',
-  'home.hero.subtitle': 'Apartments, villas and guest houses — verified by our agents',
+  'home.hero.subtitle': 'Apartments, villas and guest houses — rated by the guests who stayed',
   'home.types.title': 'Browse by property type',
   'home.cities.title': 'Popular destinations',
   'home.cities.subtitle': 'Where our travellers book the most',

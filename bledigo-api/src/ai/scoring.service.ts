@@ -30,7 +30,28 @@ import { toDbJson, fromDbJson } from '../common/json';
  * par la personne qui etait sur place plutot que par un controleur, et il a
  * l avantage d exister.
  */
-const MODELE = 'heuristique-v3';
+/**
+ * v4 : les photos certifiees rejoignent les visites de controle.
+ *
+ * Meme piege, laisse une ligne au-dessus de celui que v3 vient de corriger.
+ * `isCertified` n est ecrit NULLE PART dans l application — le seul point
+ * d ecriture du depot est prisma/seed.ts, pour les annonces de demonstration.
+ * Il n existe ni route d administration, ni agent (le role a ete supprime),
+ * ni aucun autre chemin. `photosCertifiees` vaut donc 0 pour toute annonce
+ * reelle, et ces 20 points etaient inatteignables.
+ *
+ * Rien ne les remplace, volontairement : compter les photos brutes
+ * recompenserait trois clics, et aujourd hui ce sont des images de stock. Un
+ * point ne se donne que pour un fait constate.
+ *
+ * Effet de bord heureux : la securite plafonne desormais a exactement 100
+ * (40 + 40 + 20) au lieu de 120 ecretes. Deux annonces diamond ne peuvent plus
+ * se retrouver a egalite par troncature.
+ *
+ * La variable reste collectee par FeaturesService — elle est archivee pour la
+ * phase 2, comme criteresEchoues. On cesse de la NOTER, pas de l observer.
+ */
+const MODELE = 'heuristique-v4';
 
 /**
  * Lissage bayesien : un logement sans historique ne vaut ni 0 ni 100.
@@ -105,7 +126,6 @@ export class ScoringService {
           100,
           40 +
             (CERTIF_POINTS[f.niveauCertification] ?? 0) * 2 +
-            Math.min(f.photosCertifiees * 5, 20) +
             // Remplace les visites de controle : un sejour valide par son
             // voyageur est un constat de terrain, fait par quelqu un qui y
             // etait. Cinq validations valent l ancien plafond. On reutilise

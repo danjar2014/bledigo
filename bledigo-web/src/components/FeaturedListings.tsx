@@ -27,7 +27,7 @@ export default function FeaturedListings() {
             <h2 className="text-3xl md:text-4xl font-display font-bold text-charcoal mb-2">
               Logements <span className="text-bledi-blue">certifies</span>
             </h2>
-            <p className="text-slate">Nos meilleures adresses, verifiees par nos agents terrain</p>
+            <p className="text-slate">Nos meilleures adresses, notees par les voyageurs qui y ont dormi</p>
           </div>
           <div className="flex gap-2 mt-4 md:mt-0">
             {TABS.map((tab) => (
