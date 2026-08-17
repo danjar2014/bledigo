@@ -7,6 +7,21 @@ import { useAuth } from '@/store/auth';
 import { Shield } from 'lucide-react';
 import GoogleButton from '@/components/GoogleButton';
 
+/**
+ * Raccourci de developpement uniquement.
+ *
+ * Ces trois adresses sont FERMEES en production : le semis leur donne une
+ * empreinte inutilisable a chaque demarrage, et les comptes de recette vivent
+ * sur les adresses de DEMO_EMAIL_OWNER / DEMO_EMAIL_TRAVELER. Le bloc y
+ * remplissait donc un mot de passe qui echoue, tout en annoncant au monde
+ * l existence d un compte administrateur — le pire des deux cotes.
+ *
+ * En local le semis retombe bien sur Password123!, d ou le raccourci conserve.
+ * NODE_ENV est fige au build par Next.js : en production la condition est
+ * fausse a la compilation et le bloc disparait du bundle, adresses comprises.
+ */
+const EN_DEVELOPPEMENT = process.env.NODE_ENV === 'development';
+
 const DEMO = [
   { role: 'Voyageur', email: 'traveler@bledigo.com' },
   { role: 'Proprietaire', email: 'owner@bledigo.com' },
@@ -19,7 +34,6 @@ const HOME_BY_ROLE: Record<string, string> = {
   agency: '/proprietaire',
   admin: '/admin',
   support: '/admin',
-  agent: '/admin',
 };
 
 export default function ConnexionPage() {
@@ -88,24 +102,26 @@ export default function ConnexionPage() {
           </p>
         </div>
 
-        <div className="bg-white/60 rounded-bledi p-4 mt-4 text-sm">
-          <div className="font-medium text-charcoal mb-2">Comptes de demonstration</div>
-          <div className="space-y-1">
-            {DEMO.map((d) => (
-              <button
-                key={d.email}
-                onClick={() => setForm({ email: d.email, password: 'Password123!' })}
-                className="w-full flex justify-between items-center text-left px-3 py-2 rounded-bledi-sm hover:bg-white"
-              >
-                <span className="text-slate">{d.role}</span>
-                <span className="text-charcoal font-mono text-xs">{d.email}</span>
-              </button>
-            ))}
+        {EN_DEVELOPPEMENT && (
+          <div className="bg-white/60 rounded-bledi p-4 mt-4 text-sm">
+            <div className="font-medium text-charcoal mb-2">Comptes de demonstration (developpement)</div>
+            <div className="space-y-1">
+              {DEMO.map((d) => (
+                <button
+                  key={d.email}
+                  onClick={() => setForm({ email: d.email, password: 'Password123!' })}
+                  className="w-full flex justify-between items-center text-left px-3 py-2 rounded-bledi-sm hover:bg-white"
+                >
+                  <span className="text-slate">{d.role}</span>
+                  <span className="text-charcoal font-mono text-xs">{d.email}</span>
+                </button>
+              ))}
+            </div>
+            <div className="text-xs text-slate mt-2">
+              Mot de passe : <span className="font-mono">Password123!</span> - cliquez pour remplir
+            </div>
           </div>
-          <div className="text-xs text-slate mt-2">
-            Mot de passe : <span className="font-mono">Password123!</span> - cliquez pour remplir
-          </div>
-        </div>
+        )}
       </div>
     </main>
   );
