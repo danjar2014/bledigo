@@ -244,15 +244,4 @@ export class AdminService {
     ]);
     return { items, total, page, limit };
   }
-
-  async scheduleControlVisit(agentId: string, dto: { listingId: string; scheduledAt: string }) {
-    return this.prisma.controlVisit.create({
-      data: {
-        listingId: dto.listingId,
-        agentId,
-        scheduledAt: new Date(dto.scheduledAt),
-        status: 'scheduled',
-      },
-    });
-  }
 }

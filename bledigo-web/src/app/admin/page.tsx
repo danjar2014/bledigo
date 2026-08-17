@@ -28,10 +28,42 @@ const TABS = [
 function Admin() {
   const [tab, setTab] = useState<string>('dashboard');
 
+  /**
+   * Candidatures en attente.
+   *
+   * Rien ne les signalait : l onglet existait parmi sept pastilles, et une
+   * entreprise pouvait attendre des jours qu on remarque sa demande. Le compte
+   * est donc affiche en permanence, quel que soit l onglet ouvert.
+   */
+  const { data: enAttente } = useQuery({
+    queryKey: ['admin-providers', 'pending'],
+    queryFn: () => api.adminProviders({ status: 'pending' }),
+    refetchInterval: 60000,
+  });
+  const nbEnAttente = enAttente?.length ?? 0;
+
   return (
     <main className="min-h-screen bg-cream">
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-display font-bold text-charcoal mb-6">Back-office BlediGo</h1>
+
+        {nbEnAttente > 0 && (
+          <button
+            onClick={() => setTab('providers')}
+            className="w-full text-left mb-6 p-4 rounded-bledi bg-amber-50 border-2 border-amber-300 flex items-center gap-3 hover:bg-amber-100"
+          >
+            <BadgeCheck className="w-6 h-6 text-amber-600 shrink-0" />
+            <div>
+              <p className="font-medium text-amber-900">
+                {nbEnAttente} demande{nbEnAttente > 1 ? 's' : ''} de prestataire a verifier
+              </p>
+              <p className="text-sm text-amber-800/90">
+                Constatez leur activite, puis generez leurs identifiants. Tant que ce n est pas
+                fait, elles ne peuvent pas se connecter.
+              </p>
+            </div>
+          </button>
+        )}
 
         <div className="flex flex-wrap gap-2 mb-6">
           {TABS.map(([key, label]) => (
@@ -43,6 +75,11 @@ function Admin() {
               }`}
             >
               {label}
+              {key === 'providers' && nbEnAttente > 0 && (
+                <span className="ml-2 px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-xs">
+                  {nbEnAttente}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -873,7 +910,7 @@ function LogsTab() {
 
 export default function Page() {
   return (
-    <RequireAuth roles={['admin', 'support', 'agent']}>
+    <RequireAuth roles={['admin', 'support']}>
       <Admin />
     </RequireAuth>
   );

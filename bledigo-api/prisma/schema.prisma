@@ -59,7 +59,6 @@ model User {
   subscriptions     Subscription[]
   sanctionsApplied  Sanction[]      @relation("SanctionAppliedBy")
   sanctionsReceived Sanction[]      @relation("SanctionUser")
-  controlVisits     ControlVisit[]  @relation("AgentVisits")
   auditLogs         AuditLog[]
   contactAttempts     ContactAttempt[]
   reverseSearchCredit ReverseSearchCredit?
@@ -193,7 +192,6 @@ model Listing {
   bookings        Booking[]
   reviews         Review[]
   certifications  Certification[]
-  controlVisits   ControlVisit[]
   reverseOffers   ReverseOffer[]
   conversations   Conversation[]
   modificationHistory ListingModification[]
@@ -459,30 +457,6 @@ model Certification {
   @@map("certifications")
 }
 
-model ControlVisit {
-  id            String    @id @default(uuid())
-  listingId     String    @map("listing_id")
-  agentId       String    @map("agent_id")
-  scheduledAt   DateTime  @map("scheduled_at")
-  completedAt   DateTime? @map("completed_at")
-  status        String    @default("scheduled")
-  checklist     String      @default("{}")
-  photos        String      @default("[]")
-  notes         String?
-  gpsCoordinates String?  @map("gps_coordinates")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  videos            String  @default("[]")
-  weatherConditions String? @map("weather_conditions")
-
-  // Relations
-  listing Listing @relation(fields: [listingId], references: [id])
-  agent   User    @relation("AgentVisits", fields: [agentId], references: [id])
-
-  @@index([listingId])
-  @@index([agentId])
-  @@map("control_visits")
-}
 
 model Sanction {
   id           String       @id @default(uuid())

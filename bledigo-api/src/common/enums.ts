@@ -6,7 +6,6 @@ export enum UserRole {
   owner = 'owner',
   agency = 'agency',
   admin = 'admin',
-  agent = 'agent',
   support = 'support',
   /**
    * Prestataire de services : menage/entretien ou location de voiture.

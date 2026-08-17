@@ -10,7 +10,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 @ApiTags('admin')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.admin, UserRole.support, UserRole.agent)
+@Roles(UserRole.admin, UserRole.support)
 @Controller('api/v1/admin')
 export class AdminController {
   constructor(private readonly service: AdminService) {}
@@ -62,10 +62,5 @@ export class AdminController {
     @Body() dto: { decision: 'release' | 'refund'; motif?: string },
   ) {
     return this.service.settleHeldPayment(me, id, dto.decision, dto.motif ?? 'Decision administrateur');
-  }
-
-  @Post('control-visits')
-  visit(@CurrentUser('id') me: string, @Body() dto: any) {
-    return this.service.scheduleControlVisit(me, dto);
   }
 }

@@ -8,7 +8,7 @@ export type User = {
   email: string;
   firstName: string;
   lastName: string;
-  role: 'traveler' | 'owner' | 'agency' | 'admin' | 'agent' | 'support';
+  role: 'traveler' | 'owner' | 'agency' | 'admin' | 'support' | 'provider';
   /** Roles effectifs : un compte peut cumuler proprietaire et voyageur. */
   roles?: string[];
   /** Modes d interface disponibles pour ce compte. */

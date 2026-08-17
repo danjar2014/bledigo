@@ -18,7 +18,19 @@ import { toDbJson, fromDbJson } from '../common/json';
  *    lui, la phase 2 demarrerait sans donnees.
  */
 
-const MODELE = 'heuristique-v2';
+/**
+ * v3 : les visites de controle terrain ont ete abandonnees.
+ *
+ * Elles valaient jusqu a 20 points de securite. Comme aucune n a jamais eu lieu
+ * et qu il n y aura pas d agents, ces 20 points etaient inatteignables : tout
+ * logement plafonnait a 40 + certification, et perdait 8 points de confiance
+ * pour une raison qui n existait pas.
+ *
+ * Le sejour VALIDE par son voyageur les remplace. C est le meme constat, fait
+ * par la personne qui etait sur place plutot que par un controleur, et il a
+ * l avantage d exister.
+ */
+const MODELE = 'heuristique-v3';
 
 /**
  * Lissage bayesien : un logement sans historique ne vaut ni 0 ni 100.
@@ -94,7 +106,12 @@ export class ScoringService {
           40 +
             (CERTIF_POINTS[f.niveauCertification] ?? 0) * 2 +
             Math.min(f.photosCertifiees * 5, 20) +
-            Math.min(f.visitesControle * 10, 20) -
+            // Remplace les visites de controle : un sejour valide par son
+            // voyageur est un constat de terrain, fait par quelqu un qui y
+            // etait. Cinq validations valent l ancien plafond. On reutilise
+            // validationsExplicites plutot que d ajouter une variable qui
+            // compterait la meme chose sous un autre nom.
+            Math.min(f.validationsExplicites * 4, 20) -
             f.tentativesHorsPlateforme * 15,
         ),
       ),

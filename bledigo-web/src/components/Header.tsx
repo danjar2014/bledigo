@@ -37,7 +37,7 @@ const NAV_BY_MODE = {
 } as const;
 
 /** Liens reserves au back-office, independants du mode. */
-const ADMIN_ROLES = ['admin', 'support', 'agent'];
+const ADMIN_ROLES = ['admin', 'support'];
 
 /**
  * Le prestataire n a pas de « mode » : ni voyageur ni hote, il ne reserve rien

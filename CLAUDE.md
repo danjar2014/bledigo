@@ -155,6 +155,20 @@ raisonne sur le taux de refus d'un même acteur rapporté à ses séjours abouti
 versements tant qu'il reste des réservations à honorer, et ne bloque
 complètement qu'une fois le carnet vide.
 
+**Pas de visites de contrôle terrain.** Le modèle reposait sur des agents
+envoyés vérifier les logements : zéro visite, zéro compte agent, et un coût de
+fonctionnement que rien ne justifiait. Le rôle `agent`, la table
+`control_visits` et l'endpoint associé sont supprimés. La confiance vient des
+notes, des séjours validés et du volume — et d'un modèle appris en phase 2.
+
+Conséquence à ne pas rater si on remanie le score : les visites valaient jusqu'à
+**20 points de sécurité**, donc inatteignables une fois le modèle abandonné.
+Tout logement plafonnait à `40 + certification` et perdait 8 points de confiance
+pour une raison qui n'existait pas. Elles sont remplacées par les séjours
+validés par leur voyageur — le même constat, fait par quelqu'un qui était sur
+place. `MODELE` est passé en `heuristique-v3` : un score archivé doit rester
+interprétable.
+
 **Score de conformité recalculé à chaque événement.** L'extraction des
 caractéristiques (`src/ai/features.service.ts`) est séparée du calcul
 (`scoring.service.ts`, `MODELE = 'heuristique-v2'`), précisément pour qu'un

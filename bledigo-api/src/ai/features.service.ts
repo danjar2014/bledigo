@@ -38,7 +38,6 @@ export type ListingFeatures = {
   photos: number;
   photosCertifiees: number;
   niveauCertification: string;
-  visitesControle: number;
 
   /** --- Signaux de comportement de l hote. --- */
   tentativesHorsPlateforme: number;
@@ -109,7 +108,6 @@ export class FeaturesService {
       photos: listing.photos.length,
       photosCertifiees: listing.photos.filter((p: any) => p.isCertified).length,
       niveauCertification: listing.certificationLevel,
-      visitesControle: listing.passport?.controlVisitsCount ?? 0,
 
       tentativesHorsPlateforme: passeportHote?.offPlatformAttempts ?? 0,
       annulationsParHote: bookings.filter((b) => b.status === BookingStatus.cancelled).length,
