@@ -412,8 +412,14 @@ function ProvidersTab() {
                       <div className="text-xs text-slate">RC {p.registrationNumber}</div>
                     )}
                   </td>
+                  {/* La forme juridique dit CE QU IL FAUT VERIFIER : un registre
+                      de commerce pour une societe, une piece d identite pour une
+                      personne physique. */}
                   <td className="p-3">
-                    {p.type === 'location_voiture' ? 'Location de voiture' : 'Menage'}
+                    <div>{p.type === 'location_voiture' ? 'Location de voiture' : 'Menage'}</div>
+                    <div className="text-xs text-slate">
+                      {p.legalForm === 'individuel' ? 'personne physique — verifier la piece d identite' : 'societe'}
+                    </div>
                   </td>
                   <td className="p-3">
                     {p.city || '—'}
@@ -487,6 +493,7 @@ function FormulairePrestataire({
   const [f, setF] = useState({
     companyName: '',
     type: 'location_voiture',
+    legalForm: 'societe',
     email: '',
     firstName: '',
     lastName: '',
@@ -515,11 +522,32 @@ function FormulairePrestataire({
         <select
           className="input-bledi"
           value={f.type}
-          onChange={(e) => set({ type: e.target.value })}
+          onChange={(e) =>
+            // Repasser en societe : une personne physique ne peut pas louer de
+            // vehicules, et le serveur refuserait la combinaison.
+            set({
+              type: e.target.value,
+              legalForm: e.target.value === 'menage' ? f.legalForm : 'societe',
+            })
+          }
         >
           <option value="location_voiture">Location de voiture</option>
           <option value="menage">Menage et entretien</option>
         </select>
+        {f.type === 'menage' ? (
+          <select
+            className="input-bledi"
+            value={f.legalForm}
+            onChange={(e) => set({ legalForm: e.target.value })}
+          >
+            <option value="societe">Societe</option>
+            <option value="individuel">Personne physique</option>
+          </select>
+        ) : (
+          <div className="text-xs text-slate self-center">
+            La location de vehicules est reservee aux societes.
+          </div>
+        )}
         <input
           className="input-bledi"
           placeholder="Adresse email de connexion"
@@ -570,6 +598,7 @@ function FormulairePrestataire({
           onSubmit({
             companyName: f.companyName,
             type: f.type,
+            legalForm: f.legalForm,
             email: f.email,
             firstName: f.firstName,
             lastName: f.lastName,

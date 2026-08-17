@@ -3,13 +3,21 @@ import {
   MaxLength, Matches,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ProviderType } from '../../common/enums';
+import { ProviderType, ProviderLegalForm } from '../../common/enums';
 
 /** Creation d un compte prestataire par l administration. */
 export class CreateProviderDto {
   @IsEmail() email: string;
   @IsString() @MaxLength(120) companyName: string;
   @IsIn([ProviderType.menage, ProviderType.location_voiture]) type: string;
+  /**
+   * societe par defaut. `individuel` n est accepte que pour le menage — la
+   * verification metier est dans le service, pas ici : un DTO ne sait pas
+   * exprimer une regle qui croise deux champs de facon lisible.
+   */
+  @IsOptional()
+  @IsIn([ProviderLegalForm.societe, ProviderLegalForm.individuel])
+  legalForm?: string;
   @IsString() firstName: string;
   @IsString() lastName: string;
   /** Matricule fiscal ou registre de commerce, constate a la main en phase 1. */

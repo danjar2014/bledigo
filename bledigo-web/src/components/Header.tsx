@@ -105,6 +105,19 @@ export default function Header() {
               </Link>
             ))}
 
+          {/* Une entreprise de service arrive en visiteur : le lien doit etre
+              visible sans compte, sinon elle ne saura jamais qu elle peut
+              s inscrire. Il disparait pour ceux qui sont deja prestataires. */}
+          {!isProvider && (
+            <Link
+              href="/devenir-prestataire"
+              className="hidden lg:flex items-center gap-1.5 text-slate hover:text-bledi-blue px-2 py-1"
+            >
+              <Briefcase className="w-4 h-4" />
+              Devenir prestataire
+            </Link>
+          )}
+
           {isProvider && (
             <Link
               href="/prestataire"

@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, NotFoundException, Logger } from '@nes
 import * as bcrypt from 'bcryptjs';
 import { randomBytes, randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
-import { ProviderStatus, ProviderType, UserRole, UserStatus } from '../common/enums';
+import { ProviderStatus, ProviderType, ProviderLegalForm, UserRole, UserStatus } from '../common/enums';
 import { CreateProviderDto, UpdateProviderDto } from './dto';
 import { distanceKm } from '../common/geo';
 import { findLocality, resolveLocality } from '../common/localities';
@@ -43,6 +43,8 @@ export class ProvidersService {
     const existant = await this.prisma.user.findUnique({ where: { email } });
     if (existant) throw new BadRequestException('Email deja utilise');
 
+    const forme = this.formeJuridique(dto.type, dto.legalForm);
+
     // La ville suffit : ses coordonnees viennent du referentiel, comme pour une
     // annonce. Sans elles, la proximite ne se calcule pas et le prestataire
     // serait propose dans toute la Tunisie — un loueur de Djerba apparaitrait a
@@ -71,6 +73,7 @@ export class ProvidersService {
       data: {
         userId: user.id,
         type: dto.type,
+        legalForm: forme,
         companyName: dto.companyName,
         registrationNumber: dto.registrationNumber,
         city: locality?.name ?? dto.city,
@@ -90,7 +93,7 @@ export class ProvidersService {
         action: 'provider.cree',
         entityType: 'service_provider',
         entityId: provider.id,
-        details: toDbJson({ email, type: dto.type, companyName: dto.companyName }),
+        details: toDbJson({ email, type: dto.type, legalForm: forme, companyName: dto.companyName }),
         ipAddress: 'system',
         userAgent: 'system',
       },
@@ -98,6 +101,24 @@ export class ProvidersService {
 
     // Le mot de passe n est retourne qu ici, et n est jamais journalise.
     return { provider, identifiants: { email, motDePasse } };
+  }
+
+  /**
+   * Une personne physique ne peut proposer que du menage.
+   *
+   * Louer des vehicules suppose une flotte, une assurance professionnelle et une
+   * immatriculation : ce n est pas une activite qu on exerce a titre personnel.
+   * Le refus est explicite plutot que silencieux — un formulaire qui accepte
+   * puis ne fonctionne pas est pire qu un formulaire qui refuse.
+   */
+  private formeJuridique(type: string, demandee?: string) {
+    const forme = demandee || ProviderLegalForm.societe;
+    if (forme === ProviderLegalForm.individuel && type !== ProviderType.menage) {
+      throw new BadRequestException(
+        'La location de vehicules est reservee aux societes. Une personne physique peut proposer du menage et de l entretien.',
+      );
+    }
+    return forme;
   }
 
   /**
@@ -124,6 +145,7 @@ export class ProvidersService {
       );
     }
 
+    const forme = this.formeJuridique(dto.type, dto.legalForm);
     const locality = findLocality(dto.city) ?? resolveLocality(dto.city);
 
     const user = await this.prisma.user.create({
@@ -143,6 +165,7 @@ export class ProvidersService {
       data: {
         userId: user.id,
         type: dto.type,
+        legalForm: forme,
         companyName: dto.companyName,
         registrationNumber: dto.registrationNumber,
         city: locality?.name ?? dto.city,
@@ -163,7 +186,7 @@ export class ProvidersService {
         action: 'provider.candidature',
         entityType: 'service_provider',
         entityId: provider.id,
-        details: toDbJson({ email, type: dto.type, companyName: dto.companyName, phone: dto.phone }),
+        details: toDbJson({ email, type: dto.type, legalForm: forme, companyName: dto.companyName, phone: dto.phone }),
         ipAddress: 'public',
         userAgent: 'public',
       },
@@ -171,8 +194,13 @@ export class ProvidersService {
 
     return {
       recue: true,
+      // Le message suit la forme juridique : parler de « statut d entreprise » a
+      // une personne qui travaille a son compte la laisse croire qu il lui en
+      // faut un.
       message:
-        'Demande enregistree. Nous verifions votre statut d entreprise puis vous transmettons vos identifiants par telephone.',
+        forme === ProviderLegalForm.individuel
+          ? 'Demande enregistree. Nous verifions votre identite puis vous transmettons vos identifiants par telephone.'
+          : 'Demande enregistree. Nous verifions votre statut d entreprise puis vous transmettons vos identifiants par telephone.',
     };
   }
 

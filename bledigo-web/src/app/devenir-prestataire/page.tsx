@@ -20,6 +20,7 @@ import { api } from '@/lib/api';
 export default function DevenirPrestataire() {
   const [f, setF] = useState({
     type: 'location_voiture',
+    legalForm: 'societe',
     companyName: '',
     registrationNumber: '',
     email: '',
@@ -36,6 +37,7 @@ export default function DevenirPrestataire() {
     mutationFn: () =>
       api.applyAsProvider({
         type: f.type,
+        legalForm: f.legalForm,
         companyName: f.companyName,
         registrationNumber: f.registrationNumber || undefined,
         email: f.email,
@@ -48,6 +50,8 @@ export default function DevenirPrestataire() {
       }),
   });
 
+  const individuel = f.legalForm === 'individuel' && f.type === 'menage';
+
   const complet =
     f.companyName && f.email && f.firstName && f.lastName && f.phone && f.city;
 
@@ -58,7 +62,7 @@ export default function DevenirPrestataire() {
           <Check className="w-10 h-10 text-emerald-600 mx-auto mb-3" />
           <h1 className="font-display font-semibold text-xl mb-2">Demande enregistree</h1>
           <p className="text-slate">
-            Nous verifions votre statut d entreprise, puis nous vous appelons au{' '}
+            Nous verifions vos informations, puis nous vous appelons au{' '}
             <strong>{f.phone}</strong> pour vous transmettre vos identifiants de connexion.
           </p>
           <p className="text-sm text-slate mt-3">
@@ -85,7 +89,7 @@ export default function DevenirPrestataire() {
 
         <div className="grid md:grid-cols-2 gap-3 mb-8">
           <button
-            onClick={() => set({ type: 'location_voiture' })}
+            onClick={() => set({ type: 'location_voiture', legalForm: 'societe' })}
             className={`text-left p-4 rounded-bledi border-2 transition-all ${
               f.type === 'location_voiture'
                 ? 'border-bledi-blue bg-white'
@@ -117,6 +121,38 @@ export default function DevenirPrestataire() {
           </button>
         </div>
 
+
+        {/* La forme juridique n apparait que pour le menage : louer des
+            vehicules suppose une entreprise, proposer ce choix serait offrir une
+            option que le serveur refuse. */}
+        {f.type === 'menage' && (
+          <div className="bg-white rounded-bledi shadow-bledi p-4 mb-6">
+            <p className="font-medium text-charcoal mb-1">Vous etes</p>
+            <p className="text-sm text-slate mb-3">
+              Le menage n est pas reserve aux societes : vous pouvez vous inscrire a titre
+              personnel.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                ['individuel', 'Une personne, a mon compte'],
+                ['societe', 'Une societe'],
+              ].map(([v, label]) => (
+                <button
+                  key={v}
+                  onClick={() => set({ legalForm: v })}
+                  className={`px-3 py-2 rounded-bledi-sm text-sm font-medium border-2 transition-all ${
+                    f.legalForm === v
+                      ? 'border-bledi-blue text-bledi-blue'
+                      : 'border-cloud text-slate hover:border-slate'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Dire le processus AVANT le formulaire : une entreprise qui remplit
             dix champs pour decouvrir ensuite qu elle doit attendre un appel a
             de bonnes raisons de se sentir menee en bateau. */}
@@ -127,7 +163,11 @@ export default function DevenirPrestataire() {
           </p>
           <ol className="text-sm text-slate space-y-1 list-decimal list-inside">
             <li>Vous remplissez ce formulaire.</li>
-            <li>Nous verifions votre statut d entreprise — registre de commerce ou equivalent.</li>
+            <li>
+              {individuel
+                ? 'Nous verifions votre identite — une piece d identite suffit.'
+                : 'Nous verifions votre statut d entreprise — registre de commerce ou equivalent.'}
+            </li>
             <li>
               Nous vous appelons pour vous transmettre vos identifiants. Votre compte devient actif
               a ce moment-la, pas avant.
@@ -144,25 +184,25 @@ export default function DevenirPrestataire() {
           <div className="grid md:grid-cols-2 gap-3">
             <input
               className="input-bledi"
-              placeholder="Raison sociale *"
+              placeholder={individuel ? 'Vos nom et prenom *' : 'Raison sociale *'}
               value={f.companyName}
               onChange={(e) => set({ companyName: e.target.value })}
             />
             <input
               className="input-bledi"
-              placeholder="Registre de commerce"
+              placeholder={individuel ? 'Numero de carte d identite' : 'Registre de commerce'}
               value={f.registrationNumber}
               onChange={(e) => set({ registrationNumber: e.target.value })}
             />
             <input
               className="input-bledi"
-              placeholder="Prenom du responsable *"
+              placeholder={individuel ? 'Prenom *' : 'Prenom du responsable *'}
               value={f.firstName}
               onChange={(e) => set({ firstName: e.target.value })}
             />
             <input
               className="input-bledi"
-              placeholder="Nom du responsable *"
+              placeholder={individuel ? 'Nom *' : 'Nom du responsable *'}
               value={f.lastName}
               onChange={(e) => set({ lastName: e.target.value })}
             />

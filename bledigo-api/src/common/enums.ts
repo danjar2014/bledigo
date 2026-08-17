@@ -24,6 +24,19 @@ export enum ProviderType {
   location_voiture = 'location_voiture',
 }
 
+/**
+ * Forme juridique d un prestataire.
+ *
+ * Determine ce que l administration constate : un registre de commerce pour une
+ * societe, une piece d identite pour une personne physique. Seul le menage est
+ * ouvert aux personnes physiques — louer des vehicules suppose une flotte, une
+ * assurance et une immatriculation professionnelle.
+ */
+export enum ProviderLegalForm {
+  societe = 'societe',
+  individuel = 'individuel',
+}
+
 /** Cycle de vie d un compte prestataire. */
 export enum ProviderStatus {
   /** Cree, statut d agence pas encore constate par l administration. */

@@ -785,7 +785,14 @@ model ServiceProvider {
   userId        String    @unique @map("user_id")
   /// menage | location_voiture
   type          String
+  /// Nom affiche. Pour une personne physique, c est son nom et prenom : le
+  /// champ garde son intitule plutot que d en ajouter un second qui dirait la
+  /// meme chose.
   companyName   String    @map("company_name")
+  /// societe | individuel. Une personne physique ne peut proposer que du
+  /// menage : la location de vehicules suppose une entreprise. Ce n est donc
+  /// pas le statut d entreprise qu on constate pour elle, mais son identite.
+  legalForm     String    @default("societe") @map("legal_form")
   /// pending tant que l administration n a pas constate le statut.
   status        String    @default("pending")
   verifiedAt    DateTime? @map("verified_at")

@@ -7,6 +7,7 @@ import EscapeIdeas from '@/components/EscapeIdeas';
 import TrustIndicators from '@/components/TrustIndicators';
 import HowItWorks from '@/components/HowItWorks';
 import BecomeHost from '@/components/BecomeHost';
+import BecomeProvider from '@/components/BecomeProvider';
 import ReverseSearchCTA from '@/components/ReverseSearchCTA';
 
 export default function Home() {
@@ -24,6 +25,7 @@ export default function Home() {
       <EscapeIdeas />
       <HowItWorks />
       <BecomeHost />
+      <BecomeProvider />
     </main>
   );
 }
