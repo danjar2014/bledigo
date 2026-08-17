@@ -7,7 +7,7 @@ même dépôt, déployées sur Render depuis `render.yaml` (blueprint).
 |---|---|
 | API | `bledigo-api` — NestJS, Prisma, port 4000 en local (`PORT`, défaut de `main.ts`) |
 | Front | `bledigo-web` — Next.js 14 App Router, TanStack Query, Zustand, Tailwind |
-| Base | SQLite en local, PostgreSQL en production (`BlediGo_DB`, région **oregon**) |
+| Base | SQLite en local, PostgreSQL **Supabase** en production (projet `sqessntpyqjdyunlhuxs`, région **eu-west-1**) |
 | Dépôt | `github.com/danjar2014/bledigo`, branche `main` |
 | Prod | `https://bledigo-api.onrender.com` · `https://bledigo-web.onrender.com` |
 
@@ -37,6 +37,33 @@ l'empreinte de chaque migration déjà jouée : en réécrire une seule fait éc
 `migrate deploy`, et donc **tous** les déploiements suivants. Pour faire évoluer
 le modèle, on ajoute un dossier de migration supplémentaire, jamais on ne touche
 aux existants.
+
+### Les migrations doivent trier dans leur ordre de dépendance
+
+`20260814_prestataires` crée la table `service_reviews` et son index unique ;
+`20260814_avis_mutuels` supprime cet index. Or Prisma applique les migrations
+par **ordre alphabétique**, et `avis` passe avant `prestataires`.
+
+En production cela n'a jamais posé de problème : elles ont été déployées une par
+une, à des jours d'intervalle, donc dans leur ordre chronologique réel. Le
+défaut ne se voit que le jour où l'on reconstruit une base **à partir de zéro**
+— `migrate deploy` échoue alors sur `index "service_reviews_service_booking_id_key"
+does not exist`.
+
+C'est arrivé à la migration vers Supabase, contournée par `prisma db push` (qui
+dérive le schéma du datamodel sans rejouer l'historique) suivi d'une copie de
+`_prisma_migrations`. Le schéma obtenu est exact : `migrate diff` entre le
+datamodel et la base renvoie une migration vide.
+
+**Le vrai correctif reste à faire** : renommer les dossiers pour qu'ils trient
+correctement. Impossible tant qu'une base porte les anciens noms — un rename les
+ferait passer pour de nouvelles migrations, `migrate deploy` échouerait, et
+l'API ne démarrerait plus puisque cette commande précède `node dist/main` dans
+le `startCommand`. À faire au prochain changement de base, en corrigeant
+`migration_name` dans la foulée.
+
+Règle à tenir en attendant : **nommer toute nouvelle migration de façon qu'elle
+trie après toutes celles dont elle dépend.** Un horodatage complet suffit.
 
 ### La région se choisit à la création, et ne se change jamais
 
@@ -86,6 +113,19 @@ futur blueprint neuf — elle ne provisionne pas le service en place.
 Une variable avec `value:` en clair, elle, est bien propagée par le sync : si
 elle non plus n'apparaît pas, c'est que le service n'est pas rattaché au
 blueprint.
+
+### `DATABASE_URL` ne passe plus par le blueprint
+
+La base a quitté Render pour Supabase. `DATABASE_URL` est désormais `sync: false`
+dans `render.yaml` et **saisie à la main** dans Environment : la déclaration sert
+à dessaisir le blueprint d'une variable qu'il provisionnait, sans quoi le
+prochain sync ramènerait l'API sur `BlediGo_DB`, supprimée depuis.
+
+Deux contraintes sur cette URL. Elle doit passer par le **pooler partagé**
+`...pooler.supabase.com` : l'hôte direct `db.<ref>.supabase.co` n'a qu'un
+enregistrement **AAAA**, injoignable depuis Render qui ne sort qu'en IPv4. Et
+par le **port 5432** (session), jamais 6543 (transaction) : Prisma a besoin
+d'une connexion de session pour jouer ses migrations au démarrage.
 
 ### Le Shell Render est réservé aux offres payantes
 

@@ -7,69 +7,84 @@ contient l'architecture, les pièges de production et les décisions de concepti
 
 ---
 
-## À FAIRE EN PREMIER : la base de production disparaît le 09/09/2026
+## ✅ FAIT : la production tourne sur Supabase
 
-`BlediGo_DB` est une base PostgreSQL en **offre gratuite** chez Render. Son
-champ `expiresAt` porte le **9 septembre 2026** : Render supprime ces bases au
-bout de 30 jours, données comprises. Ce n'est pas une alerte théorique, c'est
-une date.
+La migration est terminée le 17/08/2026 au soir. L'API pointe sur le projet
+Supabase `sqessntpyqjdyunlhuxs`, région **eu-west-1**, via le pooler de session.
+Les logs de démarrage disent « No pending migrations to apply », et l'API sert
+ses 7 annonces depuis la nouvelle base.
 
-La migration vers Supabase est décidée et **à moitié préparée**. Il manque une
-seule chose, qui ne peut être faite que par le titulaire du compte :
+**Les 7 réservations fantômes ne sont pas passées** : il en reste 3, toutes
+légitimes (délais de confirmation de 1735 s, 55 s et 27 s, aucune sous la
+seconde), et 0 paiement — les 7 appartenaient tous aux fantômes. Le calendrier
+de « villa piscine » et de la Villa Hammamet est libéré.
 
-**Créer un projet Supabase en région Central EU (Frankfurt)** et récupérer sa
-chaîne de connexion *Session pooler* (bouton **Connect** en haut du tableau de
-bord, onglet Connection String — pas l'onglet MCP).
+**`BlediGo_DB` chez Render n'est plus utilisée.** Elle expire le 09/09/2026 et
+sera supprimée seule. La garder d'ici là ne coûte rien et sert de filet : y
+revenir, c'est remettre son URL dans `DATABASE_URL`.
 
-Un projet avait été créé en Irlande, puis abandonné : Render est en Oregon, et
-mesuré depuis la France l'aller-retour SQL vaut **172 ms vers l'Oregon contre
-24 ms vers l'Irlande**. Ce qui compte n'est pas la distance à l'utilisateur mais
-celle entre l'API et la base, une requête HTTP en enchaînant plusieurs.
+### Ce qui reste à faire de ce côté
 
-⚠️ **Le pooler est obligatoire, pas une préférence.** L'hôte direct
-`db.<ref>.supabase.co` n'a qu'un enregistrement **AAAA** : il est injoignable
-depuis un réseau sans IPv6, et depuis Render. Vérifié, `ENOTFOUND`.
+Le projet Supabase est en **Irlande** alors que les services Render sont en
+**Oregon** : chaque requête Prisma traverse l'Atlantique, environ 140 ms. C'est
+un choix assumé pour la recette — la vraie production ira sur des bases et des
+services payants. Ne pas s'étonner de la lenteur d'ici là, et ne pas la
+diagnostiquer comme un problème de code.
 
-### La séquence retenue
-
-Elle sépare volontairement deux risques au lieu de les prendre ensemble.
-
-1. Poser le schéma sur Supabase :
-   `prisma migrate deploy --schema=prisma/schema.postgres.prisma`.
-2. Copier les données, puis comparer les comptes des deux côtés.
-3. Faire pointer l'API **toujours en Oregon** sur Supabase. La latence sera
-   mauvaise, c'est temporaire et volontaire : ça prouve que la migration des
-   données est bonne avant qu'on touche aux régions. Retour arrière = une
-   variable.
-4. Une fois validé, recréer les deux services **à Francfort**. La région ne se
-   change jamais après coup : « Render doesn't currently support changing the
-   region for an existing service or database ». Nouveaux noms prévus,
-   `bledigo-api-eu` et `bledigo-web-eu` — la doc ne garantit pas qu'un
-   sous-domaine `onrender.com` se libère immédiatement, ne pas parier dessus.
-5. Ajouter les nouvelles URL aux origines autorisées Google, vérifier, et
-   **seulement là** supprimer l'ancien.
-
-### Les outils, écrits et testés
-
-Ils vivent dans le répertoire temporaire de la session, à recopier ailleurs
-avant de s'en servir :
-
-- `migrer-vers-supabase.js` — copie les 33 tables dans l'ordre des dépendances,
-  calculé par tri topologique plutôt qu'écrit à la main (une liste figée se
-  périme au premier modèle ajouté). Lecture seule sur la source, rejouable,
-  `ON CONFLICT DO NOTHING`. **Il laisse les 7 réservations fantômes derrière
-  lui**, ainsi que leurs paiements.
-- `inventaire.js` — lignes par table, avant et après. La source contient
-  **127 lignes sur 21 tables peuplées**, la copie prendra quelques secondes.
-- `trouver-pooler.js` — retrouve le pooler d'un projet quand on n'a que sa
-  référence et son mot de passe, la région n'étant exposée nulle part côté
-  client.
+⚠️ **Un défaut latent est apparu pendant la migration** : l'historique des
+migrations ne sait pas reconstruire une base à partir de zéro.
+`20260814_avis_mutuels` supprime un index que `20260814_prestataires` crée, et
+l'ordre alphabétique les inverse. Contourné par `db push`, à corriger vraiment
+au prochain changement de base. Détail complet dans `CLAUDE.md`.
 
 ---
 
-## Les 7 réservations fantômes
+## Comment la migration a été faite
 
-Sur 9 réservations `confirmed` en production, **7 portent la signature du bug
+Utile le jour où il faudra la refaire vers une base payante.
+
+Ni `pg_dump`, ni `psql`, ni Docker sur la machine de développement : tout est
+passé par des scripts Node et le paquet `pg`. Le MCP Render n'aurait pas suffi,
+il enveloppe chaque requête dans une transaction en **lecture seule**.
+
+1. Schéma posé par `prisma db push` plutôt que par `migrate deploy` — voir le
+   défaut d'ordre des migrations signalé plus haut. Contrôlé ensuite par
+   `prisma migrate diff --from-schema-datamodel ... --to-url ...`, qui renvoie
+   **une migration vide** : le schéma correspond exactement au datamodel.
+2. Données copiées table par table dans l'ordre des dépendances, calculé par
+   **tri topologique** du graphe des clés étrangères plutôt qu'écrit à la main —
+   une liste figée se périme au premier modèle ajouté. Lecture seule sur la
+   source, `ON CONFLICT DO NOTHING`, donc rejouable. 127 lignes, quelques
+   secondes.
+3. `_prisma_migrations` copiée elle aussi, pour que Prisma tienne l'historique
+   pour appliqué — ce qui est vrai du résultat, sinon du chemin.
+4. `DATABASE_URL` basculée par l'API Render, en **fusion** et non en
+   remplacement : les secrets JWT ne devaient pas disparaître dans l'opération.
+
+Les scripts vivent dans le répertoire temporaire de la session
+(`migrer-vers-supabase.js`, `inventaire.js`, `trouver-pooler.js`, `sql.js`), à
+recopier ailleurs avant de s'en servir.
+
+Deux pièges rencontrés, tous deux silencieux :
+
+- `prisma db execute --stdin` avec le SQL passé en **argument** répond « Script
+  executed successfully » sans rien exécuter. Un `DROP SCHEMA` a ainsi été perdu,
+  laissant quatre lignes parasites dans `_prisma_migrations` dont une **en
+  erreur** — de quoi bloquer tout `migrate deploy` ultérieur par un P3009.
+  Vérifier l'effet, jamais le message.
+- La région d'un projet Supabase n'est exposée nulle part côté client, alors
+  qu'elle figure dans le nom d'hôte du pooler. `trouver-pooler.js` la retrouve
+  par essais : seul le pooler de la bonne région connaît le locataire.
+
+---
+
+## Les 7 réservations fantômes — réglé, mais le raisonnement vaut d'être gardé
+
+Elles ne sont pas passées dans la migration. Ce qui suit explique **pourquoi
+supprimer**, parce que la passation précédente en donnait une mauvaise raison et
+que l'erreur se reproduirait.
+
+Sur 9 réservations `confirmed` en production, **7 portaient la signature du bug
 d'auto-acceptation** : confirmées en 0,36 à 0,73 s, paiement `held`. Les deux
 autres sont saines (55 s et 27 s, paiement `pending`) — et la plus récente date
 d'après le correctif, ce qui prouve que l'acceptation par l'hôte fonctionne.
@@ -91,9 +106,11 @@ C'est aussi pourquoi **supprimer vaut mieux que passer en `cancelled`** :
 `cancelled` entre, lui, dans le dénominateur, et offrirait 7 « séjours aboutis »
 gratuits à ces deux comptes.
 
-La suppression est propre : 0 avis, 0 litige, 0 conversation, 0 état des lieux,
-7 paiements en `CASCADE`. Le semis ne crée aucune réservation, donc rien ne les
-recréera. **La migration s'en charge.**
+La suppression était propre : 0 avis, 0 litige, 0 conversation, 0 état des
+lieux, 7 paiements qui n'appartenaient qu'à elles. Le semis ne crée aucune
+réservation, donc rien ne les recréera. **Constaté sur Supabase** : 3
+réservations restantes, 0 paiement, 2 dates encore bloquées et ce sont les
+bonnes.
 
 ---
 

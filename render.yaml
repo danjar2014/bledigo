@@ -104,12 +104,27 @@ services:
       # Vide = connexion Google desactivee, l email reste disponible.
       - key: GOOGLE_CLIENT_ID
         value: 12342673780-3l6kojeqhniup2a6qt999ejsnf9v215j.apps.googleusercontent.com
-      # Base existante dans l espace de travail : le nom doit correspondre
-      # exactement a celui affiche dans Render.
+      # La base n est plus hebergee par Render : elle vit chez Supabase, saisie
+      # a la main dans Environment. `fromDatabase` pointait BlediGo_DB, une base
+      # en offre gratuite que Render supprime au bout de trente jours — le champ
+      # expiresAt portait le 09/09/2026, donnees comprises.
+      #
+      # `sync: false` sert ici a DESSAISIR le blueprint d une variable deja
+      # provisionnee : sans cela, le prochain sync la ramenerait sur la base
+      # Render mourante. La valeur saisie a la main, elle, survit au sync.
+      #
+      # Deux contraintes sur cette URL, apprises a la dure. Elle DOIT passer par
+      # le pooler partage `...pooler.supabase.com:5432` : l hote direct
+      # `db.<ref>.supabase.co` n a qu un enregistrement AAAA, injoignable depuis
+      # Render qui ne sort qu en IPv4. Et le port 5432 (session), jamais 6543
+      # (transaction) : Prisma a besoin d une connexion de session pour jouer
+      # ses migrations au demarrage.
+      #
+      # Le projet Supabase est en eu-west-1 alors que ce service est en oregon.
+      # C est assume le temps de la recette — voir CLAUDE.md, un aller-retour
+      # transatlantique se paie sur CHAQUE requete Prisma.
       - key: DATABASE_URL
-        fromDatabase:
-          name: BlediGo_DB
-          property: connectionString
+        sync: false
       # Secrets generes par Render, jamais commites
       - key: JWT_ACCESS_SECRET
         generateValue: true
