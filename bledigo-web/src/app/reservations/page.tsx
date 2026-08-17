@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 import RequireAuth from '@/components/RequireAuth';
 import ValidationModal from '@/components/ValidationModal';
 import CarOffers from '@/components/CarOffers';
+import ServiceOrders from '@/components/ServiceOrders';
 import ReviewModal from '@/components/ReviewModal';
 import { Spinner, ErrorBox, Empty } from '@/components/ui';
 import { date, photoOf, BOOKING_STATUS } from '@/lib/format';
@@ -186,6 +187,11 @@ function Reservations() {
             })}
           </div>
         )}
+
+        {/* Les locations demandees vivent ici : sans cette liste, une demande
+            disparaissait de la vue des qu on quittait la page, avec les
+            coordonnees de l agence et la possibilite de la noter. */}
+        <ServiceOrders />
       </div>
 
       {validating && <ValidationModal booking={validating} onClose={() => setValidating(null)} />}

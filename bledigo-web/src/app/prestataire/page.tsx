@@ -10,6 +10,8 @@ import RequireAuth from '@/components/RequireAuth';
 import { Spinner, ErrorBox, Empty } from '@/components/ui';
 import { date } from '@/lib/format';
 import VehicleCalendar from '@/components/VehicleCalendar';
+import ServiceReviewModal from '@/components/ServiceReviewModal';
+import { notable, maNote } from '@/lib/prestations';
 
 /**
  * Espace du prestataire.
@@ -22,6 +24,7 @@ import VehicleCalendar from '@/components/VehicleCalendar';
 function EspacePrestataire() {
   const queryClient = useQueryClient();
   const [calendrierDe, setCalendrierDe] = useState<any>(null);
+  const [aNoter, setANoter] = useState<any>(null);
 
   const { data: profil, isLoading, error } = useQuery({
     queryKey: ['provider', 'me'],
@@ -164,7 +167,26 @@ function EspacePrestataire() {
                         </button>
                       </div>
                     ) : (
-                      <span className="text-sm px-2 py-1 rounded-bledi-sm bg-cloud">{d.status}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm px-2 py-1 rounded-bledi-sm bg-cloud">{d.status}</span>
+                        {/* Le prestataire note son client : un hote qui laisse un
+                            logement impraticable doit etre visible, sinon seuls
+                            les prestataires portent le risque de la relation. */}
+                        {notable(d, 'prestataire') && (
+                          <button
+                            onClick={() => setANoter(d)}
+                            className="text-sm flex items-center gap-1 bg-bledi-gold text-charcoal px-3 py-2 rounded-bledi-sm font-medium"
+                          >
+                            <Star className="w-4 h-4" /> Noter le client
+                          </button>
+                        )}
+                        {maNote(d, 'prestataire') != null && (
+                          <span className="text-sm flex items-center gap-1 text-slate">
+                            <Star className="w-4 h-4 text-bledi-gold fill-bledi-gold" />
+                            {maNote(d, 'prestataire')}/5 donne
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
 
@@ -250,6 +272,13 @@ function EspacePrestataire() {
 
       {calendrierDe && (
         <VehicleCalendar vehicle={calendrierDe} onClose={() => setCalendrierDe(null)} />
+      )}
+      {aNoter && (
+        <ServiceReviewModal
+          prestation={aNoter}
+          role="prestataire"
+          onClose={() => setANoter(null)}
+        />
       )}
     </main>
   );

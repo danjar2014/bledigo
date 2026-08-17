@@ -162,6 +162,10 @@ export class ServiceBookingsService {
       include: {
         vehicle: true,
         requester: { select: { firstName: true, lastName: true, phone: true, email: true } },
+        // Sans les avis deja deposes, l interface proposerait de noter deux fois
+        // et l API repondrait par une erreur — un bouton qui echoue vaut moins
+        // qu un bouton absent.
+        reviews: { select: { direction: true, rating: true } },
       },
       orderBy: { startDate: 'desc' },
     });
@@ -177,6 +181,7 @@ export class ServiceBookingsService {
         provider: {
           include: { user: { select: { firstName: true, lastName: true, phone: true, email: true } } },
         },
+        reviews: { select: { direction: true, rating: true } },
       },
       orderBy: { startDate: 'desc' },
     });

@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Sparkles, MapPin, Star, Check, Phone } from 'lucide-react';
+import { notable, maNote } from '@/lib/prestations';
+import ServiceReviewModal from './ServiceReviewModal';
 import { api } from '@/lib/api';
 import { Empty } from './ui';
 import { date } from '@/lib/format';
@@ -23,6 +25,7 @@ export default function CleaningServices({ listings }: { listings: any[] }) {
   const [logementId, setLogementId] = useState<string>(listings[0]?.id ?? '');
   const [quand, setQuand] = useState<string>('');
   const [note, setNote] = useState<string>('');
+  const [aNoter, setANoter] = useState<any>(null);
 
   const { data: prestataires, isLoading } = useQuery({
     queryKey: ['cleaners', logementId],
@@ -160,7 +163,23 @@ export default function CleaningServices({ listings }: { listings: any[] }) {
                   Intervention du {date(c.startDate)}
                   {c.note ? ` — « ${c.note} »` : ''}
                 </p>
-                <span className="text-xs px-2 py-1 rounded-bledi-sm bg-cloud">{c.status}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs px-2 py-1 rounded-bledi-sm bg-cloud">{c.status}</span>
+                  {notable(c, 'client') && (
+                    <button
+                      onClick={() => setANoter(c)}
+                      className="text-xs flex items-center gap-1 bg-bledi-gold text-charcoal px-2 py-1 rounded-bledi-sm font-medium"
+                    >
+                      <Star className="w-3 h-3" /> Noter
+                    </button>
+                  )}
+                  {maNote(c, 'client') != null && (
+                    <span className="text-xs flex items-center gap-1 text-slate">
+                      <Star className="w-3 h-3 text-bledi-gold fill-bledi-gold" />
+                      {maNote(c, 'client')}/5 donne
+                    </span>
+                  )}
+                </div>
               </div>
               {/* Rien avant acceptation : meme regle que pour un sejour. */}
               {c.contact && (
@@ -180,6 +199,10 @@ export default function CleaningServices({ listings }: { listings: any[] }) {
             </div>
           ))}
         </div>
+      )}
+
+      {aNoter && (
+        <ServiceReviewModal prestation={aNoter} role="client" onClose={() => setANoter(null)} />
       )}
     </section>
   );
