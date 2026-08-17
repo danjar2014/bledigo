@@ -38,6 +38,23 @@ l'empreinte de chaque migration déjà jouée : en réécrire une seule fait éc
 le modèle, on ajoute un dossier de migration supplémentaire, jamais on ne touche
 aux existants.
 
+### La région se choisit à la création, et ne se change jamais
+
+Vrai pour un service Render comme pour une base : « Render doesn't currently
+support changing the region for an existing service or database ». Se tromper
+oblige à **recréer**, donc à changer les URL publiques, les origines Google et
+le CORS.
+
+Ce qui compte n'est pas la distance à l'utilisateur mais celle entre **l'API et
+la base** : une requête HTTP en fait plusieurs en séquence. Mesuré depuis la
+France : 172 ms d'aller-retour SQL vers l'Oregon, 24 ms vers l'Irlande. Une API
+en Oregon devant une base européenne paierait ~140 ms **par requête Prisma**,
+soit près d'une seconde sur une page qui en enchaîne cinq.
+
+Corollaire : ne jamais créer une base « quelque part » puis y brancher l'API.
+On choisit la région de la base **d'après** celle de l'API, ou l'inverse, mais
+jamais séparément.
+
 ### `NODE_ENV=production` et les devDependencies
 
 Sur Render, `npm ci` saute les devDependencies — or `nest`, `prisma`,
@@ -128,6 +145,26 @@ longue durée n'a pas refusé les séjours courts, il a exprimé une préférenc
 correspondance, sans retirer personne des résultats. Un tri explicite du
 visiteur reste prioritaire et écrase cet ordre.
 
+**Une extension appartient à l'hôte, comme la réservation initiale.** Prolonger
+un séjour ajoute des nuits sur ses dates : `POST /bookings/:id/extension`
+enregistre une demande, l'hôte l'accorde ou la refuse, et seul `instantBook`
+court-circuite — il y a explicitement renoncé.
+
+Deux points qui ne s'improvisent pas. Le **prix est figé à la demande** : c'est
+le montant que le voyageur a vu, et le recalculer à l'acceptation laisserait
+l'hôte modifier ses tarifs entre-temps. La **disponibilité, elle, est
+revérifiée** au moment d'accorder : entre la demande et la réponse, un autre
+voyageur a pu prendre ces nuits, et accepter sur la foi du devis les vendrait
+deux fois. Ni ménage ni frais de service ne sont recomptés — ils valent pour un
+séjour, pas pour une nuit. `minNights` n'est pas opposé à l'extension : il borne
+la durée d'un séjour, or le séjour s'allonge.
+
+**Les dates de séjour sont des `YYYY-MM-DD` à minuit UTC.** Toute arithmétique
+en heure locale suivie d'un `toISOString()` décale d'un jour hors UTC : le
+composant d'extension a fait exactement cette erreur, invisible au premier essai
+et visible dès qu'on regarde depuis Paris. Manipuler ces dates avec
+`setUTCDate`, ou par découpe de chaîne.
+
 **Les conditions d'annulation sont servies avant l'annulation.** Le bloc
 `annulation` de chaque réservation dit le délai, la date limite et si l'on est
 déjà au-delà. Une sanction qu'on découvre après coup n'est pas une sanction,
@@ -169,11 +206,46 @@ validés par leur voyageur — le même constat, fait par quelqu'un qui était s
 place. `MODELE` est passé en `heuristique-v3` : un score archivé doit rester
 interprétable.
 
+**Pas de photos certifiées non plus.** Même piège que les visites, laissé une
+ligne au-dessus : `isCertified` n'est écrit **nulle part** dans l'application —
+le seul point d'écriture du dépôt est `prisma/seed.ts`, pour la démonstration.
+Ni route d'administration, ni agent. `photosCertifiees` valait donc 0 pour toute
+annonce réelle, et ses 20 points de sécurité étaient inatteignables. `MODELE`
+passe en `heuristique-v4`.
+
+Rien ne les remplace, délibérément : compter les photos brutes récompenserait
+trois clics, et ce sont aujourd'hui des images de stock. Un point ne se donne
+que pour un fait constaté. La sécurité plafonne désormais à exactement 100
+(40 + 40 + 20) au lieu de 120 écrêtés — deux annonces différentes ne se
+retrouvent plus à égalité par troncature. La variable reste **collectée** par
+`FeaturesService`, comme `criteresEchoues` : on cesse de la noter, pas de
+l'observer.
+
+La règle générale, maintenant qu'elle s'est vérifiée deux fois : **avant
+d'ajouter un terme au score, chercher qui écrit la donnée.** Si personne ne
+l'écrit, le terme est un plafond que personne n'atteindra.
+
 **Score de conformité recalculé à chaque événement.** L'extraction des
 caractéristiques (`src/ai/features.service.ts`) est séparée du calcul
-(`scoring.service.ts`, `MODELE = 'heuristique-v2'`), précisément pour qu'un
-modèle appris remplace le second sans toucher au premier. L'historique est
-archivé dans `ListingPassport.scoresHistory`.
+(`scoring.service.ts`), précisément pour qu'un modèle appris remplace le second
+sans toucher au premier. L'historique est archivé dans
+`ListingPassport.scoresHistory`. `calculer()` est une fonction pure et
+`scoring.service.spec.ts` la tient : le test qui épingle l'absence de points
+pour une photo certifiée devra être supprimé volontairement le jour où une
+certification existera, plutôt que la formule modifiée par distraction.
+
+**Ne rien promettre que le code ne tienne.** Trois affirmations ont été retirées
+de l'interface parce que rien ne les soutenait : des logements « vérifiés par
+nos agents » (le modèle a été abandonné, aucun compte agent n'a jamais existé),
+des « photos certifiées, prises par nos contrôleurs terrain » (voir ci-dessus),
+et un « emplacement garanti, GPS vérifié » alors que `listings.service.ts` fait
+`latitude: dto.latitude ?? locality.lat` — c'est le centre de la ville déclarée.
+Une promesse invendable est pire qu'une promesse absente : le voyageur qui la
+découvre fausse cesse de croire les autres, y compris les vraies.
+
+Reste dans le même esprit, non traité : `Hero.tsx` annonce « 500+ logements
+certifiés » et « 98 % de satisfaction » sur une place de marché qui compte sept
+annonces.
 
 **Recherche adossée au calendrier.** Les dates sont obligatoires ; la
 disponibilité, la tarification par période et le séjour minimum viennent de
@@ -252,12 +324,6 @@ développement local, faute de ces variables, les comptes d'essai retombent sur
 Fonctionnalités décidées mais volontairement non entamées. Les notes qui
 suivent ne sont pas des spécifications : ce sont les pièges repérés en lisant
 le code existant, pour que la mise en œuvre ne les redécouvre pas.
-
-- [ ] **Modifier un séjour en cours : extension du nombre de jours.** Le
-      chevauchement se teste déjà à la création (`bookings.service.ts`), il
-      faudra le rejouer sur les dates étendues et retarifer via
-      `calendar.tarifer` — une extension peut mordre sur une période
-      saisonnière au tarif différent.
 
 - [ ] **Majoration si le séjour est raccourci.** Optionnelle, à la main de
       l'hôte. Exigible seulement quand `PAIEMENT_EN_LIGNE=true` : sans
