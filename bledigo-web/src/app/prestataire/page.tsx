@@ -11,6 +11,8 @@ import { Spinner, ErrorBox, Empty } from '@/components/ui';
 import { date, heure } from '@/lib/format';
 import VehicleCalendar from '@/components/VehicleCalendar';
 import VehiclePhotos from '@/components/VehiclePhotos';
+import ProviderZones from '@/components/ProviderZones';
+import ProviderAvailability from '@/components/ProviderAvailability';
 import ServiceReviewModal from '@/components/ServiceReviewModal';
 import ClientProfile from '@/components/ClientProfile';
 import PriceNegotiation from '@/components/PriceNegotiation';
@@ -130,6 +132,16 @@ function EspacePrestataire() {
             Statut d agence verifie le {date(profil.verifiedAt)}
           </div>
         )}
+
+        {/* Zones et horaires AVANT les demandes : ils gouvernent ce qui
+            arrive dans la liste. Les placer apres laisserait croire que le
+            prestataire ne peut que subir ce qu on lui envoie. */}
+        <ProviderZones />
+        {/* Les horaires ne filtrent aujourd hui que le menage. Les montrer a
+            une agence de location serait promettre un filtre qui n existe
+            pas : sa disponibilite se gere vehicule par vehicule, dans le
+            calendrier de chacun. */}
+        {!estLoueur && <ProviderAvailability />}
 
         {/* ------------------------------------------------------ Demandes */}
         <section className="mb-10">
@@ -379,6 +391,12 @@ function FormulaireVehicule({
     category: 'citadine',
     transmission: 'manuelle',
     seats: '5',
+    fuel: 'essence',
+    fiscalPower: '',
+    mileage: '',
+    doors: '5',
+    color: '',
+    year: '',
     // Conditions de location. Elles ont des valeurs par defaut plausibles
     // plutot que d etre vides : une agence qui ajoute un vehicule a la hate ne
     // doit pas publier une fiche muette sur ce qui l engage.
@@ -393,6 +411,23 @@ function FormulaireVehicule({
     deliveryFee: '',
   });
   const [conditionsOuvertes, setConditionsOuvertes] = useState(false);
+
+  /**
+   * Catalogue marques/modeles.
+   *
+   * Embarque cote serveur plutot qu appele a une API tierce : NHTSA, la seule
+   * gratuite et sans cle, couvre le marche americain — interrogee sur Renault
+   * elle rend LeCar, Fuego et Alliance, et aucun modele qui roule en Tunisie.
+   * Verifie, pas suppose.
+   *
+   * La liste SUGGERE sans interdire : les champs restent libres, une agence qui
+   * loue un modele absent doit pouvoir le saisir sans attendre une mise a jour.
+   */
+  const { data: catalogue } = useQuery({
+    queryKey: ['catalogue-vehicules'],
+    queryFn: () => api.vehicleCatalog(),
+  });
+  const modeles = catalogue?.find((m) => m.marque === form.brand)?.modeles ?? [];
   const set = (p: Partial<typeof form>) => setForm((f) => ({ ...f, ...p }));
   const complet = form.brand && form.model && form.pricePerDay;
 
@@ -403,6 +438,12 @@ function FormulaireVehicule({
     transmission: form.transmission,
     seats: Number(form.seats),
     pricePerDay: Number(form.pricePerDay),
+    fuel: form.fuel,
+    year: form.year ? Number(form.year) : undefined,
+    fiscalPower: form.fiscalPower ? Number(form.fiscalPower) : undefined,
+    mileage: form.mileage ? Number(form.mileage) : undefined,
+    doors: form.doors ? Number(form.doors) : undefined,
+    color: form.color || undefined,
     // Vide = illimite, jamais 0 : un forfait de zero kilometre interdirait de
     // rouler, ce que personne ne veut dire en laissant le champ vide.
     kmPerDay: form.kmPerDay ? Number(form.kmPerDay) : undefined,
@@ -419,18 +460,32 @@ function FormulaireVehicule({
   return (
     <div className="bg-white rounded-bledi shadow-bledi p-4">
       <div className="grid md:grid-cols-6 gap-3">
+        {/* `list` plutot qu un `select` : le catalogue suggere, il n interdit
+            pas. Une agence qui loue un modele absent le tape. */}
         <input
           className="input-bledi md:col-span-1"
           placeholder="Marque"
+          list="marques-vehicules"
           value={form.brand}
-          onChange={(e) => set({ brand: e.target.value })}
+          onChange={(e) => set({ brand: e.target.value, model: '' })}
         />
+        <datalist id="marques-vehicules">
+          {catalogue?.map((m) => (
+            <option key={m.marque} value={m.marque} />
+          ))}
+        </datalist>
         <input
           className="input-bledi md:col-span-1"
           placeholder="Modele"
+          list="modeles-vehicules"
           value={form.model}
           onChange={(e) => set({ model: e.target.value })}
         />
+        <datalist id="modeles-vehicules">
+          {modeles.map((m) => (
+            <option key={m} value={m} />
+          ))}
+        </datalist>
         <select
           className="input-bledi md:col-span-1"
           value={form.category}
@@ -476,6 +531,68 @@ function FormulaireVehicule({
 
       {conditionsOuvertes && (
         <div className="grid md:grid-cols-4 gap-3 mt-3">
+          <label className="text-sm">
+            Annee
+            <input
+              className="input-bledi w-full mt-1"
+              type="number"
+              placeholder="2023"
+              value={form.year}
+              onChange={(e) => set({ year: e.target.value })}
+            />
+          </label>
+          <label className="text-sm">
+            Carburant
+            <select
+              className="input-bledi w-full mt-1"
+              value={form.fuel}
+              onChange={(e) => set({ fuel: e.target.value })}
+            >
+              <option value="essence">Essence</option>
+              <option value="diesel">Diesel</option>
+              <option value="hybride">Hybride</option>
+              <option value="electrique">Electrique</option>
+              <option value="gpl">GPL</option>
+            </select>
+          </label>
+          <label className="text-sm">
+            Puissance fiscale (CV)
+            <input
+              className="input-bledi w-full mt-1"
+              type="number"
+              placeholder="5"
+              value={form.fiscalPower}
+              onChange={(e) => set({ fiscalPower: e.target.value })}
+            />
+          </label>
+          <label className="text-sm">
+            Kilometrage
+            <input
+              className="input-bledi w-full mt-1"
+              type="number"
+              placeholder="au compteur"
+              value={form.mileage}
+              onChange={(e) => set({ mileage: e.target.value })}
+            />
+          </label>
+          <label className="text-sm">
+            Portes
+            <input
+              className="input-bledi w-full mt-1"
+              type="number"
+              value={form.doors}
+              onChange={(e) => set({ doors: e.target.value })}
+            />
+          </label>
+          <label className="text-sm">
+            Couleur
+            <input
+              className="input-bledi w-full mt-1"
+              placeholder="Blanc"
+              value={form.color}
+              onChange={(e) => set({ color: e.target.value })}
+            />
+          </label>
           <label className="text-sm">
             Km inclus / jour
             <input

@@ -5,10 +5,10 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { ProviderType } from '../common/enums';
-import { toDbJson } from '../common/json';
-import { DeclarerSinistreDto } from './dto';
+import { PrismaService } from '../../prisma/prisma.service';
+import { ProviderType } from '../../common/enums';
+import { toDbJson } from '../../common/json';
+import { DeclarerSinistreDto } from '../dto';
 
 /**
  * Sinistres constates au retour d un vehicule.

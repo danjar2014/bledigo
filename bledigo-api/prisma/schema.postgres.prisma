@@ -23,50 +23,50 @@ datasource db {
 // ==================== MODELS ====================
 
 model User {
-  id                String     @id @default(uuid())
-  email             String     @unique
-  passwordHash      String     @map("password_hash")
-  firstName         String     @map("first_name")
-  lastName          String     @map("last_name")
-  phone             String?    @unique
-  avatarUrl         String?    @map("avatar_url")
-  role              String
+  id               String    @id @default(uuid())
+  email            String    @unique
+  passwordHash     String    @map("password_hash")
+  firstName        String    @map("first_name")
+  lastName         String    @map("last_name")
+  phone            String?   @unique
+  avatarUrl        String?   @map("avatar_url")
+  role             String
   /// Roles supplementaires : un proprietaire peut aussi voyager.
-  secondaryRoles    String  @default("[]") @map("secondary_roles")
-  status            String @default("active")
-  emailVerified     Boolean    @default(false) @map("email_verified")
-  phoneVerified     Boolean    @default(false) @map("phone_verified")
-  identityVerified  Boolean    @default(false) @map("identity_verified")
-  createdAt         DateTime   @default(now()) @map("created_at")
-  updatedAt         DateTime   @updatedAt @map("updated_at")
-  deletedAt         DateTime?  @map("deleted_at")
-  identityDocument String? @map("identity_document")
+  secondaryRoles   String    @default("[]") @map("secondary_roles")
+  status           String    @default("active")
+  emailVerified    Boolean   @default(false) @map("email_verified")
+  phoneVerified    Boolean   @default(false) @map("phone_verified")
+  identityVerified Boolean   @default(false) @map("identity_verified")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  deletedAt        DateTime? @map("deleted_at")
+  identityDocument String?   @map("identity_document")
   /// Canal par lequel l hote souhaite etre joint une fois la demande acceptee.
   /// phone / whatsapp. Sur l utilisateur et non sur l annonce : un hote a trois
   /// logements le regle une fois.
-  contactChannel    String     @default("phone") @map("contact_channel")
+  contactChannel   String    @default("phone") @map("contact_channel")
   /// Souvent different du numero principal. Volontairement SANS contrainte
   /// d unicite : le @unique de `phone` a deja fait echouer le semis en silence
   /// des que deux comptes ont voulu le meme numero.
-  whatsappNumber    String?    @map("whatsapp_number")
+  whatsappNumber   String?   @map("whatsapp_number")
 
   // Relations
-  travelerPassport  TravelerPassport?
-  ownerPassport     OwnerPassport?
-  listings          Listing[]       @relation("OwnerListings")
-  agencyListings    Listing[]       @relation("AgencyListings")
-  bookingsAsTraveler Booking[]      @relation("TravelerBookings")
-  bookingsAsOwner   Booking[]       @relation("OwnerBookings")
-  reviewsAsReviewer Review[]        @relation("ReviewerReviews")
-  reviewsAsReviewee Review[]        @relation("RevieweeReviews")
-  messages          Message[]
-  conversations     Conversation[]
-  reverseSearches   ReverseSearch[]
-  reverseOffers     ReverseOffer[]
-  subscriptions     Subscription[]
-  sanctionsApplied  Sanction[]      @relation("SanctionAppliedBy")
-  sanctionsReceived Sanction[]      @relation("SanctionUser")
-  auditLogs         AuditLog[]
+  travelerPassport    TravelerPassport?
+  ownerPassport       OwnerPassport?
+  listings            Listing[]             @relation("OwnerListings")
+  agencyListings      Listing[]             @relation("AgencyListings")
+  bookingsAsTraveler  Booking[]             @relation("TravelerBookings")
+  bookingsAsOwner     Booking[]             @relation("OwnerBookings")
+  reviewsAsReviewer   Review[]              @relation("ReviewerReviews")
+  reviewsAsReviewee   Review[]              @relation("RevieweeReviews")
+  messages            Message[]
+  conversations       Conversation[]
+  reverseSearches     ReverseSearch[]
+  reverseOffers       ReverseOffer[]
+  subscriptions       Subscription[]
+  sanctionsApplied    Sanction[]            @relation("SanctionAppliedBy")
+  sanctionsReceived   Sanction[]            @relation("SanctionUser")
+  auditLogs           AuditLog[]
   contactAttempts     ContactAttempt[]
   reverseSearchCredit ReverseSearchCredit?
   unlocks             ReverseSearchUnlock[] @relation("OwnerUnlocks")
@@ -86,14 +86,14 @@ model TravelerPassport {
   trustScore          Int      @default(50) @map("trust_score")
   totalStays          Int      @default(0) @map("total_stays")
   totalNights         Int      @default(0) @map("total_nights")
-  cancellationRate    Float  @default(0) @map("cancellation_rate")
+  cancellationRate    Float    @default(0) @map("cancellation_rate")
   recommendationCount Int      @default(0) @map("recommendation_count")
   incidentCount       Int      @default(0) @map("incident_count")
   disputeCount        Int      @default(0) @map("dispute_count")
-  badges              String     @default("[]")
+  badges              String   @default("[]")
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
-  noShowCount Int @default(0) @map("no_show_count")
+  noShowCount         Int      @default(0) @map("no_show_count")
 
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -102,22 +102,22 @@ model TravelerPassport {
 }
 
 model OwnerPassport {
-  id                String   @id @default(uuid())
-  userId            String   @unique @map("user_id")
-  trustScore        Int      @default(50) @map("trust_score")
-  totalListings     Int      @default(0) @map("total_listings")
-  totalBookings     Int      @default(0) @map("total_bookings")
-  totalRevenue      Float  @default(0) @map("total_revenue")
-  responseRate      Float  @default(0) @map("response_rate")
-  acceptanceRate    Float  @default(0) @map("acceptance_rate")
-  incidentCount     Int      @default(0) @map("incident_count")
-  disputeCount      Int      @default(0) @map("dispute_count")
-  badges            String     @default("[]")
-  subscriptionTier  String   @default("free") @map("subscription_tier")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
-  avgResponseTime     Int @default(0) @map("avg_response_time")
-  offPlatformAttempts Int @default(0) @map("off_platform_attempts")
+  id                  String   @id @default(uuid())
+  userId              String   @unique @map("user_id")
+  trustScore          Int      @default(50) @map("trust_score")
+  totalListings       Int      @default(0) @map("total_listings")
+  totalBookings       Int      @default(0) @map("total_bookings")
+  totalRevenue        Float    @default(0) @map("total_revenue")
+  responseRate        Float    @default(0) @map("response_rate")
+  acceptanceRate      Float    @default(0) @map("acceptance_rate")
+  incidentCount       Int      @default(0) @map("incident_count")
+  disputeCount        Int      @default(0) @map("dispute_count")
+  badges              String   @default("[]")
+  subscriptionTier    String   @default("free") @map("subscription_tier")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  avgResponseTime     Int      @default(0) @map("avg_response_time")
+  offPlatformAttempts Int      @default(0) @map("off_platform_attempts")
 
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -126,83 +126,83 @@ model OwnerPassport {
 }
 
 model Listing {
-  id                    String            @id @default(uuid())
-  ownerId               String            @map("owner_id")
-  agencyId              String?           @map("agency_id")
-  title                 String
-  description           String
-  slug                  String            @unique
-  address               String
-  city                  String
-  region                String
-  country               String            @default("Tunisia")
-  postalCode            String?           @map("postal_code")
-  latitude              Float
-  longitude             Float
-  propertyType          String      @map("property_type")
-  maxGuests             Int               @map("max_guests")
-  bedrooms              Int
-  bathrooms             Int
-  pricePerNight         Float           @map("price_per_night")
-  cleaningFee           Float           @default(0) @map("cleaning_fee")
-  serviceFee            Float           @default(0) @map("service_fee")
-  currency              String          @default("TND")
-  status                String     @default("draft")
-  trustScore            Int               @default(50) @map("trust_score")
-  qualityScore          Int               @default(0) @map("quality_score")
-  cleanlinessScore      Int               @default(0) @map("cleanliness_score")
-  complianceScore       Int               @default(0) @map("compliance_score")
-  safetyScore           Int               @default(0) @map("safety_score")
-  certificationLevel    String @default("none") @map("certification_level")
-  certificationExpiresAt DateTime?        @map("certification_expires_at")
-  totalBookings         Int               @default(0) @map("total_bookings")
-  totalReviews          Int               @default(0) @map("total_reviews")
-  createdAt             DateTime          @default(now()) @map("created_at")
-  updatedAt             DateTime          @updatedAt @map("updated_at")
-  deletedAt             DateTime?         @map("deleted_at")
-  surfaceM2             Int?              @map("surface_m2")
-  floors                Int?              @default(1)
-  yearBuilt             Int?              @map("year_built")
-  securityDeposit       Float             @default(0) @map("security_deposit")
-  locationScore         Int               @default(0) @map("location_score")
-  valueScore            Int               @default(0) @map("value_score")
-  avgRating             Float             @default(0) @map("avg_rating")
-  isEditable            Boolean           @default(true) @map("is_editable")
-  lastModifiedAt        DateTime?         @map("last_modified_at")
-  modificationCount     Int               @default(0) @map("modification_count")
-  rules                 String            @default("{}")
-  amenities             String            @default("[]")
-  houseRules            String            @default("[]") @map("house_rules")
-  checkInTime           String            @default("15:00") @map("check_in_time")
-  checkOutTime          String            @default("11:00") @map("check_out_time")
-  minNights             Int               @default(1) @map("min_nights")
-  maxNights             Int?              @map("max_nights")
-  instantBook           Boolean           @default(false) @map("instant_book")
+  id                       String    @id @default(uuid())
+  ownerId                  String    @map("owner_id")
+  agencyId                 String?   @map("agency_id")
+  title                    String
+  description              String
+  slug                     String    @unique
+  address                  String
+  city                     String
+  region                   String
+  country                  String    @default("Tunisia")
+  postalCode               String?   @map("postal_code")
+  latitude                 Float
+  longitude                Float
+  propertyType             String    @map("property_type")
+  maxGuests                Int       @map("max_guests")
+  bedrooms                 Int
+  bathrooms                Int
+  pricePerNight            Float     @map("price_per_night")
+  cleaningFee              Float     @default(0) @map("cleaning_fee")
+  serviceFee               Float     @default(0) @map("service_fee")
+  currency                 String    @default("TND")
+  status                   String    @default("draft")
+  trustScore               Int       @default(50) @map("trust_score")
+  qualityScore             Int       @default(0) @map("quality_score")
+  cleanlinessScore         Int       @default(0) @map("cleanliness_score")
+  complianceScore          Int       @default(0) @map("compliance_score")
+  safetyScore              Int       @default(0) @map("safety_score")
+  certificationLevel       String    @default("none") @map("certification_level")
+  certificationExpiresAt   DateTime? @map("certification_expires_at")
+  totalBookings            Int       @default(0) @map("total_bookings")
+  totalReviews             Int       @default(0) @map("total_reviews")
+  createdAt                DateTime  @default(now()) @map("created_at")
+  updatedAt                DateTime  @updatedAt @map("updated_at")
+  deletedAt                DateTime? @map("deleted_at")
+  surfaceM2                Int?      @map("surface_m2")
+  floors                   Int?      @default(1)
+  yearBuilt                Int?      @map("year_built")
+  securityDeposit          Float     @default(0) @map("security_deposit")
+  locationScore            Int       @default(0) @map("location_score")
+  valueScore               Int       @default(0) @map("value_score")
+  avgRating                Float     @default(0) @map("avg_rating")
+  isEditable               Boolean   @default(true) @map("is_editable")
+  lastModifiedAt           DateTime? @map("last_modified_at")
+  modificationCount        Int       @default(0) @map("modification_count")
+  rules                    String    @default("{}")
+  amenities                String    @default("[]")
+  houseRules               String    @default("[]") @map("house_rules")
+  checkInTime              String    @default("15:00") @map("check_in_time")
+  checkOutTime             String    @default("11:00") @map("check_out_time")
+  minNights                Int       @default(1) @map("min_nights")
+  maxNights                Int?      @map("max_nights")
+  instantBook              Boolean   @default(false) @map("instant_book")
   /// Distance maximale a laquelle on peut reserver, en jours. A ne pas
   /// confondre avec maxNights qui borne la DUREE du sejour, pas son eloignement.
   /// null = aucune limite.
-  bookingHorizonDays    Int?              @map("booking_horizon_days")
+  bookingHorizonDays       Int?      @map("booking_horizon_days")
   /// court / moyen / long : duree de location visee par l hote. Pilote la
   /// presentation en recherche, pas l acces au logement.
-  rentalProfile         String            @default("court") @map("rental_profile")
+  rentalProfile            String    @default("court") @map("rental_profile")
   /// Annulation libre jusqu a X jours de l arrivee. null = libre jusqu au bout.
-  cancellationDeadlineDays Int?           @map("cancellation_deadline_days")
+  cancellationDeadlineDays Int?      @map("cancellation_deadline_days")
   /// Majoration exigee si le sejour est raccourci, en pourcentage des nuits
   /// retirees. null = aucune. Exigible seulement quand le paiement est allume.
-  shortenSurchargePercent  Int?           @map("shorten_surcharge_percent")
+  shortenSurchargePercent  Int?      @map("shorten_surcharge_percent")
 
   // Relations
-  owner           User              @relation("OwnerListings", fields: [ownerId], references: [id])
-  agency          User?             @relation("AgencyListings", fields: [agencyId], references: [id])
-  photos          ListingPhoto[]
-  passport        ListingPassport?
-  bookings        Booking[]
-  reviews         Review[]
-  certifications  Certification[]
-  reverseOffers   ReverseOffer[]
-  conversations   Conversation[]
+  owner               User                  @relation("OwnerListings", fields: [ownerId], references: [id])
+  agency              User?                 @relation("AgencyListings", fields: [agencyId], references: [id])
+  photos              ListingPhoto[]
+  passport            ListingPassport?
+  bookings            Booking[]
+  reviews             Review[]
+  certifications      Certification[]
+  reverseOffers       ReverseOffer[]
+  conversations       Conversation[]
   modificationHistory ListingModification[]
-  calendar        ListingCalendar[]
+  calendar            ListingCalendar[]
 
   @@index([ownerId])
   @@index([status])
@@ -220,7 +220,7 @@ model ListingPhoto {
   isPrimary         Boolean   @default(false) @map("is_primary")
   isCertified       Boolean   @default(false) @map("is_certified")
   certificationDate DateTime? @map("certification_date")
-  metadata          String      @default("{}")
+  metadata          String    @default("{}")
   createdAt         DateTime  @default(now()) @map("created_at")
 
   // Relations
@@ -236,14 +236,14 @@ model ListingPassport {
   stayCount             Int      @default(0) @map("stay_count")
   guestCount            Int      @default(0) @map("guest_count")
   ageDays               Int      @default(0) @map("age_days")
-  certificationsHistory String     @default("[]") @map("certifications_history")
+  certificationsHistory String   @default("[]") @map("certifications_history")
   certifiedPhotosCount  Int      @default(0) @map("certified_photos_count")
   videosCount           Int      @default(0) @map("videos_count")
   controlVisitsCount    Int      @default(0) @map("control_visits_count")
-  incidents             String     @default("[]")
-  disputes              String     @default("[]")
-  disputeResolutions    String     @default("[]") @map("dispute_resolutions")
-  scoresHistory         String     @default("[]") @map("scores_history")
+  incidents             String   @default("[]")
+  disputes              String   @default("[]")
+  disputeResolutions    String   @default("[]") @map("dispute_resolutions")
+  scoresHistory         String   @default("[]") @map("scores_history")
   createdAt             DateTime @default(now()) @map("created_at")
   updatedAt             DateTime @updatedAt @map("updated_at")
 
@@ -254,41 +254,41 @@ model ListingPassport {
 }
 
 model Booking {
-  id                String           @id @default(uuid())
-  listingId         String           @map("listing_id")
-  travelerId        String           @map("traveler_id")
-  ownerId           String           @map("owner_id")
-  checkIn           DateTime         @map("check_in")
-  checkOut          DateTime         @map("check_out")
-  guestsCount       Int              @map("guests_count")
-  totalNights       Int              @map("total_nights")
-  basePrice         Float          @map("base_price")
-  cleaningFee       Float          @map("cleaning_fee")
-  serviceFee        Float          @map("service_fee")
-  insuranceFee      Float          @default(0) @map("insurance_fee")
-  totalPrice        Float          @map("total_price")
-  currency          String
-  status            String    @default("pending")
-  paymentStatus     String    @default("pending") @map("payment_status")
-  validationStatus  String @default("pending") @map("validation_status")
-  validationDeadline DateTime?       @map("validation_deadline")
-  disputeId         String?          @map("dispute_id")
-  createdAt         DateTime         @default(now()) @map("created_at")
-  updatedAt         DateTime         @updatedAt @map("updated_at")
-  securityDeposit Float   @default(0) @map("security_deposit")
-  validationData  String? @map("validation_data")
+  id                   String    @id @default(uuid())
+  listingId            String    @map("listing_id")
+  travelerId           String    @map("traveler_id")
+  ownerId              String    @map("owner_id")
+  checkIn              DateTime  @map("check_in")
+  checkOut             DateTime  @map("check_out")
+  guestsCount          Int       @map("guests_count")
+  totalNights          Int       @map("total_nights")
+  basePrice            Float     @map("base_price")
+  cleaningFee          Float     @map("cleaning_fee")
+  serviceFee           Float     @map("service_fee")
+  insuranceFee         Float     @default(0) @map("insurance_fee")
+  totalPrice           Float     @map("total_price")
+  currency             String
+  status               String    @default("pending")
+  paymentStatus        String    @default("pending") @map("payment_status")
+  validationStatus     String    @default("pending") @map("validation_status")
+  validationDeadline   DateTime? @map("validation_deadline")
+  disputeId            String?   @map("dispute_id")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+  securityDeposit      Float     @default(0) @map("security_deposit")
+  validationData       String?   @map("validation_data")
   /// Le voyageur declare s etre presente. C est le second signal : sans lui,
   /// une absence de check-in ne prouve rien, le check-in etant declenche par
   /// l hote seul.
-  arrivalConfirmedAt DateTime? @map("arrival_confirmed_at")
+  arrivalConfirmedAt   DateTime? @map("arrival_confirmed_at")
   /// Declaration de no-show par l hote, datee et attribuee pour etre
   /// comptabilisee dans son propre score, comme ses refus.
-  noShowDeclaredAt   DateTime? @map("no_show_declared_at")
-  noShowDeclaredBy   String?   @map("no_show_declared_by")
+  noShowDeclaredAt     DateTime? @map("no_show_declared_at")
+  noShowDeclaredBy     String?   @map("no_show_declared_by")
   /// Qui a annule et quand : sert a appliquer le delai d annulation et a
   /// informer l autre partie de ce qui lui est oppose.
-  cancelledAt        DateTime? @map("cancelled_at")
-  cancelledBy        String?   @map("cancelled_by")
+  cancelledAt          DateTime? @map("cancelled_at")
+  cancelledBy          String?   @map("cancelled_by")
   /// Extension demandee par le voyageur, en attente de l accord de l hote.
   /// Le prix est FIGE a la demande : c est le montant que le voyageur a vu et
   /// accepte. Le recalculer a l acceptation laisserait l hote encaisser un
@@ -298,13 +298,13 @@ model Booking {
   extensionRequestedAt DateTime? @map("extension_requested_at")
 
   // Relations
-  listing   Listing    @relation(fields: [listingId], references: [id])
-  traveler  User       @relation("TravelerBookings", fields: [travelerId], references: [id])
-  owner     User       @relation("OwnerBookings", fields: [ownerId], references: [id])
-  payment   Payment?
-  disputeRecord Dispute?
-  review    Review?
-  conversation Conversation?
+  listing        Listing         @relation(fields: [listingId], references: [id])
+  traveler       User            @relation("TravelerBookings", fields: [travelerId], references: [id])
+  owner          User            @relation("OwnerBookings", fields: [ownerId], references: [id])
+  payment        Payment?
+  disputeRecord  Dispute?
+  review         Review?
+  conversation   Conversation?
   inventoryCheck InventoryCheck?
 
   @@index([listingId])
@@ -315,19 +315,19 @@ model Booking {
 }
 
 model Payment {
-  id                    String        @id @default(uuid())
-  bookingId             String        @unique @map("booking_id")
-  stripePaymentIntentId String        @map("stripe_payment_intent_id")
+  id                    String    @id @default(uuid())
+  bookingId             String    @unique @map("booking_id")
+  stripePaymentIntentId String    @map("stripe_payment_intent_id")
   amount                Float
   currency              String
-  status                String @default("pending")
-  heldAt                DateTime?     @map("held_at")
-  capturedAt            DateTime?     @map("captured_at")
-  refundedAt            DateTime?     @map("refunded_at")
-  refundAmount          Float?      @map("refund_amount")
-  createdAt             DateTime      @default(now()) @map("created_at")
-  updatedAt             DateTime      @updatedAt @map("updated_at")
-  refundReason String? @map("refund_reason")
+  status                String    @default("pending")
+  heldAt                DateTime? @map("held_at")
+  capturedAt            DateTime? @map("captured_at")
+  refundedAt            DateTime? @map("refunded_at")
+  refundAmount          Float?    @map("refund_amount")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  refundReason          String?   @map("refund_reason")
 
   // Relations
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
@@ -336,36 +336,36 @@ model Payment {
 }
 
 model Dispute {
-  id              String       @id @default(uuid())
-  bookingId       String       @unique @map("booking_id")
-  initiatedBy     String       @map("initiated_by")
+  id              String    @id @default(uuid())
+  bookingId       String    @unique @map("booking_id")
+  initiatedBy     String    @map("initiated_by")
   type            String
-  status          String @default("pending")
+  status          String    @default("pending")
   description     String
-  resolutionNotes String?      @map("resolution_notes")
-  decidedBy       String?      @map("decided_by")
-  decidedAt       DateTime?    @map("decided_at")
-  refundAmount    Float?     @map("refund_amount")
-  sanctions       String         @default("[]")
-  createdAt       DateTime     @default(now()) @map("created_at")
-  updatedAt       DateTime     @updatedAt @map("updated_at")
+  resolutionNotes String?   @map("resolution_notes")
+  decidedBy       String?   @map("decided_by")
+  decidedAt       DateTime? @map("decided_at")
+  refundAmount    Float?    @map("refund_amount")
+  sanctions       String    @default("[]")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   // Relations
-  booking   Booking          @relation(fields: [bookingId], references: [id])
-  evidence  DisputeEvidence[]
+  booking  Booking           @relation(fields: [bookingId], references: [id])
+  evidence DisputeEvidence[]
 
   @@index([status])
   @@map("disputes")
 }
 
 model DisputeEvidence {
-  id          String       @id @default(uuid())
-  disputeId   String       @map("dispute_id")
-  uploadedBy  String       @map("uploaded_by")
+  id          String   @id @default(uuid())
+  disputeId   String   @map("dispute_id")
+  uploadedBy  String   @map("uploaded_by")
   type        String
   url         String
   description String?
-  createdAt   DateTime     @default(now()) @map("created_at")
+  createdAt   DateTime @default(now()) @map("created_at")
 
   // Relations
   dispute Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
@@ -375,33 +375,33 @@ model DisputeEvidence {
 }
 
 model Review {
-  id          String    @id @default(uuid())
-  bookingId   String    @unique @map("booking_id")
-  listingId   String    @map("listing_id")
-  reviewerId  String    @map("reviewer_id")
-  revieweeId  String    @map("reviewee_id")
-  type        String
-  rating      Int
-  cleanliness Int
-  accuracy    Int
-  checkIn     Int       @map("check_in")
+  id            String   @id @default(uuid())
+  bookingId     String   @unique @map("booking_id")
+  listingId     String   @map("listing_id")
+  reviewerId    String   @map("reviewer_id")
+  revieweeId    String   @map("reviewee_id")
+  type          String
+  rating        Int
+  cleanliness   Int
+  accuracy      Int
+  checkIn       Int      @map("check_in")
   communication Int
-  location    Int
-  value       Int
-  comment     String
-  isVerified  Boolean   @default(false) @map("is_verified")
-  isFlagged   Boolean   @default(false) @map("is_flagged")
-  flagReason  String?   @map("flag_reason")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  aiScore      Float? @map("ai_score")
-  helpfulCount Int    @default(0) @map("helpful_count")
+  location      Int
+  value         Int
+  comment       String
+  isVerified    Boolean  @default(false) @map("is_verified")
+  isFlagged     Boolean  @default(false) @map("is_flagged")
+  flagReason    String?  @map("flag_reason")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  aiScore       Float?   @map("ai_score")
+  helpfulCount  Int      @default(0) @map("helpful_count")
 
   // Relations
-  booking  Booking  @relation(fields: [bookingId], references: [id])
-  listing  Listing  @relation(fields: [listingId], references: [id])
-  reviewer User     @relation("ReviewerReviews", fields: [reviewerId], references: [id])
-  reviewee User     @relation("RevieweeReviews", fields: [revieweeId], references: [id])
+  booking  Booking @relation(fields: [bookingId], references: [id])
+  listing  Listing @relation(fields: [listingId], references: [id])
+  reviewer User    @relation("ReviewerReviews", fields: [reviewerId], references: [id])
+  reviewee User    @relation("RevieweeReviews", fields: [revieweeId], references: [id])
 
   @@index([listingId])
   @@index([reviewerId])
@@ -410,14 +410,14 @@ model Review {
 }
 
 model Conversation {
-  id            String    @id @default(uuid())
-  bookingId     String?   @unique @map("booking_id")
-  participantIds String @map("participant_ids") @default("[]")
-  listingId     String?   @map("listing_id")
-  isBlocked     Boolean   @default(false) @map("is_blocked")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  blockReason String? @map("block_reason")
+  id             String   @id @default(uuid())
+  bookingId      String?  @unique @map("booking_id")
+  participantIds String   @default("[]") @map("participant_ids")
+  listingId      String?  @map("listing_id")
+  isBlocked      Boolean  @default(false) @map("is_blocked")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  blockReason    String?  @map("block_reason")
 
   // Relations
   booking  Booking?  @relation(fields: [bookingId], references: [id])
@@ -430,20 +430,20 @@ model Conversation {
 }
 
 model Message {
-  id              String      @id @default(uuid())
-  conversationId  String      @map("conversation_id")
-  senderId        String      @map("sender_id")
-  type            String @default("text")
-  content         String
-  metadata        String        @default("{}")
-  isFlagged       Boolean     @default(false) @map("is_flagged")
-  flagReason      String?     @map("flag_reason")
-  createdAt       DateTime    @default(now()) @map("created_at")
-  aiAnalysis String? @map("ai_analysis")
+  id             String   @id @default(uuid())
+  conversationId String   @map("conversation_id")
+  senderId       String   @map("sender_id")
+  type           String   @default("text")
+  content        String
+  metadata       String   @default("{}")
+  isFlagged      Boolean  @default(false) @map("is_flagged")
+  flagReason     String?  @map("flag_reason")
+  createdAt      DateTime @default(now()) @map("created_at")
+  aiAnalysis     String?  @map("ai_analysis")
 
   // Relations
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender       User        @relation(fields: [senderId], references: [id])
+  sender       User         @relation(fields: [senderId], references: [id])
 
   @@index([conversationId])
   @@index([senderId])
@@ -451,18 +451,18 @@ model Message {
 }
 
 model Certification {
-  id          String             @id @default(uuid())
-  listingId   String             @map("listing_id")
-  level       String
-  status      String             @default("pending")
-  requestedAt DateTime           @default(now()) @map("requested_at")
-  validatedAt DateTime?          @map("validated_at")
-  expiresAt   DateTime?          @map("expires_at")
-  validatedBy String?            @map("validated_by")
-  report      String               @default("{}")
-  createdAt   DateTime           @default(now()) @map("created_at")
-  updatedAt   DateTime           @updatedAt @map("updated_at")
-  scoreBreakdown String @default("{}") @map("score_breakdown")
+  id             String    @id @default(uuid())
+  listingId      String    @map("listing_id")
+  level          String
+  status         String    @default("pending")
+  requestedAt    DateTime  @default(now()) @map("requested_at")
+  validatedAt    DateTime? @map("validated_at")
+  expiresAt      DateTime? @map("expires_at")
+  validatedBy    String?   @map("validated_by")
+  report         String    @default("{}")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  scoreBreakdown String    @default("{}") @map("score_breakdown")
 
   // Relations
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
@@ -471,23 +471,22 @@ model Certification {
   @@map("certifications")
 }
 
-
 model Sanction {
-  id           String       @id @default(uuid())
-  userId       String       @map("user_id")
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
   type         String
   reason       String
-  evidence     String         @default("{}")
-  durationDays Int?         @map("duration_days")
-  expiresAt    DateTime?    @map("expires_at")
-  appliedBy    String       @map("applied_by")
-  appliedAt    DateTime     @default(now()) @map("applied_at")
-  revokedBy    String?      @map("revoked_by")
-  revokedAt    DateTime?    @map("revoked_at")
-  createdAt    DateTime     @default(now()) @map("created_at")
+  evidence     String    @default("{}")
+  durationDays Int?      @map("duration_days")
+  expiresAt    DateTime? @map("expires_at")
+  appliedBy    String    @map("applied_by")
+  appliedAt    DateTime  @default(now()) @map("applied_at")
+  revokedBy    String?   @map("revoked_by")
+  revokedAt    DateTime? @map("revoked_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
 
   // Relations
-  user      User @relation("SanctionUser", fields: [userId], references: [id])
+  user          User @relation("SanctionUser", fields: [userId], references: [id])
   appliedByUser User @relation("SanctionAppliedBy", fields: [appliedBy], references: [id])
 
   @@index([userId])
@@ -496,21 +495,21 @@ model Sanction {
 }
 
 model ReverseSearch {
-  id           String              @id @default(uuid())
-  travelerId   String              @map("traveler_id")
-  title        String
-  description  String
-  destination  String
-  checkIn      DateTime            @map("check_in")
-  checkOut     DateTime            @map("check_out")
-  guestsCount  Int                 @map("guests_count")
-  bedrooms     Int?
-  budgetMin    Float?            @map("budget_min")
-  budgetMax    Float?            @map("budget_max")
-  requirements String                @default("{}")
-  status       String @default("active")
-  createdAt    DateTime            @default(now()) @map("created_at")
-  updatedAt    DateTime            @updatedAt @map("updated_at")
+  id                String    @id @default(uuid())
+  travelerId        String    @map("traveler_id")
+  title             String
+  description       String
+  destination       String
+  checkIn           DateTime  @map("check_in")
+  checkOut          DateTime  @map("check_out")
+  guestsCount       Int       @map("guests_count")
+  bedrooms          Int?
+  budgetMin         Float?    @map("budget_min")
+  budgetMax         Float?    @map("budget_max")
+  requirements      String    @default("{}")
+  status            String    @default("active")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
   city              String?
   region            String?
   bathrooms         Int?
@@ -523,9 +522,9 @@ model ReverseSearch {
   expiresAt         DateTime? @map("expires_at")
 
   // Relations
-  traveler User          @relation(fields: [travelerId], references: [id])
+  traveler User                  @relation(fields: [travelerId], references: [id])
   offers   ReverseOffer[]
-  unlocks       ReverseSearchUnlock[]
+  unlocks  ReverseSearchUnlock[]
 
   @@index([travelerId])
   @@index([status])
@@ -533,20 +532,20 @@ model ReverseSearch {
 }
 
 model ReverseOffer {
-  id              String            @id @default(uuid())
-  reverseSearchId String            @map("reverse_search_id")
-  listingId       String            @map("listing_id")
-  ownerId         String            @map("owner_id")
-  proposedPrice   Float           @map("proposed_price")
-  message         String?
-  status          String @default("pending")
-  createdAt       DateTime          @default(now()) @map("created_at")
-  updatedAt       DateTime          @updatedAt @map("updated_at")
-  originalPrice   Float?    @map("original_price")
-  discountPercent Float?    @map("discount_percent")
-  isViewed        Boolean   @default(false) @map("is_viewed")
-  viewedAt        DateTime? @map("viewed_at")
-  expiresAt       DateTime? @map("expires_at")
+  id               String    @id @default(uuid())
+  reverseSearchId  String    @map("reverse_search_id")
+  listingId        String    @map("listing_id")
+  ownerId          String    @map("owner_id")
+  proposedPrice    Float     @map("proposed_price")
+  message          String?
+  status           String    @default("pending")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  originalPrice    Float?    @map("original_price")
+  discountPercent  Float?    @map("discount_percent")
+  isViewed         Boolean   @default(false) @map("is_viewed")
+  viewedAt         DateTime? @map("viewed_at")
+  expiresAt        DateTime? @map("expires_at")
   /// Montant propose par le voyageur en reponse a l offre
   counterPrice     Float?    @map("counter_price")
   counterAt        DateTime? @map("counter_at")
@@ -564,19 +563,19 @@ model ReverseOffer {
 }
 
 model Subscription {
-  id                   String             @id @default(uuid())
-  userId               String             @map("user_id")
+  id                   String   @id @default(uuid())
+  userId               String   @map("user_id")
   type                 String
-  status               String @default("active")
+  status               String   @default("active")
   price                Float
   currency             String
   interval             String
-  stripeSubscriptionId String             @map("stripe_subscription_id")
-  currentPeriodStart   DateTime           @map("current_period_start")
-  currentPeriodEnd     DateTime           @map("current_period_end")
-  createdAt            DateTime           @default(now()) @map("created_at")
-  updatedAt            DateTime           @updatedAt @map("updated_at")
-  features String @default("[]")
+  stripeSubscriptionId String   @map("stripe_subscription_id")
+  currentPeriodStart   DateTime @map("current_period_start")
+  currentPeriodEnd     DateTime @map("current_period_end")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+  features             String   @default("[]")
 
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -586,17 +585,17 @@ model Subscription {
 }
 
 model InsurancePolicy {
-  id             String           @id @default(uuid())
-  bookingId      String           @map("booking_id")
+  id             String   @id @default(uuid())
+  bookingId      String   @map("booking_id")
   type           String
-  provider       String @default("internal")
-  premiumAmount  Float          @map("premium_amount")
-  coverageAmount Float          @map("coverage_amount")
-  status         String  @default("active")
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
-  claimReason    String? @map("claim_reason")
-  claimDocuments String  @default("[]") @map("claim_documents")
+  provider       String   @default("internal")
+  premiumAmount  Float    @map("premium_amount")
+  coverageAmount Float    @map("coverage_amount")
+  status         String   @default("active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  claimReason    String?  @map("claim_reason")
+  claimDocuments String   @default("[]") @map("claim_documents")
 
   @@index([bookingId])
   @@map("insurance_policies")
@@ -608,7 +607,7 @@ model AuditLog {
   action     String
   entityType String   @map("entity_type")
   entityId   String   @map("entity_id")
-  details    String     @default("{}")
+  details    String   @default("{}")
   ipAddress  String   @map("ip_address")
   userAgent  String   @map("user_agent")
   createdAt  DateTime @default(now()) @map("created_at")
@@ -624,16 +623,16 @@ model AuditLog {
 }
 
 model ContactAttempt {
-  id          String   @id @default(uuid())
-  userId      String   @map("user_id")
-  type        String
-  content     String
-  context     String
-  detectedBy  String   @default("ai") @map("detected_by")
-  confidence  Float    @default(0)
-  messageId   String?  @map("message_id")
-  isBlocked   Boolean  @default(false) @map("is_blocked")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  type       String
+  content    String
+  context    String
+  detectedBy String   @default("ai") @map("detected_by")
+  confidence Float    @default(0)
+  messageId  String?  @map("message_id")
+  isBlocked  Boolean  @default(false) @map("is_blocked")
+  createdAt  DateTime @default(now()) @map("created_at")
 
   // Relations
   user User @relation(fields: [userId], references: [id])
@@ -644,19 +643,19 @@ model ContactAttempt {
 }
 
 model InventoryCheck {
-  id              String    @id @default(uuid())
-  bookingId       String    @unique @map("booking_id")
-  checkInPhotos   String    @default("[]") @map("check_in_photos")
-  checkOutPhotos  String    @default("[]") @map("check_out_photos")
-  checkInNotes    String?   @map("check_in_notes")
-  checkOutNotes   String?   @map("check_out_notes")
-  damagesFound    String    @default("[]") @map("damages_found")
-  depositStatus   String    @default("pending") @map("deposit_status")
-  depositReturned Float?    @map("deposit_returned")
-  depositKept     Float?    @map("deposit_kept")
-  status          String    @default("pending")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id              String   @id @default(uuid())
+  bookingId       String   @unique @map("booking_id")
+  checkInPhotos   String   @default("[]") @map("check_in_photos")
+  checkOutPhotos  String   @default("[]") @map("check_out_photos")
+  checkInNotes    String?  @map("check_in_notes")
+  checkOutNotes   String?  @map("check_out_notes")
+  damagesFound    String   @default("[]") @map("damages_found")
+  depositStatus   String   @default("pending") @map("deposit_status")
+  depositReturned Float?   @map("deposit_returned")
+  depositKept     Float?   @map("deposit_kept")
+  status          String   @default("pending")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   // Relations
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
@@ -665,14 +664,14 @@ model InventoryCheck {
 }
 
 model ListingModification {
-  id          String   @id @default(uuid())
-  listingId   String   @map("listing_id")
-  modifiedBy  String   @map("modified_by")
-  fieldName   String   @map("field_name")
-  oldValue    String?  @map("old_value")
-  newValue    String   @map("new_value")
-  reason      String?
-  createdAt   DateTime @default(now()) @map("created_at")
+  id         String   @id @default(uuid())
+  listingId  String   @map("listing_id")
+  modifiedBy String   @map("modified_by")
+  fieldName  String   @map("field_name")
+  oldValue   String?  @map("old_value")
+  newValue   String   @map("new_value")
+  reason     String?
+  createdAt  DateTime @default(now()) @map("created_at")
 
   // Relations
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
@@ -760,48 +759,51 @@ model ListingCalendar {
 // ---------------------------------------------------------------------------
 
 model ServiceProvider {
-  id            String    @id @default(uuid())
+  id                 String    @id @default(uuid())
   /// Compte de connexion. En phase 1 il est cree par l administration, apres
   /// constatation du statut d agence : `provider` n est pas auto-attribuable.
-  userId        String    @unique @map("user_id")
+  userId             String    @unique @map("user_id")
   /// menage | location_voiture
-  type          String
+  type               String
   /// Nom affiche. Pour une personne physique, c est son nom et prenom : le
   /// champ garde son intitule plutot que d en ajouter un second qui dirait la
   /// meme chose.
-  companyName   String    @map("company_name")
+  companyName        String    @map("company_name")
   /// societe | individuel. Une personne physique ne peut proposer que du
   /// menage : la location de vehicules suppose une entreprise. Ce n est donc
   /// pas le statut d entreprise qu on constate pour elle, mais son identite.
-  legalForm     String    @default("societe") @map("legal_form")
+  legalForm          String    @default("societe") @map("legal_form")
   /// pending tant que l administration n a pas constate le statut.
-  status        String    @default("pending")
-  verifiedAt    DateTime? @map("verified_at")
-  verifiedBy    String?   @map("verified_by")
+  status             String    @default("pending")
+  verifiedAt         DateTime? @map("verified_at")
+  verifiedBy         String?   @map("verified_by")
   /// Matricule fiscal ou registre de commerce, constate a la main en phase 1.
-  registrationNumber String? @map("registration_number")
-  city          String?
-  region        String?
-  latitude      Float?
-  longitude     Float?
+  registrationNumber String?   @map("registration_number")
+  city               String?
+  region             String?
+  latitude           Float?
+  longitude          Float?
   /// Rayon d intervention. La proximite se calcule en Haversine, comme la
   /// recherche de logements : pas de dependance geospatiale supplementaire.
-  serviceRadiusKm Int     @default(30) @map("service_radius_km")
-  phone         String?
-  description   String?
+  serviceRadiusKm    Int       @default(30) @map("service_radius_km")
+  phone              String?
+  description        String?
   /// Meme trio que les annonces : la confiance se lit pareil des deux cotes.
-  trustScore    Float     @default(0) @map("trust_score")
-  avgRating     Float     @default(0) @map("avg_rating")
-  totalReviews  Int       @default(0) @map("total_reviews")
-  totalJobs     Int       @default(0) @map("total_jobs")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  deletedAt     DateTime? @map("deleted_at")
+  trustScore         Float     @default(0) @map("trust_score")
+  avgRating          Float     @default(0) @map("avg_rating")
+  totalReviews       Int       @default(0) @map("total_reviews")
+  totalJobs          Int       @default(0) @map("total_jobs")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  deletedAt          DateTime? @map("deleted_at")
 
-  user     User             @relation("ProviderAccount", fields: [userId], references: [id])
-  vehicles Vehicle[]
-  services ServiceBooking[]
-  reviews  ServiceReview[]
+  user         User                   @relation("ProviderAccount", fields: [userId], references: [id])
+  zones        ProviderZone[]
+  availability ProviderAvailability[]
+  timeOff      ProviderTimeOff[]
+  vehicles     Vehicle[]
+  services     ServiceBooking[]
+  reviews      ServiceReview[]
 
   @@index([type, status])
   @@index([city])
@@ -810,8 +812,8 @@ model ServiceProvider {
 }
 
 model Vehicle {
-  id             String   @id @default(uuid())
-  providerId     String   @map("provider_id")
+  id             String  @id @default(uuid())
+  providerId     String  @map("provider_id")
   brand          String
   model          String
   year           Int?
@@ -819,16 +821,25 @@ model Vehicle {
   /// un identifiant. Le @unique de `phone` a deja coute assez cher.
   plate          String?
   /// citadine | berline | suv | utilitaire | luxe
-  category       String   @default("citadine")
-  transmission   String   @default("manuelle")
-  fuel           String   @default("essence")
-  seats          Int      @default(5)
-  airConditioned Boolean  @default(true) @map("air_conditioned")
-  pricePerDay    Float    @map("price_per_day")
-  deposit        Float    @default(0)
+  category       String  @default("citadine")
+  transmission   String  @default("manuelle")
+  fuel           String  @default("essence")
+  seats          Int     @default(5)
+  airConditioned Boolean @default(true) @map("air_conditioned")
+  pricePerDay    Float   @map("price_per_day")
+  deposit        Float   @default(0)
   /// OBSOLETE depuis VehiclePhoto. Conservee parce qu elle porte des valeurs :
   /// meme traitement que control_visits_count. Lire `photos` a la place.
-  photoUrl       String?  @map("photo_url")
+  photoUrl       String? @map("photo_url")
+
+  /// Puissance fiscale, en chevaux. C est le critere que les loueurs affichent
+  /// en Tunisie, et celui qui gouverne l assurance du conducteur.
+  fiscalPower Int?    @map("fiscal_power")
+  /// Kilometrage au compteur. Un loueur serieux l affiche ; son absence est un
+  /// signal en soi.
+  mileage     Int?    @map("mileage")
+  doors       Int?    @map("doors")
+  color       String?
 
   /// --- Conditions de location, servies AVANT la demande ---
   ///
@@ -839,31 +850,31 @@ model Vehicle {
   /// Kilometrage inclus par jour. `null` = illimite, ce que pratiquent la
   /// plupart des agences : le defaut ne doit pas etre 0, qui signifierait
   /// « aucun kilometre autorise ».
-  kmPerDay          Int?     @map("km_per_day")
+  kmPerDay          Int?    @map("km_per_day")
   /// Prix du kilometre au-dela du forfait. Annoncer un forfait sans lui ne dit
   /// rien : le locataire ignore ce que coute le depassement.
-  extraKmPrice      Float?   @map("extra_km_price")
-  minDriverAge      Int      @default(21) @map("min_driver_age")
-  minLicenceYears   Int      @default(2)  @map("min_licence_years")
+  extraKmPrice      Float?  @map("extra_km_price")
+  minDriverAge      Int     @default(21) @map("min_driver_age")
+  minLicenceYears   Int     @default(2) @map("min_licence_years")
   /// plein_a_plein | plein_a_vide | identique
-  fuelPolicy        String   @default("plein_a_plein") @map("fuel_policy")
+  fuelPolicy        String  @default("plein_a_plein") @map("fuel_policy")
   /// Options facturees en sus, en JSON : [{ code, label, pricePerDay }].
   /// Un JSON plutot que des colonnes : la liste varie d une agence a l autre,
   /// et chaque nouvelle option couterait sinon une migration.
   options           String?
-  pickupLocation    String?  @map("pickup_location")
+  pickupLocation    String? @map("pickup_location")
   /// Restitution ailleurs qu au depart. `null` = meme lieu que la prise.
-  returnLocation    String?  @map("return_location")
-  deliveryAvailable Boolean  @default(false) @map("delivery_available")
-  deliveryFee       Float    @default(0) @map("delivery_fee")
+  returnLocation    String? @map("return_location")
+  deliveryAvailable Boolean @default(false) @map("delivery_available")
+  deliveryFee       Float   @default(0) @map("delivery_fee")
 
   /// active | maintenance | retire
-  status         String   @default("active")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
-  deletedAt      DateTime? @map("deleted_at")
+  status    String    @default("active")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
 
-  provider ServiceProvider  @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  provider ServiceProvider   @relation(fields: [providerId], references: [id], onDelete: Cascade)
   calendar VehicleCalendar[]
   services ServiceBooking[]
   photos   VehiclePhoto[]
@@ -871,6 +882,72 @@ model Vehicle {
   @@index([providerId])
   @@index([status])
   @@map("vehicles")
+}
+
+/// Zone d intervention declaree par un prestataire.
+///
+/// Le rayon en kilometres ne suffisait pas : une agence de Tunis « a 60 km »
+/// couvre sur le papier des localites qu elle ne dessert pas, et en rate
+/// d autres qu elle dessert tres bien. Une zone se DECLARE, elle ne se deduit
+/// pas d un cercle.
+///
+/// Le referentiel est celui de common/localities : la saisie libre est exclue,
+/// sans quoi « La Marsa » et « Marsa » deviendraient deux zones distinctes et
+/// le rapprochement casserait. Pas de carte non plus — on choisit dans une
+/// liste, ce qui se fait au clavier et depuis un telephone.
+model ProviderZone {
+  id         String   @id @default(uuid())
+  providerId String   @map("provider_id")
+  citySlug   String   @map("city_slug")
+  city       String
+  region     String
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  provider ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  /// Declarer deux fois la meme ville n a pas de sens et fausserait les
+  /// comptes affiches au prestataire.
+  @@unique([providerId, citySlug])
+  @@index([citySlug])
+  @@map("provider_zones")
+}
+
+/// Creneau de travail hebdomadaire, recurrent.
+///
+/// Un prestataire propose ses services a des HEURES, pas a des jours : envoyer
+/// une demande a 7 h du matin a quelqu un qui commence a 9 h fait perdre son
+/// temps aux deux. Les heures sont stockees en "HH:MM" plutot qu en DateTime :
+/// elles n ont pas de date, et une DateTime obligerait a en inventer une.
+model ProviderAvailability {
+  id         String @id @default(uuid())
+  providerId String @map("provider_id")
+  /// 0 = dimanche, 6 = samedi. Meme convention que Date.getDay().
+  dayOfWeek  Int    @map("day_of_week")
+  startTime  String @map("start_time")
+  endTime    String @map("end_time")
+
+  provider ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId])
+  @@map("provider_availability")
+}
+
+/// Absence ponctuelle : conges, maladie, deplacement.
+///
+/// Distincte des creneaux hebdomadaires, deliberement : fermer une semaine ne
+/// doit pas obliger a effacer puis reconstruire ses horaires habituels.
+model ProviderTimeOff {
+  id         String   @id @default(uuid())
+  providerId String   @map("provider_id")
+  startDate  DateTime @map("start_date")
+  endDate    DateTime @map("end_date")
+  note       String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  provider ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId])
+  @@map("provider_time_off")
 }
 
 /// Galerie d un vehicule. Meme forme que ListingPhoto : on ne loue pas une
@@ -898,17 +975,17 @@ model VehiclePhoto {
 /// peut donc pas fermer un compte : elle inscrit un fait, que le client peut
 /// contredire, et l administration tranche a la main.
 model VehicleIncident {
-  id               String   @id @default(uuid())
-  serviceBookingId String   @map("service_booking_id")
-  vehicleId        String?  @map("vehicle_id")
+  id               String    @id @default(uuid())
+  serviceBookingId String    @map("service_booking_id")
+  vehicleId        String?   @map("vehicle_id")
   /// Compte de l agence declarante, trace pour que ses declarations soient
   /// comptables contre elle si elle en abuse.
-  declaredBy       String   @map("declared_by")
-  declaredAt       DateTime @default(now()) @map("declared_at")
+  declaredBy       String    @map("declared_by")
+  declaredAt       DateTime  @default(now()) @map("declared_at")
   /// rayure | choc | mecanique | retard | carburant | proprete | autre
   type             String
   description      String
-  estimatedCost    Float?   @map("estimated_cost")
+  estimatedCost    Float?    @map("estimated_cost")
   /// URLs des photos du dommage, en JSON. La preuve vaut mieux que l assertion.
   photos           String?
   contestedAt      DateTime? @map("contested_at")
@@ -984,7 +1061,7 @@ model ServiceBooking {
   district    String?
   /// Precision d acces : etage, code, point de rendez-vous. Pas l adresse
   /// exacte, qui ne se livre qu apres acceptation comme le reste.
-  addressHint String?  @map("address_hint")
+  addressHint String? @map("address_hint")
 
   /// --- Tarif et negociation ---
   ///
@@ -997,18 +1074,18 @@ model ServiceBooking {
   /// Borne les allers-retours. Sans elle une demande reste ouverte indefiniment.
   negotiationRound Int       @default(0) @map("negotiation_round")
   /// pending | confirmed | cancelled | completed
-  status      String   @default("pending")
+  status           String    @default("pending")
   /// Les coordonnees ne s echangent qu apres acceptation, comme pour le sejour.
-  contactSharedAt DateTime? @map("contact_shared_at")
-  cancelledAt DateTime? @map("cancelled_at")
-  cancelledBy String?   @map("cancelled_by")
-  note        String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  contactSharedAt  DateTime? @map("contact_shared_at")
+  cancelledAt      DateTime? @map("cancelled_at")
+  cancelledBy      String?   @map("cancelled_by")
+  note             String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
-  provider  ServiceProvider @relation(fields: [providerId], references: [id])
-  vehicle   Vehicle?        @relation(fields: [vehicleId], references: [id])
-  requester User            @relation("ServiceRequests", fields: [requesterId], references: [id])
+  provider  ServiceProvider   @relation(fields: [providerId], references: [id])
+  vehicle   Vehicle?          @relation(fields: [vehicleId], references: [id])
+  requester User              @relation("ServiceRequests", fields: [requesterId], references: [id])
   reviews   ServiceReview[]
   incidents VehicleIncident[]
 

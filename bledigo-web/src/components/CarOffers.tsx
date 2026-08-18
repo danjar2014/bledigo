@@ -5,6 +5,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Car, Check, MapPin, Star } from 'lucide-react';
 import { api } from '@/lib/api';
 
+/** Carburants, dits en francais plutot qu en code. Le GPL est courant ici. */
+const CARBURANTS: Record<string, string> = {
+  essence: 'Essence',
+  diesel: 'Diesel',
+  hybride: 'Hybride',
+  electrique: 'Electrique',
+  gpl: 'GPL',
+};
+
 /** Politiques de carburant, dites en francais plutot qu en code. */
 const POLITIQUES: Record<string, string> = {
   plein_a_plein: 'rendu avec le plein',
@@ -101,7 +110,16 @@ export default function CarOffers({ booking }: { booking: any }) {
               </p>
               <p className="text-xs text-slate">
                 {v.category} · {v.transmission} · {v.seats} places
+                {v.doors ? ` · ${v.doors} portes` : ''}
                 {v.airConditioned ? ' · clim' : ''}
+              </p>
+              {/* La fiche technique que tout loueur affiche, et qu on ne
+                  pouvait pas saisir : le kilometrage absent est un signal. */}
+              <p className="text-xs text-slate">
+                {CARBURANTS[v.fuel] ?? v.fuel}
+                {v.fiscalPower ? ` · ${v.fiscalPower} CV` : ''}
+                {v.year ? ` · ${v.year}` : ''}
+                {v.mileage != null ? ` · ${new Intl.NumberFormat('fr-FR').format(v.mileage)} km` : ''}
               </p>
 
               {/* Les conditions AVANT la demande, jamais au comptoir : une

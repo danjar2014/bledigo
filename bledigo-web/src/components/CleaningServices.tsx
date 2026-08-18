@@ -25,7 +25,15 @@ import PriceNegotiation from './PriceNegotiation';
 export default function CleaningServices({ listings }: { listings: any[] }) {
   const queryClient = useQueryClient();
   const [logementId, setLogementId] = useState<string>(listings[0]?.id ?? '');
-  const [quand, setQuand] = useState<string>('');
+  /**
+   * Plusieurs dates, pas une.
+   *
+   * Un hote qui enchaine trois departs dans la semaine remplissait trois fois
+   * le meme formulaire. Chaque date reste une prestation distincte cote
+   * serveur : un prestataire peut etre libre mardi et pris jeudi.
+   */
+  const [dates, setDates] = useState<string[]>([]);
+  const [ajoutManuel, setAjoutManuel] = useState<string>('');
   // Un creneau, pas une journee : sans heure, le prestataire doit rappeler pour
   // savoir quand venir, et la demande ne lui apprend rien d actionnable.
   const [debut, setDebut] = useState<string>('10:00');
@@ -44,6 +52,13 @@ export default function CleaningServices({ listings }: { listings: any[] }) {
     enabled: !!logementId,
   });
 
+  /** Les departs a venir : l hote n a pas a recopier son propre calendrier. */
+  const { data: suggestions } = useQuery({
+    queryKey: ['cleaning-dates', logementId],
+    queryFn: () => api.cleaningSuggestedDates(logementId),
+    enabled: !!logementId,
+  });
+
   const { data: commandes } = useQuery({
     queryKey: ['service-orders'],
     queryFn: () => api.myServiceOrders(),
@@ -53,10 +68,11 @@ export default function CleaningServices({ listings }: { listings: any[] }) {
     mutationFn: (providerId: string) =>
       api.requestCleaning(logementId, {
         providerId,
-        // Les heures partent avec la date : le serveur range le creneau dans
-        // startDate et endDate, qui portent deja l heure.
-        startDate: `${quand}T${debut}:00`,
-        endDate: `${quand}T${fin}:00`,
+        // Les dates partent en lot, le creneau s applique a chacune : le
+        // serveur cree une prestation par date.
+        dates,
+        startTime: debut,
+        endTime: fin,
         district: quartier || undefined,
         addressHint: acces || undefined,
         proposedPrice: tarif ? Number(tarif) : undefined,
@@ -66,11 +82,15 @@ export default function CleaningServices({ listings }: { listings: any[] }) {
       setNote('');
       setAcces('');
       setTarif('');
+      setDates([]);
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
     },
   });
 
-  const creneauValide = quand && fin > debut;
+  const basculer = (jour: string) =>
+    setDates((d) => (d.includes(jour) ? d.filter((x) => x !== jour) : [...d, jour].sort()));
+
+  const creneauValide = dates.length > 0 && fin > debut;
 
   const menages = (commandes || []).filter((c: any) => c.type === 'menage');
 
@@ -84,7 +104,7 @@ export default function CleaningServices({ listings }: { listings: any[] }) {
       </h2>
 
       <div className="bg-white rounded-bledi shadow-bledi p-4">
-        <div className="grid md:grid-cols-3 gap-3">
+        <div className="grid md:grid-cols-2 gap-3">
           <label className="text-sm">
             Logement
             <select
@@ -98,15 +118,6 @@ export default function CleaningServices({ listings }: { listings: any[] }) {
                 </option>
               ))}
             </select>
-          </label>
-          <label className="text-sm">
-            Date d intervention
-            <input
-              type="date"
-              className="input-bledi w-full mt-1"
-              value={quand}
-              onChange={(e) => setQuand(e.target.value)}
-            />
           </label>
           <div className="text-sm">
             <span className="block mb-1">Creneau</span>
@@ -128,6 +139,75 @@ export default function CleaningServices({ listings }: { listings: any[] }) {
               />
             </div>
           </div>
+        </div>
+
+        {/* Les DEPARTS a venir, proposes d office.
+            Un menage suit un depart : demander a l hote de ressaisir des dates
+            que la plateforme connait deja, c est lui faire recopier son propre
+            calendrier et lui offrir une occasion de se tromper d un jour. */}
+        <div className="mt-3">
+          <span className="text-sm block mb-1">Dates d intervention</span>
+
+          {suggestions?.departs?.length ? (
+            <div className="flex flex-wrap gap-2">
+              {suggestions.departs.map((d) => {
+                const jour = d.date.slice(0, 10);
+                const retenue = dates.includes(jour);
+                return (
+                  <button
+                    key={d.bookingId}
+                    type="button"
+                    onClick={() => basculer(jour)}
+                    className={`text-sm px-3 py-1.5 rounded-bledi-sm border transition-colors ${
+                      retenue
+                        ? 'bg-bledi-blue text-white border-bledi-blue'
+                        : 'bg-cream border-cloud text-charcoal hover:border-bledi-blue'
+                    }`}
+                  >
+                    depart du {date(d.date)}
+                    <span className={`text-xs ml-1 ${retenue ? 'text-white/80' : 'text-slate'}`}>
+                      · {d.voyageurs} voyageur{d.voyageurs > 1 ? 's' : ''}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-slate">
+              Aucun depart a venir sur ce logement. Ajoutez une date ci-dessous si vous voulez
+              faire intervenir quelqu un malgre tout.
+            </p>
+          )}
+
+          {/* Une date libre reste possible : un grand menage de printemps ne
+              suit aucun depart. */}
+          <div className="flex flex-wrap items-center gap-2 mt-2">
+            <input
+              type="date"
+              aria-label="Autre date"
+              className="input-bledi w-auto"
+              value={ajoutManuel}
+              onChange={(e) => setAjoutManuel(e.target.value)}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (ajoutManuel) basculer(ajoutManuel);
+                setAjoutManuel('');
+              }}
+              disabled={!ajoutManuel}
+              className="text-sm border border-cloud px-3 py-1.5 rounded-bledi-sm hover:border-bledi-blue disabled:opacity-40"
+            >
+              Autre date
+            </button>
+          </div>
+
+          {dates.length > 0 && (
+            <p className="text-xs text-slate mt-2">
+              {dates.length} intervention{dates.length > 1 ? 's' : ''} demandee
+              {dates.length > 1 ? 's' : ''} — chacune se negocie et s accepte separement.
+            </p>
+          )}
         </div>
 
         <div className="grid md:grid-cols-3 gap-3 mt-3">
@@ -220,8 +300,8 @@ export default function CleaningServices({ listings }: { listings: any[] }) {
                   disabled={!creneauValide || demander.isPending}
                   className="text-sm bg-bledi-blue text-white px-3 py-1.5 rounded-bledi-sm font-medium hover:opacity-90 disabled:opacity-50"
                   title={
-                    !quand
-                      ? 'Choisissez une date d intervention'
+                    !dates.length
+                      ? 'Choisissez au moins une date'
                       : fin <= debut
                         ? 'La fin du creneau doit suivre son debut'
                         : undefined

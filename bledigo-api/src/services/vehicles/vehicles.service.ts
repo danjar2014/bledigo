@@ -1,9 +1,9 @@
 import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { ProviderStatus, ProviderType } from '../common/enums';
-import { VehicleDto, UpdateVehicleDto, VehiclePeriodDto } from './dto';
-import { distanceKm } from '../common/geo';
-import { toDbJson } from '../common/json';
+import { PrismaService } from '../../prisma/prisma.service';
+import { ProviderStatus, ProviderType } from '../../common/enums';
+import { VehicleDto, UpdateVehicleDto, VehiclePeriodDto } from '../dto';
+import { distanceKm } from '../../common/geo';
+import { toDbJson } from '../../common/json';
 
 const JOUR_MS = 24 * 60 * 60 * 1000;
 
@@ -225,7 +225,7 @@ export class VehiclesService {
    * arrive a Djerba n a que faire d une agence de Tunis, meme excellente. Le
    * rayon retenu est celui que l agence declare servir.
    */
-  async disponiblesPour(lat: number, lng: number, debut: Date, fin: Date) {
+  async disponiblesPour(lat: number, lng: number, debut: Date, fin: Date, citySlug?: string) {
     if (fin <= debut) throw new BadRequestException('La date de restitution doit suivre la prise');
 
     const agences = await this.prisma.serviceProvider.findMany({
@@ -235,6 +235,7 @@ export class VehiclesService {
         deletedAt: null,
       },
       include: {
+        zones: { select: { citySlug: true } },
         vehicles: {
           where: { status: 'active', deletedAt: null },
           // Les photos et les conditions partent avec le vehicule : le voyageur
@@ -246,6 +247,7 @@ export class VehiclesService {
     });
 
     const immobilises = await this.indisponibles(debut, fin);
+    const zonesDeclarees = new Set(agences.filter((a) => a.zones.length).map((a) => a.id));
     const resultats: any[] = [];
 
     for (const agence of agences) {
@@ -253,10 +255,18 @@ export class VehiclesService {
         agence.latitude != null && agence.longitude != null
           ? Math.round(distanceKm(lat, lng, agence.latitude, agence.longitude) * 10) / 10
           : null;
-      // Une agence sans coordonnees reste proposee : le geocodage est optionnel
-      // et beaucoup de petites structures ne le renseigneront pas. Elle est
-      // simplement classee apres celles dont on connait la distance.
-      if (d != null && d > agence.serviceRadiusKm) continue;
+      // La ZONE declaree prime sur le rayon, comme pour le menage : un cercle
+      // ne connait ni les routes ni les habitudes. Une agence qui n a rien
+      // declare reste filtree au rayon, pour ne pas disparaitre du jour au
+      // lendemain.
+      if (citySlug && zonesDeclarees.has(agence.id)) {
+        if (!agence.zones.some((z) => z.citySlug === citySlug)) continue;
+      } else if (d != null && d > agence.serviceRadiusKm) {
+        // Une agence sans coordonnees reste proposee : le geocodage est
+        // optionnel et beaucoup de petites structures ne le renseigneront pas.
+        // Elle est simplement classee apres celles dont on connait la distance.
+        continue;
+      }
 
       for (const v of agence.vehicles) {
         if (immobilises.has(v.id)) continue;

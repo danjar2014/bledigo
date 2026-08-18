@@ -494,6 +494,48 @@ export const api = {
       body: body({ motif }),
     }),
 
+  // --- zones et disponibilites du prestataire ---
+  /** Villes desservies. Choisies dans le referentiel, jamais saisies librement. */
+  providerZones: () => request<any[]>('/api/v1/prestataire/zones', { auth: true }),
+  addProviderZone: (citySlug: string) =>
+    request<any>('/api/v1/prestataire/zones', {
+      method: 'POST',
+      auth: true,
+      body: body({ citySlug }),
+    }),
+  removeProviderZone: (id: string) =>
+    request<any>(`/api/v1/prestataire/zones/${id}`, { method: 'DELETE', auth: true }),
+
+  providerAvailability: () =>
+    request<{ creneaux: any[]; absences: any[] }>('/api/v1/prestataire/disponibilites', {
+      auth: true,
+    }),
+  addProviderSlot: (dto: { dayOfWeek: number; startTime: string; endTime: string }) =>
+    request<any>('/api/v1/prestataire/disponibilites', {
+      method: 'POST',
+      auth: true,
+      body: body(dto),
+    }),
+  removeProviderSlot: (id: string) =>
+    request<any>(`/api/v1/prestataire/disponibilites/${id}`, { method: 'DELETE', auth: true }),
+  addProviderTimeOff: (dto: { startDate: string; endDate: string; note?: string }) =>
+    request<any>('/api/v1/prestataire/absences', { method: 'POST', auth: true, body: body(dto) }),
+  removeProviderTimeOff: (id: string) =>
+    request<any>(`/api/v1/prestataire/absences/${id}`, { method: 'DELETE', auth: true }),
+
+  // --- catalogue vehicules ---
+  /** Public : une liste deroulante ne doit pas attendre un jeton pour s afficher. */
+  vehicleCatalog: () =>
+    request<{ marque: string; modeles: string[] }[]>('/api/v1/catalogue/vehicules'),
+
+  // --- dates de menage suggerees ---
+  /** Les departs a venir : l hote n a pas a recopier son propre calendrier. */
+  cleaningSuggestedDates: (listingId: string) =>
+    request<{ ville: string; region: string; departs: { bookingId: string; date: string; voyageurs: number }[] }>(
+      `/api/v1/services/menage/dates-suggerees/${listingId}`,
+      { auth: true },
+    ),
+
   // --- espace prestataire ---
   /** Ce que le prestataire sait du demandeur AVANT d accepter. Sans coordonnees. */
   providerClientProfile: (demandeId: string) =>

@@ -62,7 +62,8 @@ export class VehicleDto {
   @IsOptional() @IsString() plate?: string;
   @IsOptional() @IsIn(['citadine', 'berline', 'suv', 'utilitaire', 'luxe']) category?: string;
   @IsOptional() @IsIn(['manuelle', 'automatique']) transmission?: string;
-  @IsOptional() @IsIn(['essence', 'diesel', 'hybride', 'electrique']) fuel?: string;
+  /** Le GPL est courant en Tunisie et etait jusqu ici impossible a declarer. */
+  @IsOptional() @IsIn(['essence', 'diesel', 'hybride', 'electrique', 'gpl']) fuel?: string;
   @IsOptional() @IsInt() @Min(1) @Max(9) @Type(() => Number) seats?: number;
   @IsOptional() @IsBoolean() airConditioned?: boolean;
   @IsNumber() @Min(0) @Type(() => Number) pricePerDay: number;
@@ -88,6 +89,17 @@ export class VehicleDto {
   @IsOptional() @IsString() @MaxLength(200) returnLocation?: string;
   @IsOptional() @IsBoolean() deliveryAvailable?: boolean;
   @IsOptional() @IsNumber() @Min(0) @Type(() => Number) deliveryFee?: number;
+
+  /**
+   * Fiche technique. La puissance fiscale est le critere que les loueurs
+   * affichent en Tunisie, et celui qui gouverne l assurance du conducteur ;
+   * le kilometrage au compteur, un loueur serieux l affiche, et son absence
+   * est un signal en soi.
+   */
+  @IsOptional() @IsInt() @Min(1) @Max(99) @Type(() => Number) fiscalPower?: number;
+  @IsOptional() @IsInt() @Min(0) @Type(() => Number) mileage?: number;
+  @IsOptional() @IsInt() @Min(2) @Max(9) @Type(() => Number) doors?: number;
+  @IsOptional() @IsString() @MaxLength(40) color?: string;
 }
 
 /** Une photo de la galerie d un vehicule. */
@@ -189,4 +201,45 @@ export class ContesterSinistreDto {
 export class ContreProposerDto {
   @IsNumber() @Min(0) @Type(() => Number) price: number;
   @IsOptional() @IsString() @MaxLength(500) message?: string;
+}
+
+/**
+ * Zone d intervention : un slug du referentiel, rien d autre.
+ *
+ * Ni ville ni gouvernorat en clair : ils se deduisent du slug cote serveur.
+ * Les accepter permettrait de declarer « Tunis » avec le slug de Djerba, et le
+ * prestataire apparaitrait la ou il n a jamais dit aller.
+ */
+export class ZoneDto {
+  @IsString() citySlug: string;
+}
+
+/** Creneau hebdomadaire recurrent. */
+export class CreneauDto {
+  /** 0 = dimanche, 6 = samedi. Meme convention que Date.getDay(). */
+  @IsInt() @Min(0) @Max(6) @Type(() => Number) dayOfWeek: number;
+  @IsString() startTime: string;
+  @IsString() endTime: string;
+}
+
+/** Absence ponctuelle, distincte des horaires habituels. */
+export class AbsenceDto {
+  @IsDateString() startDate: string;
+  @IsDateString() endDate: string;
+  @IsOptional() @IsString() @MaxLength(200) note?: string;
+}
+
+/**
+ * Demande de menage sur PLUSIEURS dates.
+ *
+ * Un hote qui enchaine trois departs dans la semaine ne doit pas remplir trois
+ * fois le meme formulaire. Chaque date donne une prestation distincte : elles
+ * s acceptent, se refusent et se negocient separement, parce qu un prestataire
+ * peut etre libre mardi et pris jeudi.
+ */
+export class DemandeMenageDto extends DemandeServiceDto {
+  @IsArray() @IsDateString({}, { each: true }) dates: string[];
+  /** "HH:MM" — meme creneau applique a chaque date retenue. */
+  @IsString() startTime: string;
+  @IsString() endTime: string;
 }

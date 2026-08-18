@@ -1,12 +1,14 @@
 import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes, randomUUID } from 'crypto';
-import { PrismaService } from '../prisma/prisma.service';
-import { ProviderStatus, ProviderType, ProviderLegalForm, UserRole, UserStatus } from '../common/enums';
-import { CreateProviderDto, UpdateProviderDto } from './dto';
-import { distanceKm } from '../common/geo';
-import { findLocality, resolveLocality } from '../common/localities';
-import { toDbJson } from '../common/json';
+import { PrismaService } from '../../prisma/prisma.service';
+import { ProviderStatus, ProviderType, ProviderLegalForm, UserRole, UserStatus } from '../../common/enums';
+import { CreateProviderDto, UpdateProviderDto } from '../dto';
+import { distanceKm } from '../../common/geo';
+import { findLocality, resolveLocality } from '../../common/localities';
+import { ZonesService } from './zones.service';
+import { AvailabilityService } from './availability.service';
+import { toDbJson } from '../../common/json';
 
 /**
  * Comptes prestataires.
@@ -23,7 +25,11 @@ import { toDbJson } from '../common/json';
 export class ProvidersService {
   private readonly logger = new Logger(ProvidersService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly zones: ZonesService,
+    private readonly dispos: AvailabilityService,
+  ) {}
 
   /**
    * Mot de passe initial.
@@ -316,13 +322,46 @@ export class ProvidersService {
    * et beaucoup de petites structures ne le renseigneront pas.
    */
   /** Prestataires autour d un logement donne. */
-  async autourDeListing(type: string, listingId: string) {
+  /**
+   * Prestataires proposables pour un logement.
+   *
+   * Deux criteres, dans cet ordre.
+   *
+   * LA ZONE d abord, quand le prestataire en a declare : elle dit ce qu il
+   * dessert vraiment, la ou un rayon de 60 km autour de Tunis englobe des
+   * localites qu il ne visitera jamais. Ceux qui n ont declare aucune zone
+   * restent filtres au rayon — mettre cette regle en service ne doit pas faire
+   * disparaitre du jour au lendemain tous les comptes anterieurs.
+   *
+   * LES HORAIRES ensuite, si un creneau est demande. Proposer quelqu un qui ne
+   * travaille pas a cette heure-la fait perdre son temps aux deux : l hote
+   * attend une reponse qui sera un refus.
+   */
+  async autourDeListing(type: string, listingId: string, debut?: Date, fin?: Date) {
     const listing = await this.prisma.listing.findFirst({
       where: { OR: [{ id: listingId }, { slug: listingId }], deletedAt: null },
       select: { latitude: true, longitude: true, city: true },
     });
     if (!listing) throw new NotFoundException('Logement non trouve');
-    return this.autourDe(type, listing.latitude, listing.longitude);
+
+    const proches = await this.autourDe(type, listing.latitude, listing.longitude);
+
+    const localite = findLocality(listing.city);
+    const desservants = localite ? await this.zones.idsDesservant(localite.slug) : new Set<string>();
+    const avecZones = await this.zones.idsAvecZones();
+
+    const parZone = proches.filter((p: any) =>
+      avecZones.has(p.id) ? desservants.has(p.id) : true,
+    );
+
+    if (!debut || !fin) return parZone;
+
+    const libres = await this.dispos.filtrerDisponibles(
+      parZone.map((p: any) => p.id),
+      debut,
+      fin,
+    );
+    return parZone.filter((p: any) => libres.has(p.id));
   }
 
   async autourDe(type: string, lat: number | null, lng: number | null) {

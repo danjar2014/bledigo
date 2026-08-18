@@ -1,9 +1,10 @@
 import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { VehiclesService } from './vehicles.service';
-import { BookingStatus, ProviderStatus, ProviderType } from '../common/enums';
-import { DemandeServiceDto } from './dto';
-import { coordonneesAutorisees } from '../common/mode-plateforme';
+import { PrismaService } from '../../prisma/prisma.service';
+import { VehiclesService } from '../vehicles/vehicles.service';
+import { BookingStatus, ProviderStatus, ProviderType } from '../../common/enums';
+import { DemandeServiceDto, DemandeMenageDto } from '../dto';
+import { coordonneesAutorisees } from '../../common/mode-plateforme';
+import { findLocality } from '../../common/localities';
 
 /**
  * Demandes de prestation.
@@ -21,6 +22,14 @@ import { coordonneesAutorisees } from '../common/mode-plateforme';
  * n aboutit pas, et le prestataire garde un creneau libre pour rien.
  */
 const TOURS_DE_NEGOCIATION = 3;
+
+/**
+ * Dates acceptees en un seul envoi.
+ *
+ * Assez pour couvrir un mois de rotations, pas assez pour qu une erreur de
+ * saisie envoie cent demandes a quelqu un qui n en attendait aucune.
+ */
+const MAX_DATES_PAR_DEMANDE = 12;
 @Injectable()
 export class ServiceBookingsService {
   constructor(
@@ -68,6 +77,7 @@ export class ServiceBookingsService {
       sejour.listing.longitude,
       debut,
       fin,
+      findLocality(sejour.listing.city)?.slug,
     );
     if (!proposables.some((v) => v.id === vehicle.id)) {
       throw new BadRequestException('Ce vehicule n est plus disponible sur ces dates');
@@ -116,6 +126,7 @@ export class ServiceBookingsService {
       sejour.listing.longitude,
       new Date(sejour.checkIn),
       new Date(sejour.checkOut),
+      findLocality(sejour.listing.city)?.slug,
     );
     return {
       disponible: true,
@@ -127,48 +138,118 @@ export class ServiceBookingsService {
   }
 
   /** Menage ou entretien demande par l hote pour un de ses logements. */
-  async demanderMenage(ownerId: string, listingId: string, dto: DemandeServiceDto) {
+  /**
+   * Dates auxquelles un menage a du sens : les departs a venir.
+   *
+   * Un menage suit un depart. Demander a l hote de ressaisir des dates que la
+   * plateforme connait deja, c est lui faire recopier son propre calendrier et
+   * lui offrir une occasion de se tromper d un jour.
+   */
+  async datesSuggerees(ownerId: string, listingId: string) {
+    const listing = await this.prisma.listing.findFirst({
+      where: { id: listingId, ownerId, deletedAt: null },
+      select: { id: true, city: true, region: true },
+    });
+    if (!listing) throw new NotFoundException('Logement non trouve');
+
+    const sejours = await this.prisma.booking.findMany({
+      where: {
+        listingId: listing.id,
+        status: { notIn: [BookingStatus.cancelled] },
+        // Un depart deja passe n appelle plus de menage a programmer : s il n a
+        // pas ete fait, il ne se planifie pas dans le passe.
+        checkOut: { gte: new Date() },
+      },
+      select: { id: true, checkOut: true, guestsCount: true },
+      orderBy: { checkOut: 'asc' },
+      take: 20,
+    });
+
+    return {
+      ville: listing.city,
+      region: listing.region,
+      departs: sejours.map((b) => ({
+        bookingId: b.id,
+        date: b.checkOut,
+        voyageurs: b.guestsCount,
+      })),
+    };
+  }
+
+  /**
+   * Demande de menage sur une ou plusieurs dates.
+   *
+   * Chaque date donne une prestation DISTINCTE, et ce n est pas un detail
+   * d implementation : un prestataire peut etre libre mardi et pris jeudi, et
+   * une demande groupee l obligerait a tout refuser pour une seule date qui ne
+   * lui convient pas. Elles se negocient et s acceptent separement.
+   */
+  async demanderMenage(ownerId: string, listingId: string, dto: DemandeMenageDto) {
     const listing = await this.prisma.listing.findFirst({
       where: { id: listingId, ownerId, deletedAt: null },
     });
     if (!listing) throw new NotFoundException('Logement non trouve');
     if (!dto.providerId) throw new BadRequestException('providerId requis');
-    if (!dto.startDate) throw new BadRequestException('startDate requis');
+
+    // Retro-compatibilite : les appels d avant le multi-dates envoyaient
+    // startDate/endDate. On les accepte plutot que de casser un client deja
+    // deploye.
+    const dates = dto.dates?.length
+      ? dto.dates
+      : dto.startDate
+        ? [dto.startDate.slice(0, 10)]
+        : [];
+    if (!dates.length) throw new BadRequestException('Au moins une date d intervention est requise');
+    if (dates.length > MAX_DATES_PAR_DEMANDE) {
+      throw new BadRequestException(
+        `${MAX_DATES_PAR_DEMANDE} dates au maximum par envoi : au-dela, c est un contrat, pas une demande`,
+      );
+    }
 
     const provider = await this.prisma.serviceProvider.findFirst({
       where: { id: dto.providerId, type: ProviderType.menage, status: ProviderStatus.active },
     });
     if (!provider) throw new NotFoundException('Prestataire non trouve');
 
-    const debut = new Date(dto.startDate);
-    const fin = dto.endDate ? new Date(dto.endDate) : new Date(debut.getTime() + 2 * 60 * 60 * 1000);
-    if (fin <= debut) throw new BadRequestException('La fin du creneau doit suivre son debut');
+    const heureDebut = dto.startTime || (dto.startDate ? dto.startDate.slice(11, 16) : '') || '10:00';
+    const heureFin = dto.endTime || (dto.endDate ? dto.endDate.slice(11, 16) : '') || '12:00';
 
-    return this.prisma.serviceBooking.create({
-      data: {
-        providerId: provider.id,
-        type: ProviderType.menage,
-        listingId: listing.id,
-        requesterId: ownerId,
-        startDate: debut,
-        endDate: fin,
-        // La plateforme n encaisse toujours rien : `price` reste a 0 tant que
-        // rien n est convenu, et l acceptation y recopie le montant retenu. Ce
-        // qui change, c est qu il y a desormais quelque chose a retenir.
-        price: 0,
-        proposedPrice: dto.proposedPrice ?? null,
-        currency: listing.currency,
-        // La ville et le gouvernorat viennent du LOGEMENT, jamais du corps de la
-        // requete : les accepter du client permettrait d annoncer une zone qui
-        // n est pas celle du bien, et de faire deplacer quelqu un pour rien. Le
-        // quartier, lui, n existe pas sur l annonce et se saisit.
-        city: listing.city,
-        region: listing.region,
-        district: dto.district ?? null,
-        addressHint: dto.addressHint ?? null,
-        note: dto.note,
-      },
-    });
+    const creees: any[] = [];
+    for (const jour of dates) {
+      const debut = new Date(`${jour.slice(0, 10)}T${heureDebut}:00.000Z`);
+      const fin = new Date(`${jour.slice(0, 10)}T${heureFin}:00.000Z`);
+      if (fin <= debut) throw new BadRequestException('La fin du creneau doit suivre son debut');
+
+      creees.push(
+        await this.prisma.serviceBooking.create({
+          data: {
+            providerId: provider.id,
+            type: ProviderType.menage,
+            listingId: listing.id,
+            requesterId: ownerId,
+            startDate: debut,
+            endDate: fin,
+            // La plateforme n encaisse toujours rien : `price` reste a 0 tant
+            // que rien n est convenu, et l acceptation y recopie le montant
+            // retenu. Ce qui change, c est qu il y a quelque chose a retenir.
+            price: 0,
+            proposedPrice: dto.proposedPrice ?? null,
+            currency: listing.currency,
+            // La ville et le gouvernorat viennent du LOGEMENT, jamais du corps
+            // de la requete : les accepter du client permettrait d annoncer une
+            // zone qui n est pas celle du bien, et de faire deplacer quelqu un
+            // pour rien. Le quartier, lui, n existe pas sur l annonce.
+            city: listing.city,
+            region: listing.region,
+            district: dto.district ?? null,
+            addressHint: dto.addressHint ?? null,
+            note: dto.note,
+          },
+        }),
+      );
+    }
+
+    return { creees: creees.length, demandes: creees };
   }
 
   /**
