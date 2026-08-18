@@ -8,6 +8,7 @@ même dépôt, déployées sur Render depuis `render.yaml` (blueprint).
 | API | `bledigo-api` — NestJS, Prisma, port 4000 en local (`PORT`, défaut de `main.ts`) |
 | Front | `bledigo-web` — Next.js 14 App Router, TanStack Query, Zustand, Tailwind |
 | Base | SQLite en local, PostgreSQL **Supabase** en production (projet `sqessntpyqjdyunlhuxs`, région **eu-west-1**) |
+| Services | `src/services` est découpé par métier : `providers/` (compte, zones, horaires), `vehicles/`, `bookings/`, `incidents/`, `reviews/`. Les dépendances vont dans un seul sens — les demandes connaissent la flotte et les prestataires, jamais l'inverse. |
 | Dépôt | `github.com/danjar2014/bledigo`, branche `main` |
 | Prod | `https://bledigo-api.onrender.com` · `https://bledigo-web.onrender.com` |
 
@@ -269,6 +270,42 @@ la meilleure façon de la faire tomber. Sans `SUPABASE_URL` ni
 `SUPABASE_SERVICE_KEY`, le service bascule en **mode simulé** et rend une image
 de substitution — le développement local n'a rien à configurer, mais une
 production sans ces variables affiche des photos qui n'existent pas.
+
+**Une zone se déclare, elle ne se déduit pas d'un cercle.** Le rayon en
+kilomètres ne dit pas ce qu'une entreprise dessert : 60 km autour de Tunis
+englobe des localités qu'on ne servira jamais et en exclut d'autres qu'on sert
+très bien parce qu'il y a une autoroute. `ProviderZone` porte des villes du
+référentiel `common/localities` — la saisie libre ferait coexister « La Marsa »
+et « Marsa », et le rapprochement échouerait sans que personne comprenne
+pourquoi. **Pas de carte** : une liste se manipule au clavier et depuis un
+téléphone, et une carte donnerait un point, pas une ville.
+
+Repli assumé : un prestataire qui n'a déclaré **aucune** zone reste filtré au
+rayon. Mettre la règle en service ne doit pas faire disparaître du jour au
+lendemain les comptes antérieurs. Même principe pour les horaires.
+
+**Un prestataire travaille à des HEURES, pas à des jours.** Trois choses
+l'écartent d'une demande, et il faut les trois : le créneau sort de ses horaires
+déclarés, il est en absence, ou il a déjà une prestation qui chevauche. Ce
+dernier point est ce que « il ne doit plus être proposé une fois qu'il a validé »
+veut dire concrètement — accepter occupe le créneau. Les heures sont stockées en
+`"HH:MM"` et non en `DateTime` : elles n'ont pas de date, et un timestamp
+obligerait à en inventer une, avec son fuseau et ses surprises au changement
+d'heure.
+
+**Un ménage suit un départ.** Les dates proposées à l'hôte viennent des
+`checkOut` à venir de son logement : lui faire ressaisir des dates que la
+plateforme connaît déjà, c'est lui faire recopier son calendrier et lui offrir
+une occasion de se tromper d'un jour. Plusieurs dates donnent plusieurs
+prestations **distinctes** — un prestataire peut être libre mardi et pris jeudi,
+et une demande groupée l'obligerait à tout refuser pour une seule date gênante.
+
+**Pas d'API tierce pour le catalogue véhicules.** NHTSA vPIC, la seule gratuite
+et sans clé, a été essayée : interrogée sur Renault elle rend LeCar, Fuego,
+Alliance, Encore et 18i — le marché américain des années 80 — et ne fournit ni
+carburant, ni puissance, ni année. `vehicles/catalogue.ts` embarque 25 marques
+du parc tunisien : réponse instantanée, aucune dépendance qui tombe. Il
+**suggère sans interdire**, les champs restent libres.
 
 **Ne pas transposer `refusal-guard` aux prestataires.** Toute sa logique repose
 sur l'idée que le duo qui se répète est suspect. Pour un prestataire, **le duo
