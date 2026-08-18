@@ -463,8 +463,19 @@ export const api = {
       auth: true,
       body: body(dto),
     }),
-  cleanersNear: (listingId: string) =>
-    request<any[]>(`/api/v1/services/menage/autour-de/${listingId}`, { auth: true }),
+  /**
+   * Prestataires desservant la ville du logement.
+   *
+   * Le creneau est facultatif : sans lui la liste montre tout le monde, avec
+   * lui elle ecarte ceux qui ne travaillent pas a ces heures-la. Un ecran qui
+   * n afficherait rien tant qu aucune date n est choisie donnerait l impression
+   * qu il n existe aucun prestataire.
+   */
+  cleanersNear: (listingId: string, creneau?: { date: string; startTime: string; endTime: string }) =>
+    request<any[]>(
+      `/api/v1/services/menage/autour-de/${listingId}${creneau ? `?${new URLSearchParams(creneau)}` : ''}`,
+      { auth: true },
+    ),
   requestCleaning: (listingId: string, dto: any) =>
     request<any>(`/api/v1/services/menage/${listingId}`, {
       method: 'POST',

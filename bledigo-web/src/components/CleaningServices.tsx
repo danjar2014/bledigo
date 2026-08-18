@@ -46,9 +46,18 @@ export default function CleaningServices({ listings }: { listings: any[] }) {
 
   const logement = listings.find((l: any) => l.id === logementId);
 
+  /**
+   * La liste se resserre quand un creneau est choisi : inutile de proposer
+   * quelqu un qui ne travaille pas a cette heure-la, il refuserait.
+   */
+  const premiereDate = dates[0];
   const { data: prestataires, isLoading } = useQuery({
-    queryKey: ['cleaners', logementId],
-    queryFn: () => api.cleanersNear(logementId),
+    queryKey: ['cleaners', logementId, premiereDate, debut, fin],
+    queryFn: () =>
+      api.cleanersNear(
+        logementId,
+        premiereDate ? { date: premiereDate, startTime: debut, endTime: fin } : undefined,
+      ),
     enabled: !!logementId,
   });
 
@@ -266,7 +275,9 @@ export default function CleaningServices({ listings }: { listings: any[] }) {
 
           {prestataires && !prestataires.length && (
             <Empty>
-              Aucun prestataire de menage n intervient encore autour de ce logement.
+              {premiereDate
+                ? `Aucun prestataire ne dessert ${logement?.city ?? 'cette ville'} sur ce creneau. Essayez d autres horaires.`
+                : 'Aucun prestataire de menage ne dessert encore cette ville.'}
             </Empty>
           )}
 

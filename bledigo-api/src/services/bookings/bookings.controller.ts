@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
@@ -94,13 +94,19 @@ export class ServicesController {
   @Get('menage/autour-de/:listingId')
   @ApiOperation({
     summary:
-      'Prestataires de menage desservant la ville du logement. Filtres sur leurs horaires si un creneau est fourni.',
+      'Prestataires de menage desservant la ville du logement. Quand un creneau est fourni, ceux qui ne travaillent pas a ces heures-la sont ecartes.',
   })
   menageAutourDe(
     @Param('listingId') listingId: string,
-    @Body() _unused?: unknown,
+    @Query('date') date?: string,
+    @Query('startTime') startTime?: string,
+    @Query('endTime') endTime?: string,
   ) {
-    return this.providers.autourDeListing(ProviderType.menage, listingId);
+    // Le creneau est FACULTATIF : la liste doit s afficher des l ouverture de
+    // l ecran, avant que l hote ait choisi une date. Elle se resserre ensuite.
+    const debut = date && startTime ? new Date(`${date}T${startTime}:00.000Z`) : undefined;
+    const fin = date && endTime ? new Date(`${date}T${endTime}:00.000Z`) : undefined;
+    return this.providers.autourDeListing(ProviderType.menage, listingId, debut, fin);
   }
 
   @Post('menage/:listingId')
