@@ -467,7 +467,11 @@ function FormulaireVehicule({
           placeholder="Marque"
           list="marques-vehicules"
           value={form.brand}
-          onChange={(e) => set({ brand: e.target.value, model: '' })}
+          /* Ne PAS vider le modele ici : `onChange` se declenche a chaque
+             frappe, donc taper « Renault » effacait le modele six fois de
+             suite. La saisie reste entierement libre — le catalogue suggere
+             via `list`, il n impose rien. */
+          onChange={(e) => set({ brand: e.target.value })}
         />
         <datalist id="marques-vehicules">
           {catalogue?.map((m) => (

@@ -85,14 +85,21 @@ export default function Header() {
 
           {/* La carte reste accessible une fois connecte : elle etait auparavant
               reservee aux visiteurs, et disparaissait donc au moment ou elle
-              devient le plus utile. */}
-          <Link
-            href="/carte"
-            className="hidden sm:flex items-center gap-1.5 text-slate hover:text-charcoal px-3 py-1.5 rounded-bledi-sm transition-colors hover:bg-cloud/60"
-          >
-            <Map className="w-4 h-4" />
-            {t('nav.map')}
-          </Link>
+              devient le plus utile.
+
+              Sauf pour un PRESTATAIRE : la carte cherche des logements a louer,
+              ce dont une societe de menage ou une agence de location n a aucun
+              usage. Lui laisser le lien, c est lui proposer un outil qui ne le
+              concerne pas. */}
+          {!isProvider && (
+            <Link
+              href="/carte"
+              className="hidden sm:flex items-center gap-1.5 text-slate hover:text-charcoal px-3 py-1.5 rounded-bledi-sm transition-colors hover:bg-cloud/60"
+            >
+              <Map className="w-4 h-4" />
+              {t('nav.map')}
+            </Link>
+          )}
 
           {user &&
             links.map((l) => (

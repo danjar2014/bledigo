@@ -28,6 +28,14 @@ export default function DevenirPrestataire() {
     lastName: '',
     phone: '',
     city: '',
+    /**
+     * Rayon par defaut, PLUS demande a l inscription.
+     *
+     * Une societe qui candidate ne sait pas encore en kilometres ce qu elle
+     * dessert, et le chiffre saisi a la va-vite gouvernait ensuite toutes les
+     * demandes qu elle recevait. Il se regle desormais dans « Mes zones
+     * d intervention », a cote des villes, une fois le compte ouvert.
+     */
     serviceRadiusKm: '30',
     description: '',
   });
@@ -223,13 +231,6 @@ export default function DevenirPrestataire() {
               placeholder="Ville *"
               value={f.city}
               onChange={(e) => set({ city: e.target.value })}
-            />
-            <input
-              className="input-bledi"
-              type="number"
-              placeholder="Rayon d intervention en km"
-              value={f.serviceRadiusKm}
-              onChange={(e) => set({ serviceRadiusKm: e.target.value })}
             />
           </div>
           <textarea

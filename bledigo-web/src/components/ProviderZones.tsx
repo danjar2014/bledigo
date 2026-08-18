@@ -22,10 +22,24 @@ import { Empty } from './ui';
 export default function ProviderZones() {
   const queryClient = useQueryClient();
   const [choix, setChoix] = useState<Locality | null>(null);
+  const [rayon, setRayon] = useState<string>('');
 
   const { data: zones, isLoading } = useQuery({
     queryKey: ['provider', 'zones'],
     queryFn: () => api.providerZones(),
+  });
+
+  /**
+   * Le rayon vit ICI et plus a l inscription.
+   *
+   * Une societe qui candidate ne sait pas encore en kilometres ce qu elle
+   * dessert : le chiffre saisi a la va-vite gouvernait pourtant toutes les
+   * demandes qu elle recevait ensuite. A cote des villes, il se corrige en
+   * connaissance de cause — et on voit du meme coup s il sert encore.
+   */
+  const { data: profil } = useQuery({
+    queryKey: ['provider', 'me'],
+    queryFn: () => api.providerMe(),
   });
 
   const rafraichir = () => queryClient.invalidateQueries({ queryKey: ['provider', 'zones'] });
@@ -41,6 +55,14 @@ export default function ProviderZones() {
     mutationFn: (id: string) => api.removeProviderZone(id),
     onSuccess: rafraichir,
   });
+  const majRayon = useMutation({
+    mutationFn: (km: number) => api.providerUpdate({ serviceRadiusKm: km }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['provider'] }),
+  });
+
+  const rayonAffiche = rayon !== '' ? rayon : String(profil?.serviceRadiusKm ?? '');
+  /** Une zone declaree rend le rayon inoperant : autant le dire. */
+  const rayonIgnore = (zones?.length ?? 0) > 0;
 
   return (
     <section className="mb-10">
@@ -74,6 +96,43 @@ export default function ProviderZones() {
             {(ajouter.error as Error).message}
           </p>
         )}
+
+        {/* -------------------------------------------- Rayon d intervention */}
+        <div className="mt-4 pt-4 border-t border-cloud">
+          <label className="text-sm block mb-1" htmlFor="rayon-km">
+            Rayon d intervention
+          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              id="rayon-km"
+              type="number"
+              min={1}
+              max={500}
+              className="input-bledi w-28"
+              placeholder="km"
+              value={rayonAffiche}
+              onChange={(e) => setRayon(e.target.value)}
+            />
+            <span className="text-sm text-slate">km</span>
+            <button
+              onClick={() => majRayon.mutate(Number(rayonAffiche))}
+              disabled={!rayonAffiche || majRayon.isPending}
+              className="border-2 border-bledi-blue text-bledi-blue px-3 py-2 rounded-bledi-sm text-sm font-medium hover:bg-bledi-blue hover:text-white disabled:opacity-50"
+            >
+              {majRayon.isPending ? 'Enregistrement...' : 'Enregistrer'}
+            </button>
+            {majRayon.isSuccess && !majRayon.isPending && (
+              <span className="text-sm text-emerald-700">Enregistre</span>
+            )}
+          </div>
+          {/* Dire quand un reglage ne sert plus a rien vaut mieux que de le
+              laisser croire actif. */}
+          <p className="text-xs text-slate mt-2">
+            {rayonIgnore
+              ? 'Sans effet tant que vous declarez des villes ci-dessus : ce sont elles qui font foi. Le rayon reprend la main si vous les retirez toutes.'
+              : 'Utilise tant qu aucune ville n est declaree. Ajoutez des villes ci-dessus pour dire precisement ce que vous desservez.'}
+          </p>
+        </div>
 
         <div className="mt-4">
           {isLoading && <p className="text-sm text-slate">Chargement...</p>}

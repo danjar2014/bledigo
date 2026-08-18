@@ -2,18 +2,31 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { MapPin, Calendar, Users, Search } from 'lucide-react';
+import { Calendar, Users, Search } from 'lucide-react';
+import LocalityPicker, { type Locality } from './LocalityPicker';
 
 export default function SearchBar({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
-  const [destination, setDestination] = useState('');
+  /**
+   * Destination choisie dans le REFERENTIEL, plus tapee librement.
+   *
+   * La saisie libre partait en `?q=` : « djerba », « Djerba » et « djerba  »
+   * donnaient trois recherches differentes, et une faute de frappe rendait zero
+   * resultat sans expliquer pourquoi. Le selecteur envoie un slug, que la
+   * recherche sait resoudre.
+   */
+  const [ville, setVille] = useState<Locality | null>(null);
   const [dates, setDates] = useState({ checkIn: '', checkOut: '' });
   const [guests, setGuests] = useState(2);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const params = new URLSearchParams();
-    if (destination) params.set('q', destination);
+    // On garde `q`, que la page de recherche lit deja : basculer sur `city`
+    // aurait fait ignorer la destination en silence, la recherche ne
+    // connaissant pas ce parametre. Ce qui change, c est que la valeur vient
+    // du referentiel et porte donc toujours l orthographe canonique.
+    if (ville) params.set('q', ville.name);
     if (dates.checkIn) params.set('checkIn', dates.checkIn);
     if (dates.checkOut) params.set('checkOut', dates.checkOut);
     params.set('guests', String(guests));
@@ -31,17 +44,13 @@ export default function SearchBar({ compact = false }: { compact?: boolean }) {
     >
       <div className="flex flex-col md:flex-row gap-4 items-end">
         <div className="flex-1 w-full">
-          <label className="block text-sm font-medium text-charcoal mb-2">Destination</label>
-          <div className="relative">
-            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Djerba, Sidi Bou Said, Hammamet..."
-              value={destination}
-              onChange={(e) => setDestination(e.target.value)}
-              className="input-bledi pl-10"
-            />
-          </div>
+          <LocalityPicker
+            value={ville?.slug ?? ''}
+            onChange={setVille}
+            label="Destination"
+            placeholder="Djerba, Sidi Bou Said, Hammamet..."
+            id="destination-recherche"
+          />
         </div>
 
         <div className="flex-1 w-full">
