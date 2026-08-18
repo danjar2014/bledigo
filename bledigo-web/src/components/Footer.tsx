@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Shield, Mail, Phone } from 'lucide-react';
+import CroissantEtoile from '@/components/CroissantEtoile';
 import SeoLinks from '@/components/SeoLinks';
 
 const NAVIGATION = [
@@ -37,11 +38,14 @@ export default function Footer() {
     <footer className="mt-16">
       <SeoLinks />
 
-      <div className="bg-charcoal text-white/70">
+            {/* Encre PLUS PROFONDE que les sections ink au-dessus : sans cet ecart,
+          le pied de page et la banniere « devenir hote » se fondaient en un
+          seul bloc sombre de 800 pixels. */}
+      <div className="bg-[#140E0B] text-white/70">
         <div className="container mx-auto px-4 py-12 grid gap-8 md:grid-cols-2 lg:grid-cols-5 text-sm">
           <div className="lg:col-span-1">
             <div className="flex items-center gap-2 font-display font-bold text-lg text-white mb-2">
-              <Shield className="w-5 h-5 text-bledi-gold" />
+              <CroissantEtoile className="w-5 h-5 text-bledi-red" />
               BlediGo
             </div>
             <p className="mb-4">
@@ -49,11 +53,11 @@ export default function Footer() {
             </p>
             <ul className="space-y-1.5">
               <li className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-bledi-gold" />
+                <Mail className="w-4 h-4 text-bledi-red" />
                 contact@bledigo.tn
               </li>
               <li className="flex items-center gap-2">
-                <Phone className="w-4 h-4 text-bledi-gold" />
+                <Phone className="w-4 h-4 text-bledi-red" />
                 +216 70 000 000
               </li>
             </ul>
@@ -112,11 +116,11 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-white/10">
+        <div className="border-t-2 border-bledi-red/70">
           <div className="container mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-3 text-xs">
             <span>© {new Date().getFullYear()} BlediGo. Tous droits reserves.</span>
             <span className="flex items-center gap-2 text-white/60">
-              <Shield className="w-3.5 h-3.5 text-bledi-gold" />
+              <Shield className="w-3.5 h-3.5 text-bledi-red" />
               Annonces verifiees · Contact direct avec l hote · Sans commission
             </span>
           </div>

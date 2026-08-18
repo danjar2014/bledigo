@@ -25,9 +25,14 @@ export default function PopularCities({ limit = 6 }: { limit?: number }) {
     return (
       <section className="container mx-auto px-4 py-12">
         <div className="h-8 w-64 bg-cloud rounded mb-6 animate-pulse" />
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 md:grid-rows-2 gap-4 md:h-[420px]">
           {Array.from({ length: limit }).map((_, i) => (
-            <div key={i} className="h-40 bg-cloud rounded-bledi animate-pulse" />
+            <div
+              key={i}
+              className={`h-40 md:h-auto bg-cloud rounded-bledi animate-pulse ${
+                i === 0 ? 'col-span-2 md:row-span-2' : ''
+              }`}
+            />
           ))}
         </div>
       </section>
@@ -45,28 +50,45 @@ export default function PopularCities({ limit = 6 }: { limit?: number }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {cities.map((city: any) => (
+      {/*
+        Mosaique plutot que grille uniforme.
+        Six tuiles identiques ne hierarchisaient rien : la destination la plus
+        pourvue avait la meme place que la moins pourvue. La premiere occupe
+        desormais deux colonnes et deux rangees, les cinq suivantes se rangent
+        autour. L ordre vient de l API — la ville la mieux fournie arrive en
+        tete — donc la mise en page suit les donnees, elle ne les invente pas.
+
+        En dessous de `md` on revient a deux colonnes egales : sur un telephone,
+        une grande tuile suivie de petites donne un empilement illisible.
+      */}
+      <div className="grid grid-cols-2 md:grid-cols-4 md:grid-rows-2 gap-4 md:h-[420px]">
+        {cities.map((city: any, i: number) => (
           <Link
             key={city.slug}
             href={`/villes/${city.slug}`}
-            className="group relative h-40 rounded-bledi overflow-hidden shadow-bledi hover:shadow-bledi-hover transition-all"
+            className={`group relative rounded-bledi overflow-hidden shadow-bledi hover:shadow-bledi-hover transition-all h-40 md:h-auto ${
+              i === 0 ? 'md:col-span-2 md:row-span-2 col-span-2' : ''
+            }`}
           >
             <Image
               src={cityImage(city.slug)}
               alt={city.name}
               fill
               unoptimized
-              sizes="(max-width: 768px) 50vw, 16vw"
+              sizes={i === 0 ? '(max-width: 768px) 100vw, 50vw' : '(max-width: 768px) 50vw, 25vw'}
               className="object-cover group-hover:scale-105 transition-transform duration-500"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-charcoal/85 via-charcoal/20 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 p-3 text-white">
-              <div className="flex items-center gap-1 font-display font-semibold">
-                <MapPin className="w-4 h-4 text-bledi-gold" />
+            <div className={`absolute inset-x-0 bottom-0 text-white ${i === 0 ? 'p-5' : 'p-3'}`}>
+              <div
+                className={`flex items-center gap-1.5 font-display font-semibold ${
+                  i === 0 ? 'text-2xl' : ''
+                }`}
+              >
+                <MapPin className={i === 0 ? 'w-5 h-5 text-bledi-red' : 'w-4 h-4 text-bledi-red'} />
                 {city.name}
               </div>
-              <div className="text-xs text-white/80">
+              <div className={i === 0 ? 'text-sm text-white/85' : 'text-xs text-white/80'}>
                 {city.count} {t('city.properties')}
                 {city.minPrice != null && ` · ${t('city.from')} ${money(city.minPrice)}`}
               </div>

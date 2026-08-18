@@ -48,11 +48,11 @@ export default function AbonnementsPage() {
               <div
                 key={plan.type}
                 className={`bg-white rounded-bledi p-6 shadow-bledi border-2 ${
-                  isActive ? 'border-bledi-gold' : 'border-transparent'
+                  isActive ? 'border-bledi-red' : 'border-transparent'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <Crown className="w-5 h-5 text-bledi-gold" />
+                  <Crown className="w-5 h-5 text-bledi-red" />
                   <span className="font-display font-bold text-xl">{LABELS[plan.type] || plan.type}</span>
                 </div>
                 <div className="font-accent font-bold text-3xl text-charcoal mb-4">

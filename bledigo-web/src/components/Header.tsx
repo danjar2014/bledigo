@@ -8,6 +8,7 @@ import { useMode, modesOf } from '@/store/mode';
 import PreferencesMenu from '@/components/PreferencesMenu';
 import ModeSwitch from '@/components/ModeSwitch';
 import NotificationBell from '@/components/NotificationBell';
+import CroissantEtoile from '@/components/CroissantEtoile';
 import {
   Shield,
   LogOut,
@@ -65,19 +66,19 @@ export default function Header() {
   const isProvider = estPrestataire(user);
 
   return (
-    <header className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-cloud">
+    <header className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-cloud shadow-[inset_0_2px_0_0_#C8102E]">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-3">
         <Link
           href="/"
           className="flex items-center gap-2 font-display font-bold text-xl text-bledi-blue shrink-0"
         >
-          <Shield className="w-6 h-6 text-bledi-gold" />
+          <CroissantEtoile className="w-7 h-7 text-bledi-red" />
           BlediGo
         </Link>
 
         <nav className="flex items-center gap-1 md:gap-2 text-sm">
           {!user && (
-            <Link href="/recherche" className="text-slate hover:text-bledi-blue px-2 py-1">
+            <Link href="/recherche" className="text-slate hover:text-charcoal px-3 py-1.5 rounded-bledi-sm transition-colors hover:bg-cloud/60">
               {t('nav.search')}
             </Link>
           )}
@@ -87,7 +88,7 @@ export default function Header() {
               devient le plus utile. */}
           <Link
             href="/carte"
-            className="hidden sm:flex items-center gap-1 text-slate hover:text-bledi-blue px-2 py-1"
+            className="hidden sm:flex items-center gap-1.5 text-slate hover:text-charcoal px-3 py-1.5 rounded-bledi-sm transition-colors hover:bg-cloud/60"
           >
             <Map className="w-4 h-4" />
             {t('nav.map')}
@@ -165,7 +166,7 @@ export default function Header() {
             </div>
           ) : (
             <>
-              <Link href="/connexion" className="text-slate hover:text-bledi-blue px-2 py-1">
+              <Link href="/connexion" className="text-slate hover:text-charcoal px-3 py-1.5 rounded-bledi-sm transition-colors hover:bg-cloud/60">
                 {t('nav.login')}
               </Link>
               <Link

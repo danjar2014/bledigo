@@ -79,7 +79,7 @@ export default function OwnerRequests() {
         {/* Pendant l amorcage l ouverture est gratuite : afficher un solde
             suggererait un cout qui n existe pas. */}
         <div className="flex items-center gap-2">
-          <Gift className="w-5 h-5 text-bledi-gold" />
+          <Gift className="w-5 h-5 text-bledi-red" />
           <span className="text-sm text-charcoal">Ouverture gratuite et illimitee</span>
         </div>
 

@@ -16,7 +16,7 @@ export default function HowItWorks() {
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
-            Comment ca <span className="text-bledi-gold">marche</span> ?
+            Comment ca <span className="text-bledi-red">marche</span> ?
           </h2>
           <p className="text-white/80 max-w-2xl mx-auto">
             Un processus simple, transparent et securise en 4 etapes
@@ -33,10 +33,12 @@ export default function HowItWorks() {
               viewport={{ once: true }}
               className="text-center"
             >
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-bledi-gold/20 flex items-center justify-center">
-                <item.icon className="w-8 h-8 text-bledi-gold" />
+              {/* Le NUMERO va dans la pastille : il porte l ordre des etapes,
+                  alors qu il flottait derriere en filigrane, illisible. */}
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-bledi-red flex items-center justify-center">
+                <span className="font-accent font-bold text-2xl text-white">{item.step}</span>
               </div>
-              <div className="text-5xl font-accent font-bold text-white/20 mb-2">{item.step}</div>
+              <item.icon className="w-6 h-6 mx-auto mb-3 text-white/50" />
               <h3 className="text-xl font-display font-semibold mb-2">{item.title}</h3>
               <p className="text-white/70 text-sm">{item.desc}</p>
             </motion.div>

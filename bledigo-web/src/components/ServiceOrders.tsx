@@ -70,7 +70,7 @@ export default function ServiceOrders() {
                   {notable(c, 'client') && (
                     <button
                       onClick={() => setANoter(c)}
-                      className="text-xs flex items-center gap-1 bg-bledi-gold text-charcoal px-2 py-1 rounded-bledi-sm font-medium"
+                      className="text-xs flex items-center gap-1 bg-bledi-red text-white px-2 py-1 rounded-bledi-sm font-medium"
                     >
                       <Star className="w-3 h-3" /> Noter l agence
                     </button>

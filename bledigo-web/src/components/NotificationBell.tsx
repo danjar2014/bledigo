@@ -35,9 +35,9 @@ const ICONES = {
 
 /** Teintes : l action a mener ressort, l information reste discrete. */
 const TEINTES: Record<string, string> = {
-  offer_received: 'bg-bledi-gold/15 text-bledi-gold',
-  counter_answered: 'bg-bledi-gold/15 text-bledi-gold',
-  counter_to_answer: 'bg-bledi-gold/15 text-bledi-gold',
+  offer_received: 'bg-bledi-red/15 text-bledi-red',
+  counter_answered: 'bg-bledi-red/15 text-bledi-red',
+  counter_to_answer: 'bg-bledi-red/15 text-bledi-red',
   booking_to_confirm: 'bg-emerald-100 text-emerald-700',
   booking_confirmed: 'bg-emerald-100 text-emerald-700',
   booking_cancelled: 'bg-slate-200 text-slate-600',
@@ -126,7 +126,7 @@ export default function NotificationBell() {
       >
         <Bell className="w-5 h-5" />
         {nouvelles > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-bledi-gold text-white text-[11px] font-semibold">
+          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-bledi-red text-white text-[11px] font-semibold">
             {nouvelles > 9 ? '9+' : nouvelles}
           </span>
         )}
@@ -168,7 +168,7 @@ export default function NotificationBell() {
                         <span className="flex items-center gap-2">
                           <span className="text-sm font-medium text-charcoal truncate">{n.title}</span>
                           {n.actionRequired && (
-                            <span className="shrink-0 text-[10px] uppercase tracking-wide text-bledi-gold font-semibold">
+                            <span className="shrink-0 text-[10px] uppercase tracking-wide text-bledi-red font-semibold">
                               a faire
                             </span>
                           )}

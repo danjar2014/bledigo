@@ -318,7 +318,7 @@ function Suggestions({ onVille }: { onVille: (v: string) => void }) {
   return (
     <div className="space-y-8">
       <div className="bg-white rounded-bledi p-6 shadow-bledi text-center">
-        <CalendarDays className="w-8 h-8 text-bledi-gold mx-auto mb-2" />
+        <CalendarDays className="w-8 h-8 text-bledi-red mx-auto mb-2" />
         <p className="font-display font-semibold text-charcoal">
           Choisissez vos dates pour voir ce qui est disponible
         </p>

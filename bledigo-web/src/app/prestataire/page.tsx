@@ -209,7 +209,7 @@ function EspacePrestataire() {
                         {notable(d, 'prestataire') && (
                           <button
                             onClick={() => setANoter(d)}
-                            className="text-sm flex items-center gap-1 bg-bledi-gold text-charcoal px-3 py-2 rounded-bledi-sm font-medium"
+                            className="text-sm flex items-center gap-1 bg-bledi-red text-white px-3 py-2 rounded-bledi-sm font-medium"
                           >
                             <Star className="w-4 h-4" /> Noter le client
                           </button>

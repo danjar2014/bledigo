@@ -108,7 +108,7 @@ export default function CleaningServices({ listings }: { listings: any[] }) {
   return (
     <section className="mb-10">
       <h2 className="font-display font-semibold text-xl text-charcoal mb-3 flex items-center gap-2">
-        <Sparkles className="w-5 h-5 text-bledi-gold" />
+        <Sparkles className="w-5 h-5 text-bledi-red" />
         Menage et entretien
       </h2>
 
@@ -353,7 +353,7 @@ export default function CleaningServices({ listings }: { listings: any[] }) {
                   {notable(c, 'client') && (
                     <button
                       onClick={() => setANoter(c)}
-                      className="text-xs flex items-center gap-1 bg-bledi-gold text-charcoal px-2 py-1 rounded-bledi-sm font-medium"
+                      className="text-xs flex items-center gap-1 bg-bledi-red text-white px-2 py-1 rounded-bledi-sm font-medium"
                     >
                       <Star className="w-3 h-3" /> Noter
                     </button>

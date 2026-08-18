@@ -23,7 +23,11 @@ export default function SearchBar({ compact = false }: { compact?: boolean }) {
   return (
     <form
       onSubmit={submit}
-      className={`bg-white rounded-bledi shadow-bledi-hover p-4 ${compact ? '' : 'md:p-6'}`}
+      /* Lisere rouge en haut de carte : le drapeau, pose sur l element le plus
+         regarde de la page d accueil, sans transformer la carte en bandeau. Un
+         border-t-[3px] plutot qu une ombre interne, pour qu il suive le rayon
+         de l angle. */
+      className={`bg-white rounded-bledi shadow-bledi-hover border-t-[3px] border-bledi-red p-4 ${compact ? '' : 'md:p-6'}`}
     >
       <div className="flex flex-col md:flex-row gap-4 items-end">
         <div className="flex-1 w-full">

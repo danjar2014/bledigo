@@ -65,7 +65,7 @@ export default function PriceNegotiation({
   return (
     <div className="mt-3 border-t border-cloud pt-3">
       <p className="text-sm font-medium text-charcoal flex items-center gap-2 mb-2">
-        <HandCoins className="w-4 h-4 text-bledi-gold" />
+        <HandCoins className="w-4 h-4 text-bledi-red" />
         Tarif
       </p>
 

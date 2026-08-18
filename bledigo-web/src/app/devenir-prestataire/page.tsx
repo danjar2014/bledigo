@@ -112,7 +112,7 @@ export default function DevenirPrestataire() {
                 : 'border-cloud bg-white/60 hover:border-slate'
             }`}
           >
-            <Sparkles className="w-6 h-6 text-bledi-gold mb-2" />
+            <Sparkles className="w-6 h-6 text-bledi-red mb-2" />
             <p className="font-medium text-charcoal">Menage et entretien</p>
             <p className="text-sm text-slate mt-1">
               Les hotes des logements autour de vous vous sollicitent directement entre deux

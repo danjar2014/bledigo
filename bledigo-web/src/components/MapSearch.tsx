@@ -233,7 +233,7 @@ export default function MapSearch({ initialCenter = null, initialZoom }: MapSear
               <button
                 onClick={finishDrawing}
                 disabled={polygon.length < 3}
-                className="flex items-center gap-2 bg-bledi-gold text-charcoal px-4 py-2 rounded-full shadow-bledi
+                className="flex items-center gap-2 bg-bledi-red text-white px-4 py-2 rounded-full shadow-bledi
                            text-sm font-medium disabled:opacity-50"
               >
                 <Search className="w-4 h-4" />

@@ -66,7 +66,7 @@ export default function CityPage() {
           </h1>
           <div className="flex flex-wrap items-center gap-4 text-white/80">
             <span className="flex items-center gap-1">
-              <MapPin className="w-4 h-4 text-bledi-gold" />
+              <MapPin className="w-4 h-4 text-bledi-red" />
               {city?.region || 'Tunisie'}
             </span>
             <span>

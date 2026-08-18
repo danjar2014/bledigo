@@ -38,7 +38,7 @@ export default function InscriptionPage() {
     <main className="min-h-screen bg-cream flex items-center justify-center px-4 py-16">
       <div className="w-full max-w-md bg-white rounded-bledi shadow-bledi p-8">
         <div className="flex items-center gap-2 font-display font-bold text-2xl text-bledi-blue mb-6">
-          <Shield className="w-6 h-6 text-bledi-gold" />
+          <Shield className="w-6 h-6 text-bledi-red" />
           Creer un compte
         </div>
 

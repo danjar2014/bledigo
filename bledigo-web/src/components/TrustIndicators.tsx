@@ -26,7 +26,7 @@ const indicators = [
 
 export default function TrustIndicators() {
   return (
-    <section className="py-16 bg-white">
+    <section className="py-16 bg-cream">
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-display font-bold text-charcoal mb-4">
@@ -46,10 +46,12 @@ export default function TrustIndicators() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
               viewport={{ once: true }}
-              className="flex items-start gap-4 p-6 rounded-bledi bg-cream hover:bg-bledi-blue/5 transition-colors"
+              className="flex items-start gap-4 p-6 rounded-bledi bg-white border border-cloud hover:border-bledi-red/40 transition-colors"
             >
-              <div className="w-12 h-12 rounded-bledi-sm bg-bledi-blue/10 flex items-center justify-center flex-shrink-0">
-                <item.icon className="w-6 h-6 text-bledi-blue" />
+              {/* Pastille ronde et pleine : sur un fond sable, un carre pale
+                  se confondait avec la carte qui le porte. */}
+              <div className="w-12 h-12 rounded-full bg-bledi-red flex items-center justify-center flex-shrink-0">
+                <item.icon className="w-6 h-6 text-white" />
               </div>
               <div>
                 <h3 className="font-display font-semibold text-charcoal mb-1">{item.title}</h3>

@@ -65,7 +65,7 @@ export default function ConnexionPage() {
       <div className="w-full max-w-md">
         <div className="bg-white rounded-bledi shadow-bledi p-8">
           <div className="flex items-center gap-2 font-display font-bold text-2xl text-bledi-blue mb-6">
-            <Shield className="w-6 h-6 text-bledi-gold" />
+            <Shield className="w-6 h-6 text-bledi-red" />
             Connexion
           </div>
 

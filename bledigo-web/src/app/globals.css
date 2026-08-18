@@ -1,4 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+/* Bricolage Grotesque pour les titres, Manrope pour le texte.
+   Bricolage est variable : on charge l axe de graisse plutot que six fichiers. */
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Manrope:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -13,32 +15,34 @@
     @apply font-display font-semibold;
   }
 
-  /* Mode sombre : on redefinit les surfaces plutot que de suffixer chaque classe */
+  /* Mode sombre : on redefinit les surfaces plutot que de suffixer chaque
+     classe. Les tons sont CHAUDS et non bleutes — un gris bleu sous une palette
+     sable donne un verdatre sale. */
   .dark body {
-    @apply bg-[#0F1523] text-[#E6EAF2];
+    @apply bg-[#140E0B] text-[#F2EBE0];
   }
   .dark .bg-cream,
   .dark .bg-white {
-    @apply bg-[#161D2E];
+    @apply bg-[#1C1410];
   }
   .dark .bg-cloud {
-    @apply bg-[#232C42];
+    @apply bg-[#2A211B];
   }
   .dark .text-charcoal {
-    @apply text-[#E6EAF2];
+    @apply text-[#F2EBE0];
   }
   .dark .text-slate {
-    @apply text-[#9AA6BF];
+    @apply text-[#A8998A];
   }
   .dark .border-cloud {
-    @apply border-[#2B3550];
+    @apply border-[#3A2E26];
   }
   .dark header {
-    @apply bg-[#161D2E]/90;
+    @apply bg-[#1C1410]/90;
   }
   .dark .shadow-bledi,
   .dark .shadow-bledi-hover {
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
   }
   /* Les tuiles de carte Leaflet sont trop lumineuses sur fond sombre */
   .dark .leaflet-tile {
@@ -52,8 +56,10 @@
 }
 
 @layer components {
+  /* Le bouton principal porte desormais le ROUGE, pas l encre : c est lui qui
+     doit attirer l oeil sur un fond sable. L encre reste pour les surfaces. */
   .btn-primary {
-    @apply bg-bledi-blue text-white px-6 py-3 rounded-bledi-sm font-medium
+    @apply bg-bledi-red text-white px-6 py-3 rounded-bledi-sm font-medium
            transition-all duration-200 hover:scale-[1.02] hover:shadow-bledi-hover
            active:scale-[0.98];
   }
@@ -61,8 +67,13 @@
     @apply border-2 border-bledi-blue text-bledi-blue px-6 py-3 rounded-bledi-sm font-medium
            transition-all duration-200 hover:bg-bledi-blue hover:text-white;
   }
+  /* Variante claire, pour poser un bouton sur un fond ink ou rouge plein. */
+  .btn-outline-light {
+    @apply border-2 border-white/70 text-white px-6 py-3 rounded-bledi-sm font-medium
+           transition-all duration-200 hover:bg-white hover:text-charcoal;
+  }
   .btn-gold {
-    @apply bg-bledi-gold text-charcoal px-6 py-3 rounded-bledi-sm font-medium
+    @apply bg-bledi-red text-white px-6 py-3 rounded-bledi-sm font-medium
            transition-all duration-200 hover:scale-[1.02];
   }
   .card-bledi {
@@ -72,16 +83,40 @@
   .input-bledi {
     @apply w-full px-4 py-3 rounded-bledi-sm border border-cloud bg-white
            text-charcoal placeholder-slate transition-all duration-200
-           focus:outline-none focus:border-bledi-blue focus:ring-2 focus:ring-bledi-blue/20;
+           focus:outline-none focus:border-bledi-red focus:ring-2 focus:ring-bledi-red/20;
   }
-  .badge-bronze { @apply bg-[#CD7F32]/20 text-[#8B5A2B] px-3 py-1 rounded-full text-sm font-medium; }
-  .badge-silver { @apply bg-[#C0C0C0]/20 text-[#808080] px-3 py-1 rounded-full text-sm font-medium; }
-  .badge-gold { @apply bg-[#FFD700]/20 text-[#B8860B] px-3 py-1 rounded-full text-sm font-medium; }
-  .badge-diamond { @apply bg-[#B9F2FF]/20 text-[#4682B4] px-3 py-1 rounded-full text-sm font-medium; }
+
+  /*
+   * Certifications : pastilles rouge / noir / gris plutot que bronze-argent-or.
+   *
+   * Les quatre teintes metalliques se ressemblaient trop pour se distinguer
+   * d un coup d oeil sur une vignette, et le doré du niveau « gold » se
+   * confondait avec les etoiles de note juste a cote. La hierarchie se lit
+   * maintenant par le CONTRASTE : gris discret, puis noir, puis rouge plein
+   * pour le sommet.
+   */
+  .badge-bronze { @apply bg-cloud text-slate px-3 py-1 rounded-full text-sm font-medium; }
+  .badge-silver { @apply bg-charcoal/10 text-charcoal px-3 py-1 rounded-full text-sm font-medium; }
+  .badge-gold { @apply bg-charcoal text-white px-3 py-1 rounded-full text-sm font-medium; }
+  .badge-diamond { @apply bg-bledi-red text-white px-3 py-1 rounded-full text-sm font-medium; }
 }
 
 @layer utilities {
   .text-gradient {
-    @apply bg-gradient-to-r from-bledi-blue to-mediterranean bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-bledi-red to-[#8E0B20] bg-clip-text text-transparent;
+  }
+
+  /*
+   * Croissant et etoile, en filigrane.
+   *
+   * Un SVG en data-URI plutot qu un fichier : le motif fait 300 octets, une
+   * requete de plus pour cela couterait plus cher que de l inliner, et il ne
+   * peut pas manquer au chargement.
+   */
+  .motif-croissant {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cg fill='none' stroke='white' stroke-width='3'%3E%3Ccircle cx='100' cy='100' r='60'/%3E%3Ccircle cx='122' cy='100' r='48'/%3E%3C/g%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right -40px center;
+    background-size: 320px;
   }
 }

@@ -242,7 +242,7 @@ function RequestDetail() {
           <h1 className="text-2xl font-display font-bold mb-2">{search.title}</h1>
           <div className="flex flex-wrap items-center gap-4 text-white/80 text-sm">
             <span className="flex items-center gap-1">
-              <MapPin className="w-4 h-4 text-bledi-gold" />
+              <MapPin className="w-4 h-4 text-bledi-red" />
               {search.city || search.destination}
               {search.region ? ` · ${search.region}` : ''}
             </span>

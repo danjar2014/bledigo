@@ -30,7 +30,7 @@ export default function BecomeHost() {
     <section className="bg-bledi-blue text-white">
       <div className="container mx-auto px-4 py-14 grid lg:grid-cols-2 gap-10 items-center">
         <div>
-          <div className="inline-block text-xs uppercase tracking-wide text-bledi-gold mb-3">
+          <div className="inline-block text-xs uppercase tracking-[0.18em] text-bledi-red font-semibold border-l-2 border-bledi-red pl-3 mb-4">
             BlediGo · Proprietaires
           </div>
           <h2 className="text-3xl font-display font-bold mb-3">{t('home.host.title')}</h2>
@@ -41,7 +41,7 @@ export default function BecomeHost() {
               const Icon = a.icon;
               return (
                 <li key={a.title} className="flex gap-3">
-                  <Icon className="w-5 h-5 text-bledi-gold shrink-0 mt-0.5" />
+                  <Icon className="w-5 h-5 text-bledi-red shrink-0 mt-0.5" />
                   <div>
                     <div className="font-medium">{a.title}</div>
                     <div className="text-sm text-white/70">{a.body}</div>
@@ -53,7 +53,7 @@ export default function BecomeHost() {
 
           <Link
             href="/proprietaire/annonces/nouvelle"
-            className="inline-block bg-bledi-gold text-charcoal px-6 py-3 rounded-bledi-sm font-medium
+            className="inline-block bg-bledi-red text-white px-6 py-3 rounded-bledi-sm font-medium
                        hover:scale-[1.02] transition-transform"
           >
             {t('home.host.cta')}

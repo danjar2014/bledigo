@@ -18,7 +18,7 @@ export default function CreditsPage() {
       <main className="min-h-screen bg-cream py-12">
         <div className="container mx-auto px-4 max-w-xl">
           <div className="bg-white rounded-bledi shadow-bledi p-8 text-center">
-            <Gift className="w-10 h-10 text-bledi-gold mx-auto mb-3" />
+            <Gift className="w-10 h-10 text-bledi-red mx-auto mb-3" />
             <h1 className="text-2xl font-display font-bold text-charcoal mb-2">
               Tout est offert pendant le lancement
             </h1>

@@ -318,7 +318,7 @@ export default function ReverseSearchPage({ reverseSearchId }: ReverseSearchPage
                             </div>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <div className="flex items-center gap-1 text-bledi-gold">
+                            <div className="flex items-center gap-1 text-bledi-red">
                               <Star className="w-4 h-4 fill-bledi-gold" />
                               <span className="font-bold">
                                 {Number(listing.avgRating ?? 0).toFixed(1)}

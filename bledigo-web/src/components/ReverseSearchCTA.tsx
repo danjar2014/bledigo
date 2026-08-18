@@ -12,20 +12,20 @@ export default function ReverseSearchCTA() {
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
-          className="bg-gradient-to-r from-bledi-blue to-charcoal rounded-bledi p-8 md:p-12 text-white text-center"
+          className="relative overflow-hidden bg-bledi-red motif-croissant rounded-bledi p-8 md:p-12 text-white text-center"
         >
           <div className="max-w-3xl mx-auto">
-            <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-bledi-gold/20 flex items-center justify-center">
-              <MessageSquare className="w-8 h-8 text-bledi-gold" />
+            <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-white/15 flex items-center justify-center">
+              <MessageSquare className="w-8 h-8 text-white" />
             </div>
             <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
-              La recherche <span className="text-bledi-gold">inversee</span>
+              La recherche <span className="underline decoration-white/40 underline-offset-8">inversee</span>
             </h2>
             <p className="text-white/80 text-lg mb-8">
               Publiez votre besoin et recevez des offres personnalisees de proprietaires et agences.
               Vous cherchez une villa a Djerba avec piscine ? Dites-le nous, ils viendront a vous.
             </p>
-            <Link href="/besoins" className="btn-gold text-lg px-8 py-4 inline-flex items-center gap-2">
+            <Link href="/besoins" className="bg-white text-bledi-red text-lg px-8 py-4 rounded-bledi-sm font-semibold inline-flex items-center gap-2 transition-transform duration-200 hover:scale-[1.02]">
               Publier mon besoin
               <ArrowRight className="w-5 h-5" />
             </Link>

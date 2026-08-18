@@ -31,7 +31,7 @@ export default function BecomeProvider() {
 
         <div className="grid md:grid-cols-2 gap-4">
           <div className="rounded-bledi border-2 border-cloud p-5">
-            <Sparkles className="w-7 h-7 text-bledi-gold mb-3" />
+            <Sparkles className="w-7 h-7 text-bledi-red mb-3" />
             <h3 className="font-display font-semibold text-lg text-charcoal">
               Menage et entretien
             </h3>
