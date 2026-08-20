@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { MapPin, Star, Shield, Users } from 'lucide-react';
+import FavoriteButton from './FavoriteButton';
 import { motion } from 'framer-motion';
 import { photoOf, CERTIFICATIONS } from '@/lib/format';
 import { useMoney } from '@/store/preferences';
@@ -32,6 +33,10 @@ export default function ListingCard({ listing, dates }: { listing: any; dates?: 
             unoptimized
             className="object-cover transition-transform duration-500 group-hover:scale-110"
           />
+          {/* Le coeur en haut a DROITE, la certification a gauche : les deux
+              se disputaient le meme coin sur une vignette de 300 px. */}
+          <FavoriteButton listingId={listing.id} className="absolute top-3 right-3 z-10" />
+
           <div className="absolute top-3 left-3 flex gap-2">
             {listing.certificationLevel !== 'none' && (
               <span className={certification.className}>{certification.label}</span>

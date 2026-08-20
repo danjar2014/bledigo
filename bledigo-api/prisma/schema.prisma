@@ -66,6 +66,7 @@ model User {
   /// Compte prestataire. Cree par l administration, jamais auto-attribue.
   serviceProvider     ServiceProvider?      @relation("ProviderAccount")
   serviceRequests     ServiceBooking[]      @relation("ServiceRequests")
+  favorites           Favorite[]            @relation("UserFavorites")
 
   @@index([email])
   @@index([role])
@@ -188,6 +189,7 @@ model Listing {
   owner               User                  @relation("OwnerListings", fields: [ownerId], references: [id])
   agency              User?                 @relation("AgencyListings", fields: [agencyId], references: [id])
   photos              ListingPhoto[]
+  favorites           Favorite[]
   passport            ListingPassport?
   bookings            Booking[]
   reviews             Review[]
@@ -875,6 +877,57 @@ model Vehicle {
   @@index([providerId])
   @@index([status])
   @@map("vehicles")
+}
+
+/// Ville du referentiel, administrable depuis le back-office.
+///
+/// `common/localities.ts` reste la liste de DEPART : elle sert de semis et de
+/// repli tant que la table est vide, ce qui evite qu une base fraiche se
+/// retrouve sans aucune ville et rende la recherche inutilisable.
+///
+/// Une ville ne se supprime pas si des annonces y pointent — voir le service,
+/// qui refuse plutot que d orpheliner des logements. `active` permet de la
+/// retirer des listes sans rien casser.
+model City {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  name      String
+  /// Gouvernorat, meme unite que Listing.region.
+  region    String
+  latitude  Float
+  longitude Float
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([region])
+  @@index([active])
+  @@map("cities")
+}
+
+/// Logement mis en favori par un utilisateur.
+///
+/// Table de liaison nue, sans etat ni metadonnee : un favori EXISTE ou non.
+/// Y ajouter des listes nommees ou des notes serait une autre fonctionnalite,
+/// et rien ne dit qu elle sera demandee.
+///
+/// La suppression du logement emporte le favori (`Cascade`) : garder des
+/// favoris orphelins obligerait chaque lecture a filtrer les annonces
+/// disparues.
+model Favorite {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  listingId String   @map("listing_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation("UserFavorites", fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  /// Un logement ne se met pas deux fois en favori : sans cette contrainte, un
+  /// double clic creerait deux lignes et le compteur mentirait.
+  @@unique([userId, listingId])
+  @@index([userId])
+  @@map("favorites")
 }
 
 /// Zone d intervention declaree par un prestataire.

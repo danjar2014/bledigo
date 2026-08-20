@@ -4,6 +4,17 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowRight, MessageSquare } from 'lucide-react';
 
+/**
+ * Talabi — طلبي, « ma demande ».
+ *
+ * « Recherche inversee » decrivait le mecanisme vu du developpeur : l inverse
+ * d une recherche. Le voyageur, lui, ne cherche pas a l envers — il dit ce qu il
+ * veut et attend qu on le lui propose. Le nom le dit maintenant, dans la langue
+ * du pays, et tient en trois syllabes.
+ *
+ * La route reste /besoins : renommer une URL deja indexee coute des visiteurs
+ * pour un gain nul.
+ */
 export default function ReverseSearchCTA() {
   return (
     <section className="py-16 bg-cream">
@@ -19,8 +30,9 @@ export default function ReverseSearchCTA() {
               <MessageSquare className="w-8 h-8 text-white" />
             </div>
             <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
-              La recherche <span className="underline decoration-white/40 underline-offset-8">inversee</span>
+              <span className="underline decoration-white/40 underline-offset-8">Talabi</span>
             </h2>
+            <p className="text-white/90 text-xl font-medium mb-2">Dites ce que vous cherchez.</p>
             <p className="text-white/80 text-lg mb-8">
               Publiez votre besoin et recevez des offres personnalisees de proprietaires et agences.
               Vous cherchez une villa a Djerba avec piscine ? Dites-le nous, ils viendront a vous.

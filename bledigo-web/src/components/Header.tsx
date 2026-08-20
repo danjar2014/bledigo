@@ -10,6 +10,7 @@ import ModeSwitch from '@/components/ModeSwitch';
 import NotificationBell from '@/components/NotificationBell';
 import CroissantEtoile from '@/components/CroissantEtoile';
 import {
+  Heart,
   Shield,
   LogOut,
   Briefcase,
@@ -27,6 +28,7 @@ const NAV_BY_MODE = {
     { href: '/recherche', labelKey: 'nav.search', icon: Search },
     { href: '/besoins', labelKey: 'nav.needs', icon: MessageSquare },
     { href: '/reservations', labelKey: 'nav.bookings', icon: CalendarCheck },
+    { href: '/favoris', labelKey: 'nav.favorites', icon: Heart },
   ],
   // Les credits sont masques tant qu aucun paiement n est possible : afficher
   // une boutique qui n encaisse rien decredibilise. Le lien reviendra avec

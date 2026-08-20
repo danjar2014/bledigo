@@ -10,6 +10,7 @@ import RequireAuth from '@/components/RequireAuth';
 import { Spinner, ErrorBox, Empty } from '@/components/ui';
 import { date, CERTIFICATIONS } from '@/lib/format';
 import { useMoney } from '@/store/preferences';
+import AdminCities from '@/components/AdminCities';
 
 const TABS = [
   ['dashboard', 'Tableau de bord'],
@@ -21,6 +22,9 @@ const TABS = [
   // Tant qu il n y a ni abonnement ni verification automatique, c est le seul
   // moyen de creer un compte prestataire : il n existe aucune inscription libre.
   ['providers', 'Prestataires'],
+  // Le referentiel des villes vivait en dur : ajouter une destination
+  // demandait un commit et un deploiement, pour une donnee editoriale.
+  ['cities', 'Villes'],
   ['users', 'Utilisateurs'],
   ['logs', 'Journal'],
 ] as const;
@@ -89,6 +93,7 @@ function Admin() {
         {tab === 'disputes' && <DisputesTab />}
         {tab === 'sanctions' && <SanctionsTab />}
         {tab === 'providers' && <ProvidersTab />}
+        {tab === 'cities' && <AdminCities />}
         {tab === 'users' && <UsersTab />}
         {tab === 'logs' && <LogsTab />}
       </div>

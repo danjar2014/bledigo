@@ -505,6 +505,27 @@ export const api = {
       body: body({ motif }),
     }),
 
+  // --- favoris ---
+  /** Bascule : une seule route, l interface n a qu un bouton coeur. */
+  toggleFavorite: (listingId: string) =>
+    request<{ favori: boolean }>(`/api/v1/favoris/${listingId}`, { method: 'POST', auth: true }),
+  favorites: () => request<any[]>('/api/v1/favoris', { auth: true }),
+  /** Identifiants seuls : la liste a deja les logements, elle n a besoin que
+   *  de savoir lesquels sont marques. */
+  favoriteIds: () => request<string[]>('/api/v1/favoris/ids', { auth: true }),
+
+  // --- referentiel des villes, cote administration ---
+  adminCities: () =>
+    request<{ source: 'statique' | 'base'; villes: any[] }>('/api/v1/admin/villes', { auth: true }),
+  adminImportCities: () =>
+    request<{ importees: number }>('/api/v1/admin/villes/importer', { method: 'POST', auth: true }),
+  adminCreateCity: (dto: { name: string; region: string; latitude: number; longitude: number }) =>
+    request<any>('/api/v1/admin/villes', { method: 'POST', auth: true, body: body(dto) }),
+  adminUpdateCity: (id: string, dto: any) =>
+    request<any>(`/api/v1/admin/villes/${id}`, { method: 'PATCH', auth: true, body: body(dto) }),
+  adminDeleteCity: (id: string) =>
+    request<any>(`/api/v1/admin/villes/${id}`, { method: 'DELETE', auth: true }),
+
   // --- zones et disponibilites du prestataire ---
   /** Villes desservies. Choisies dans le referentiel, jamais saisies librement. */
   providerZones: () => request<any[]>('/api/v1/prestataire/zones', { auth: true }),

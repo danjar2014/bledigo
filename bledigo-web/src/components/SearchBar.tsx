@@ -17,7 +17,16 @@ export default function SearchBar({ compact = false }: { compact?: boolean }) {
    */
   const [ville, setVille] = useState<Locality | null>(null);
   const [dates, setDates] = useState({ checkIn: '', checkOut: '' });
-  const [guests, setGuests] = useState(2);
+  /**
+   * Adultes et enfants comptes separement.
+   *
+   * La capacite d un logement se mesure en personnes, enfants compris : le
+   * TOTAL reste donc ce qui filtre. Mais un hote qui recoit « 2 adultes et
+   * 3 enfants » ne prepare pas le meme logement que pour « 5 adultes », et la
+   * distinction se perdait entierement.
+   */
+  const [adultes, setAdultes] = useState(2);
+  const [enfants, setEnfants] = useState(0);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +38,12 @@ export default function SearchBar({ compact = false }: { compact?: boolean }) {
     if (ville) params.set('q', ville.name);
     if (dates.checkIn) params.set('checkIn', dates.checkIn);
     if (dates.checkOut) params.set('checkOut', dates.checkOut);
-    params.set('guests', String(guests));
+    // `guests` porte le total, seul critere que la recherche sait appliquer.
+    // Le detail suit dans l URL pour ne pas etre perdu au rechargement ni au
+    // partage du lien.
+    params.set('guests', String(adultes + enfants));
+    params.set('adultes', String(adultes));
+    if (enfants > 0) params.set('enfants', String(enfants));
     router.push(`/recherche?${params.toString()}`);
   };
 
@@ -77,18 +91,33 @@ export default function SearchBar({ compact = false }: { compact?: boolean }) {
           </div>
         </div>
 
-        <div className="w-full md:w-40">
+        <div className="w-full md:w-52">
           <label className="block text-sm font-medium text-charcoal mb-2">Voyageurs</label>
-          <div className="relative">
-            <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate w-5 h-5 pointer-events-none" />
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate w-4 h-4 pointer-events-none" />
+              <select
+                aria-label="Nombre d adultes"
+                value={adultes}
+                onChange={(e) => setAdultes(Number(e.target.value))}
+                className="input-bledi pl-9 pe-2"
+              >
+                {[1, 2, 3, 4, 5, 6, 8, 10].map((n) => (
+                  <option key={n} value={n}>
+                    {n} adulte{n > 1 ? 's' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
             <select
-              value={guests}
-              onChange={(e) => setGuests(Number(e.target.value))}
-              className="input-bledi pl-10"
+              aria-label="Nombre d enfants"
+              value={enfants}
+              onChange={(e) => setEnfants(Number(e.target.value))}
+              className="input-bledi flex-1 px-2"
             >
-              {[1, 2, 3, 4, 5, 6, 8, 10].map((n) => (
+              {[0, 1, 2, 3, 4, 5, 6].map((n) => (
                 <option key={n} value={n}>
-                  {n} voyageur{n > 1 ? 's' : ''}
+                  {n} enfant{n > 1 ? 's' : ''}
                 </option>
               ))}
             </select>

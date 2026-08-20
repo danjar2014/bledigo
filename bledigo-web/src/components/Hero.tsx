@@ -23,10 +23,12 @@ export default function Hero() {
 
       <div className="relative z-10 container mx-auto px-4 h-full flex flex-col justify-center items-center text-center">
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
-          {/* Le badge dit d ou vient le service avant meme le titre : c est ce
-              qui distingue BlediGo d une plateforme internationale de plus. */}
+          {/* Le badge dit d ou vient le service avant meme le titre.
+              Il nomme un concurrent, ce qui situe immediatement le service pour
+              un visiteur qui decouvre la page — a garder a l esprit si la
+              marque citee s en emeut un jour. */}
           <span className="inline-flex items-center gap-2 bg-bledi-red text-white text-xs font-semibold uppercase tracking-[0.18em] px-4 py-2 rounded-full mb-6">
-            Fait pour la Tunisie
+            Le Airbnb Tunisien
           </span>
 
           {/* Taille en clamp plutot qu en paliers : entre le telephone et un

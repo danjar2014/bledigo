@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { SlidersHorizontal, CalendarDays, ChevronDown, ChevronUp } from 'lucide-react';
 import CityAutocomplete from '@/components/CityAutocomplete';
 import { PROPERTY_TYPES, FEATURED_AMENITIES } from '@/lib/catalog';
+import AmenityIcon from '@/components/AmenityIcon';
 import ListingCard from '@/components/ListingCard';
 import { api } from '@/lib/api';
 import { Spinner, ErrorBox, Empty } from '@/components/ui';
@@ -204,25 +205,35 @@ function Resultats() {
 
                 <div>
                   <span className="block text-sm font-medium mb-2">Equipements</span>
-                  <div className="space-y-1.5 max-h-56 overflow-y-auto pe-1">
+                  {/* Tuiles a icones plutot que cases a cocher.
+                      Le formulaire de creation d annonce utilisait deja cette
+                      forme : la recherche affichait des cases nues pour les
+                      MEMES equipements, si bien qu on ne reconnaissait pas
+                      d un ecran a l autre ce qu on venait de choisir. */}
+                  <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pe-1">
                     {FEATURED_AMENITIES.map((a) => {
                       const actif = filters.amenities.includes(a.key);
                       return (
-                        <label key={a.key} className="flex items-center gap-2 text-sm cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={actif}
-                            onChange={() =>
-                              apply({
-                                amenities: actif
-                                  ? filters.amenities.filter((k) => k !== a.key)
-                                  : [...filters.amenities, a.key],
-                              })
-                            }
-                            className="w-4 h-4 accent-bledi-blue"
-                          />
-                          <span className="text-charcoal">{a.label}</span>
-                        </label>
+                        <button
+                          key={a.key}
+                          type="button"
+                          aria-pressed={actif}
+                          onClick={() =>
+                            apply({
+                              amenities: actif
+                                ? filters.amenities.filter((k) => k !== a.key)
+                                : [...filters.amenities, a.key],
+                            })
+                          }
+                          className={`flex flex-col items-center gap-1.5 px-2 py-3 rounded-bledi-sm text-xs text-center transition-all ${
+                            actif
+                              ? 'border-2 border-charcoal bg-cream text-charcoal font-medium'
+                              : 'border border-cloud bg-white text-slate hover:border-charcoal'
+                          }`}
+                        >
+                          <AmenityIcon name={a.icon} className="w-5 h-5" />
+                          {a.label}
+                        </button>
                       );
                     })}
                   </div>

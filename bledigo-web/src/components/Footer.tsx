@@ -7,7 +7,7 @@ const NAVIGATION = [
   { href: '/', label: 'Accueil' },
   { href: '/recherche', label: 'Rechercher' },
   { href: '/carte', label: 'Carte' },
-  { href: '/besoins', label: 'Recherche inversee' },
+  { href: '/besoins', label: 'Talabi' },
   { href: '/abonnements', label: 'Abonnements' },
 ];
 
