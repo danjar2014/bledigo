@@ -11,6 +11,7 @@ import NotificationBell from '@/components/NotificationBell';
 import CroissantEtoile from '@/components/CroissantEtoile';
 import {
   Heart,
+  UserRound,
   Shield,
   LogOut,
   Briefcase,
@@ -160,7 +161,25 @@ export default function Header() {
             <div className="w-24 h-9 rounded-bledi-sm bg-cloud animate-pulse" />
           ) : user ? (
             <div className="flex items-center gap-2">
-              <span className="hidden lg:block text-charcoal font-medium">{user.firstName}</span>
+              {/* Le prenom devient le lien vers le profil : c est la ou l on
+                  cherche ses reglages, et cela evite une entree de plus dans
+                  une navigation deja chargee. */}
+              <Link
+                href="/profil"
+                className="hidden lg:block text-charcoal font-medium hover:text-bledi-red transition-colors"
+                title="Mon profil"
+              >
+                {user.firstName}
+              </Link>
+              {/* Sur mobile le prenom est masque : sans cette icone, le profil
+                  deviendrait inatteignable depuis un telephone. */}
+              <Link
+                href="/profil"
+                className="lg:hidden p-2 rounded-bledi-sm text-slate hover:bg-cloud"
+                aria-label="Mon profil"
+              >
+                <UserRound className="w-4 h-4" />
+              </Link>
               <button
                 onClick={() => {
                   logout();

@@ -505,6 +505,17 @@ export const api = {
       body: body({ motif }),
     }),
 
+  // --- mon profil ---
+  /**
+   * Mise a jour de son propre compte.
+   *
+   * La route porte l identifiant dans l URL et le serveur refuse toute autre
+   * cible que soi-meme : on le passe donc explicitement plutot que d inventer
+   * un `/me` qui n existe pas cote API.
+   */
+  updateMe: (id: string, dto: Record<string, unknown>) =>
+    request<any>(`/api/v1/users/${id}`, { method: 'PATCH', auth: true, body: body(dto) }),
+
   // --- favoris ---
   /** Bascule : une seule route, l interface n a qu un bouton coeur. */
   toggleFavorite: (listingId: string) =>
