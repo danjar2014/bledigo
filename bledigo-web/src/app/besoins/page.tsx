@@ -29,7 +29,7 @@ export default function BesoinsPage() {
         <div className="container mx-auto px-4 py-16">
           <div className="bg-white rounded-bledi shadow-bledi p-10 text-center max-w-lg mx-auto">
             <h1 className="text-2xl font-display font-bold text-charcoal mb-2">
-              Talabi
+              Recherche inversee
             </h1>
             <p className="text-slate mb-5">
               Publiez votre besoin et laissez les proprietaires de la region vous faire des offres.

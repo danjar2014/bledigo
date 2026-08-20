@@ -25,6 +25,13 @@ export class CreateListingDto {
   @IsNumber() @Type(() => Number) longitude: number;
   @IsEnum(PropertyType) propertyType: PropertyType;
   @IsInt() @Min(1) @Type(() => Number) maxGuests: number;
+  /**
+   * L hote accepte-t-il les enfants ?
+   *
+   * Vrai par defaut cote base. Facultatif ici : une annonce creee par un client
+   * qui ignore ce champ ne doit pas se retrouver fermee aux familles.
+   */
+  @IsOptional() @IsBoolean() childrenAllowed?: boolean;
   @IsInt() @Min(0) @Type(() => Number) bedrooms: number;
   @IsInt() @Min(0) @Type(() => Number) bathrooms: number;
   @IsNumber() @Min(0) @Type(() => Number) pricePerNight: number;
@@ -61,6 +68,7 @@ export class UpdateListingDto {
   @IsOptional() @IsNumber() @Type(() => Number) pricePerNight?: number;
   @IsOptional() @IsNumber() @Type(() => Number) cleaningFee?: number;
   @IsOptional() @IsInt() @Type(() => Number) maxGuests?: number;
+  @IsOptional() @IsBoolean() childrenAllowed?: boolean;
   @IsOptional() @IsNumber() @Type(() => Number) serviceFee?: number;
   @IsOptional() @IsNumber() @Type(() => Number) securityDeposit?: number;
   @IsOptional() @IsArray() amenities?: string[];

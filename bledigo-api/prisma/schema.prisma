@@ -167,6 +167,15 @@ model Listing {
   rules                    String    @default("{}")
   amenities                String    @default("[]")
   houseRules               String    @default("[]") @map("house_rules")
+  /// L hote accepte-t-il les enfants ?
+  ///
+  /// Vrai par defaut : c est le cas general, et basculer tout le parc en
+  /// « sans enfants » a l ajout du champ ferait disparaitre des annonces de la
+  /// recherche familiale sans qu aucun hote l ait decide.
+  ///
+  /// Un logement qui les refuse n est pas ecarte des resultats en general — il
+  /// l est seulement quand la recherche porte sur un ou plusieurs enfants.
+  childrenAllowed          Boolean   @default(true) @map("children_allowed")
   checkInTime              String    @default("15:00") @map("check_in_time")
   checkOutTime             String    @default("11:00") @map("check_out_time")
   minNights                Int       @default(1) @map("min_nights")

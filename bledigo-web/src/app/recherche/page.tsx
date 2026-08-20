@@ -23,6 +23,15 @@ function Resultats() {
     checkIn: params.get('checkIn') || '',
     checkOut: params.get('checkOut') || '',
     guests: params.get('guests') || '',
+    /**
+     * Le nombre d ENFANTS, repris de l URL.
+     *
+     * Il ne sert pas a la capacite — `guests` porte deja le total — mais a
+     * ecarter les logements dont l hote n accepte pas les enfants. Sans lui
+     * dans l etat, arriver sur la page depuis un lien partage perdait
+     * l information et rendait des logements qui refusent la famille.
+     */
+    enfants: params.get('enfants') || '',
     minPrice: '',
     maxPrice: '',
     propertyType: '',

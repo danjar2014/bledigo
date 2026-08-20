@@ -65,6 +65,10 @@ export default function ListingEdit({
     checkInTime: listing?.checkInTime || '15:00',
     checkOutTime: listing?.checkOutTime || '11:00',
     instantBook: Boolean(listing?.instantBook),
+    // `?? true` et non `Boolean(...)` : une annonce d avant ce champ renvoie
+    // `undefined`, que Boolean() transformerait en false — elle se fermerait
+    // aux familles a la premiere modification, sans que l hote l ait voulu.
+    childrenAllowed: listing?.childrenAllowed ?? true,
     amenities: asArray(listing?.amenities),
     houseRules: asArray(listing?.houseRules),
     modificationReason: '',
@@ -394,6 +398,26 @@ export default function ListingEdit({
               );
             })}
           </div>
+        </div>
+
+        {/* Au-dessus de la reservation instantanee parce qu elle FILTRE : une
+            famille qui cherche avec des enfants ne verra jamais l annonce si
+            la case est decochee. */}
+        <div className="flex items-center gap-3 p-4 bg-cream rounded-lg">
+          <input
+            type="checkbox"
+            id="childrenAllowed"
+            checked={formData.childrenAllowed}
+            onChange={(e) => handleChange('childrenAllowed', e.target.checked)}
+            className="w-5 h-5 rounded border-cloud text-bledi-red"
+          />
+          <label htmlFor="childrenAllowed" className="text-sm">
+            <span className="font-medium">J accepte les enfants</span>
+            <span className="text-slate block">
+              Decoche, votre logement disparait des recherches faites avec des enfants. Il reste
+              visible pour tous les autres voyageurs.
+            </span>
+          </label>
         </div>
 
         <div className="flex items-center gap-3 p-4 bg-cream rounded-lg">

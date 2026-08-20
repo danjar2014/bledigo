@@ -57,6 +57,7 @@ export class SearchService {
     checkIn?: string;
     checkOut?: string;
     guests?: number;
+    enfants?: number;
     minPrice?: number;
     maxPrice?: number;
     page?: number;
@@ -80,6 +81,15 @@ export class SearchService {
     if (q.bedrooms) where.bedrooms = { gte: Number(q.bedrooms) };
     if (q.certificationLevel) where.certificationLevel = q.certificationLevel;
     if (q.guests) where.maxGuests = { gte: Number(q.guests) };
+    /**
+     * Les enfants n ecartent un logement QUE si la recherche en comporte.
+     *
+     * Filtrer en permanence sur `childrenAllowed` retirerait les logements sans
+     * enfants aux couples et aux voyageurs seuls, pour qui la question ne se
+     * pose pas — et l hote qui les refuse perdrait la moitie de sa clientele
+     * sans l avoir voulu.
+     */
+    if (Number(q.enfants) > 0) where.childrenAllowed = true;
     if (q.minPrice != null || q.maxPrice != null) {
       where.pricePerNight = {
         ...(q.minPrice != null ? { gte: Number(q.minPrice) } : {}),

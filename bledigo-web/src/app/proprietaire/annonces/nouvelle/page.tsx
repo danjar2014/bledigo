@@ -57,6 +57,9 @@ function Formulaire() {
     longitude: 0,
     propertyType: 'villa',
     maxGuests: 4,
+    // Vrai par defaut : refuser les enfants est le cas rare, et un hote qui
+    // ne se prononce pas ne veut pas fermer sa porte aux familles.
+    childrenAllowed: true,
     bedrooms: 2,
     bathrooms: 1,
     surfaceM2: '' as number | '',
@@ -367,6 +370,28 @@ function Formulaire() {
             <div className="space-y-6">
               <div>
                 <h2 className="font-display font-semibold mb-3">Regles de la maison</h2>
+
+                {/* L acceptation des enfants est au-dessus des autres regles
+                    parce qu elle FILTRE la recherche : une famille qui cherche
+                    avec des enfants ne verra jamais cette annonce si la case
+                    est decochee. Les autres regles n ecartent personne, elles
+                    informent. */}
+                <label className="flex items-start gap-3 p-3 rounded-bledi-sm border border-cloud cursor-pointer hover:bg-cream mb-4">
+                  <input
+                    type="checkbox"
+                    checked={form.childrenAllowed}
+                    onChange={(e) => set({ childrenAllowed: e.target.checked })}
+                    className="w-4 h-4 accent-bledi-red mt-0.5"
+                  />
+                  <span className="text-sm">
+                    <span className="text-charcoal font-medium">J accepte les enfants</span>
+                    <span className="block text-slate text-xs mt-0.5">
+                      Decoche, votre logement n apparaitra pas aux voyageurs qui cherchent avec des
+                      enfants. Il reste visible pour tous les autres.
+                    </span>
+                  </span>
+                </label>
+
                 <HouseRulesPicker
                   rules={rules}
                   onChange={(key, value) => setRules((r) => ({ ...r, [key]: value }))}
