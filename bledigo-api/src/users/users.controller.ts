@@ -15,8 +15,14 @@ export class UpdateUserDto {
   @IsOptional() @IsString() lastName?: string;
   @IsOptional() @IsString() phone?: string;
   @IsOptional() @IsString() avatarUrl?: string;
-  /** Par ou l hote veut etre joint une fois la demande acceptee. */
-  @IsOptional() @IsIn(['phone', 'whatsapp']) contactChannel?: string;
+  /**
+   * Par ou l hote veut etre joint une fois la demande acceptee.
+   *
+   * `both` accepte les deux : beaucoup de gens repondent au telephone comme
+   * sur WhatsApp, et forcer un choix unique fait perdre la moitie des
+   * tentatives de contact.
+   */
+  @IsOptional() @IsIn(['phone', 'whatsapp', 'both']) contactChannel?: string;
   /** Meme format que `phone`, sans contrainte d unicite : deux comptes peuvent
    *  legitimement partager un numero de contact. */
   @IsOptional() @Matches(/^\+?[0-9]{8,15}$/, { message: 'Numero WhatsApp invalide' })

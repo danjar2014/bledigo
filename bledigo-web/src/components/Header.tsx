@@ -9,6 +9,7 @@ import PreferencesMenu from '@/components/PreferencesMenu';
 import ModeSwitch from '@/components/ModeSwitch';
 import NotificationBell from '@/components/NotificationBell';
 import CroissantEtoile from '@/components/CroissantEtoile';
+import ProfileMenu from '@/components/ProfileMenu';
 import {
   Heart,
   UserRound,
@@ -160,38 +161,7 @@ export default function Header() {
           {loading ? (
             <div className="w-24 h-9 rounded-bledi-sm bg-cloud animate-pulse" />
           ) : user ? (
-            <div className="flex items-center gap-2">
-              {/* Le prenom devient le lien vers le profil : c est la ou l on
-                  cherche ses reglages, et cela evite une entree de plus dans
-                  une navigation deja chargee. */}
-              <Link
-                href="/profil"
-                className="hidden lg:block text-charcoal font-medium hover:text-bledi-red transition-colors"
-                title="Mon profil"
-              >
-                {user.firstName}
-              </Link>
-              {/* Sur mobile le prenom est masque : sans cette icone, le profil
-                  deviendrait inatteignable depuis un telephone. */}
-              <Link
-                href="/profil"
-                className="lg:hidden p-2 rounded-bledi-sm text-slate hover:bg-cloud"
-                aria-label="Mon profil"
-              >
-                <UserRound className="w-4 h-4" />
-              </Link>
-              <button
-                onClick={() => {
-                  logout();
-                  router.push('/');
-                }}
-                title={t('nav.logout')}
-                aria-label={t('nav.logout')}
-                className="p-2 rounded-bledi-sm text-slate hover:bg-cloud"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
+            <ProfileMenu />
           ) : (
             <>
               <Link href="/connexion" className="text-slate hover:text-charcoal px-3 py-1.5 rounded-bledi-sm transition-colors hover:bg-cloud/60">

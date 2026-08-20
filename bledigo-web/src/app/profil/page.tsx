@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Phone, MessageCircle, Heart, Check, UserRound } from 'lucide-react';
+import { Phone, MessageCircle, PhoneCall, Heart, Check, UserRound } from 'lucide-react';
 import { api } from '@/lib/api';
 import RequireAuth from '@/components/RequireAuth';
 import { useAuth } from '@/store/auth';
@@ -67,9 +67,22 @@ function Profil() {
 
   if (!user) return <Spinner />;
 
-  const surWhatsapp = form.contactChannel === 'whatsapp';
-  /** Numero reellement utilise, replis compris — c est ce que verra l autre partie. */
-  const numeroEffectif = surWhatsapp ? form.whatsappNumber || form.phone : form.phone;
+  /** WhatsApp est concerne par « whatsapp » comme par « les deux ». */
+  const surWhatsapp = form.contactChannel === 'whatsapp' || form.contactChannel === 'both';
+  const lesDeux = form.contactChannel === 'both';
+  /**
+   * Ce que verra reellement l autre partie, replis compris.
+   *
+   * Reproduit la regle du serveur : un moyen sans numero n est pas rendu, et
+   * WhatsApp retombe sur le telephone principal quand aucun second numero
+   * n est declare.
+   */
+  const moyens: { canal: string; numero: string }[] = [];
+  const numeroWa = form.whatsappNumber || form.phone;
+  if (surWhatsapp && numeroWa) moyens.push({ canal: 'WhatsApp', numero: numeroWa });
+  if ((form.contactChannel === 'phone' || lesDeux) && form.phone) {
+    moyens.push({ canal: 'Telephone', numero: form.phone });
+  }
 
   return (
     <main className="min-h-screen bg-cream">
@@ -123,7 +136,7 @@ function Profil() {
               acceptee. C est ce choix qui decide du bouton qu elles verront.
             </p>
 
-            <div className="grid sm:grid-cols-2 gap-3">
+            <div className="grid sm:grid-cols-3 gap-3">
               {[
                 { code: 'phone', label: 'Telephone', icon: Phone, aide: 'Appel direct sur votre numero' },
                 {
@@ -131,6 +144,12 @@ function Profil() {
                   label: 'WhatsApp',
                   icon: MessageCircle,
                   aide: 'Ouvre une conversation WhatsApp',
+                },
+                {
+                  code: 'both',
+                  label: 'Les deux',
+                  icon: PhoneCall,
+                  aide: 'Les deux boutons sont proposes, au choix',
                 },
               ].map((c) => {
                 const actif = form.contactChannel === c.code;
@@ -180,10 +199,9 @@ function Profil() {
                 ce que l autre partie aura sous les yeux. */}
             <div className="mt-3 p-3 rounded-bledi-sm bg-cream text-sm">
               <span className="text-slate">Ce que verra l autre partie : </span>
-              {numeroEffectif ? (
+              {moyens.length ? (
                 <span className="font-medium text-charcoal">
-                  {surWhatsapp ? 'WhatsApp ' : ''}
-                  {numeroEffectif}
+                  {moyens.map((m) => `${m.canal} ${m.numero}`).join(' · ')}
                 </span>
               ) : (
                 <span className="text-amber-800">

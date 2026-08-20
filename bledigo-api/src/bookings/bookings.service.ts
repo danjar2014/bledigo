@@ -157,6 +157,36 @@ export class BookingsService {
   }
 
   /**
+   * Moyens de joindre quelqu un, tels qu il les a declares.
+   *
+   * `contactChannel` vaut `phone`, `whatsapp` ou `both` — et `both` n est pas
+   * un detail : beaucoup de gens repondent au telephone comme sur WhatsApp,
+   * et forcer un choix unique fait perdre la moitie des tentatives de contact.
+   *
+   * Le repli sur le numero principal reste : beaucoup utilisent WhatsApp sur
+   * leur numero habituel sans en renseigner un second, et n afficher aucun
+   * moyen de joindre viderait de son sens tout le paiement direct.
+   *
+   * Un moyen sans numero n est pas rendu : un bouton qui n appelle personne est
+   * pire qu un bouton absent.
+   */
+  private moyensDeContact(personne: any): { canal: 'phone' | 'whatsapp'; numero: string }[] {
+    const choix = personne?.contactChannel ?? 'phone';
+    const tel = personne?.phone ?? null;
+    const wa = personne?.whatsappNumber ?? personne?.phone ?? null;
+
+    const moyens: { canal: 'phone' | 'whatsapp'; numero: string }[] = [];
+    // L ordre suit la preference : le canal choisi en premier, l autre ensuite.
+    if (choix === 'whatsapp' || choix === 'both') {
+      if (wa) moyens.push({ canal: 'whatsapp', numero: wa });
+    }
+    if (choix === 'phone' || choix === 'both') {
+      if (tel) moyens.push({ canal: 'phone', numero: tel });
+    }
+    return moyens;
+  }
+
+  /**
    * En paiement direct, les deux parties reglent entre elles : elles doivent
    * donc pouvoir se joindre. Les coordonnees ne sont revelees qu APRES
    * acceptation par l hote — avant, le filtre anti-fraude continue de proteger
@@ -173,14 +203,7 @@ export class BookingsService {
     const contrepartie = role === 'owner' ? booking.traveler : booking.owner;
     const visible = coordonneesAutorisees(acceptee);
 
-    // Canal choisi par la personne a joindre, pas par celle qui regarde.
-    const canal = contrepartie?.contactChannel === 'whatsapp' ? 'whatsapp' : 'phone';
-    // Beaucoup d hotes utilisent leur numero principal sur WhatsApp sans en
-    // renseigner un second : on y retombe plutot que de n afficher aucun moyen
-    // de joindre, ce qui viderait de son sens tout le paiement direct.
-    const numero =
-      (canal === 'whatsapp' ? contrepartie?.whatsappNumber ?? contrepartie?.phone : contrepartie?.phone) ??
-      null;
+    const moyens = this.moyensDeContact(contrepartie);
 
     return {
       ...booking,
@@ -190,8 +213,15 @@ export class BookingsService {
       contact: visible
         ? {
             nom: `${contrepartie?.firstName ?? ''} ${contrepartie?.lastName ?? ''}`.trim(),
-            canal,
-            numero,
+            /**
+             * TOUS les moyens declares, dans l ordre voulu par la personne a
+             * joindre. Un hote qui accepte les deux ne doit pas voir la
+             * plateforme en choisir un a sa place.
+             */
+            moyens,
+            /** Le premier moyen, conserve pour les appelants d avant `moyens`. */
+            canal: moyens[0]?.canal ?? 'phone',
+            numero: moyens[0]?.numero ?? null,
             email: contrepartie?.email ?? null,
             role: role === 'owner' ? 'voyageur' : 'hote',
           }

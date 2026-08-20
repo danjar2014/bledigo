@@ -4,7 +4,10 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useQuery } from '@tanstack/react-query';
-import { CalendarDays, Users, Lock, ShieldCheck, Star, CalendarPlus } from 'lucide-react';
+import {
+  CalendarDays, Users, Lock, ShieldCheck, Star, CalendarPlus,
+  MessageCircle, Phone as PhoneIcon,
+} from 'lucide-react';
 import { api } from '@/lib/api';
 import RequireAuth from '@/components/RequireAuth';
 import ValidationModal from '@/components/ValidationModal';
@@ -170,28 +173,52 @@ function Reservations() {
                         <p className="text-sm font-medium text-emerald-900 mb-1">
                           Demande acceptee — contactez votre {b.contact.role}
                         </p>
-                        <p className="text-sm text-charcoal">
-                          {b.contact.nom}
-                          {b.contact.numero && (
-                            <>
-                              {' · '}
-                              {/* wa.me n accepte que des chiffres : ni +, ni espaces. */}
+                        <p className="text-sm text-charcoal">{b.contact.nom}</p>
+                        {/*
+                          TOUS les moyens declares, pas seulement le premier.
+                          Un hote qui accepte le telephone ET WhatsApp propose
+                          les deux boutons : c est au voyageur de choisir celui
+                          qu il utilise, pas a la plateforme de trancher.
+
+                          `moyens` peut manquer sur une reponse mise en cache
+                          avant cette version — on retombe alors sur l ancien
+                          couple canal/numero plutot que de n afficher rien.
+                        */}
+                        <div className="flex flex-wrap gap-2 mt-1.5">
+                          {(b.contact.moyens?.length
+                            ? b.contact.moyens
+                            : b.contact.numero
+                              ? [{ canal: b.contact.canal, numero: b.contact.numero }]
+                              : []
+                          ).map((m: any) => {
+                            const surWhatsapp = m.canal === 'whatsapp';
+                            return (
                               <a
+                                key={`${m.canal}-${m.numero}`}
+                                // wa.me n accepte que des chiffres : ni +, ni espaces.
                                 href={
-                                  b.contact.canal === 'whatsapp'
-                                    ? `https://wa.me/${b.contact.numero.replace(/\D/g, '')}`
-                                    : `tel:${b.contact.numero}`
+                                  surWhatsapp
+                                    ? `https://wa.me/${String(m.numero).replace(/\D/g, '')}`
+                                    : `tel:${m.numero}`
                                 }
-                                target={b.contact.canal === 'whatsapp' ? '_blank' : undefined}
-                                rel={b.contact.canal === 'whatsapp' ? 'noopener noreferrer' : undefined}
-                                className="font-medium underline"
+                                target={surWhatsapp ? '_blank' : undefined}
+                                rel={surWhatsapp ? 'noopener noreferrer' : undefined}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-bledi-sm text-sm font-medium transition-colors ${
+                                  surWhatsapp
+                                    ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                    : 'bg-charcoal text-white hover:opacity-90'
+                                }`}
                               >
-                                {b.contact.canal === 'whatsapp' ? 'WhatsApp ' : ''}
-                                {b.contact.numero}
+                                {surWhatsapp ? (
+                                  <MessageCircle className="w-3.5 h-3.5" />
+                                ) : (
+                                  <PhoneIcon className="w-3.5 h-3.5" />
+                                )}
+                                {m.numero}
                               </a>
-                            </>
-                          )}
-                        </p>
+                            );
+                          })}
+                        </div>
                         <p className="text-xs text-emerald-800/80 mt-1">
                           Le reglement se fait directement entre vous. BlediGo ne percoit aucun montant
                           et n intervient pas dans la transaction.
