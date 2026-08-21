@@ -75,6 +75,11 @@ function Formulaire() {
     minNights: 1,
     maxNights: '' as number | '',
     instantBook: false,
+    // Vide = annulation libre jusqu au depart. Distinct de 0, qui veut dire
+    // « libre jusqu au jour de l arrivee » : confondre les deux fermerait des
+    // annonces sans que l hote l ait voulu.
+    cancellationDeadlineDays: '' as number | '',
+    cancellationPolicy: '',
     houseRulesText: '',
   });
 
@@ -100,6 +105,11 @@ function Formulaire() {
         floors: form.floors === '' ? undefined : Number(form.floors),
         yearBuilt: form.yearBuilt === '' ? undefined : Number(form.yearBuilt),
         maxNights: form.maxNights === '' ? undefined : Number(form.maxNights),
+        cancellationDeadlineDays:
+          form.cancellationDeadlineDays === ''
+            ? undefined
+            : Number(form.cancellationDeadlineDays),
+        cancellationPolicy: form.cancellationPolicy || undefined,
         amenities,
         houseRules: Object.entries(rules)
           .filter(([, v]) => v !== 'unset')
@@ -507,6 +517,44 @@ function Formulaire() {
                   </span>
                 </span>
               </label>
+
+              {/* Conditions d annulation, saisies des la creation : les poser
+                  apres coup laisse partir les premieres reservations sans que
+                  personne sache ce qui s applique. */}
+              <div className="p-4 bg-cream rounded-bledi-sm space-y-3">
+                <p className="font-medium text-sm text-charcoal">Conditions d annulation</p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.cancellationDeadlineDays}
+                    onChange={(e) =>
+                      set({
+                        cancellationDeadlineDays:
+                          e.target.value === '' ? '' : Number(e.target.value),
+                      })
+                    }
+                    className="input-bledi w-24"
+                    placeholder="—"
+                  />
+                  <span className="text-sm text-slate">
+                    jours avant l arrivee (vide = libre jusqu au bout)
+                  </span>
+                </div>
+                <textarea
+                  rows={3}
+                  maxLength={2000}
+                  value={form.cancellationPolicy}
+                  onChange={(e) => set({ cancellationPolicy: e.target.value })}
+                  className="input-bledi"
+                  placeholder="Ex : au-dela du delai, je demande la premiere nuit a titre de dedommagement."
+                />
+                <p className="text-xs text-slate">
+                  Montre au voyageur avant qu il reserve et avant qu il annule. Le paiement se
+                  faisant directement entre vous, BlediGo ne preleve rien : ces conditions valent
+                  sur l honneur.
+                </p>
+              </div>
             </div>
           )}
 

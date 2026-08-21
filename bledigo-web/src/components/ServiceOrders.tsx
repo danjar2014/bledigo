@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Car, Star, Phone, X, ShieldAlert } from 'lucide-react';
+import { Car, Star, Phone, X, ShieldAlert, CalendarX2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { date } from '@/lib/format';
 import { notable, maNote } from '@/lib/prestations';
 import ServiceReviewModal from './ServiceReviewModal';
 import IncidentModal from './IncidentModal';
+import ChangeRequestModal from './ChangeRequestModal';
 
 /**
  * Locations de voiture du voyageur.
@@ -26,10 +27,14 @@ export default function ServiceOrders() {
     queryFn: () => api.myServiceOrders(),
   });
 
-  const annuler = useMutation({
-    mutationFn: (id: string) => api.cancelServiceOrder(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['service-orders'] }),
-  });
+  /**
+   * Annuler ou decaler passe desormais par une demande soumise a l agence.
+   *
+   * Avant, le bouton n apparaissait que sur une location `pending` : une
+   * location CONFIRMEE etait purement et simplement impossible a annuler cote
+   * voyageur, qui n avait plus qu a ne pas se presenter.
+   */
+  const [demandeSur, setDemandeSur] = useState<string | null>(null);
 
   const locations = (data || []).filter((c: any) => c.type === 'location_voiture');
   if (!locations.length) return null;
@@ -59,12 +64,12 @@ export default function ServiceOrders() {
 
                 <div className="flex items-center gap-2">
                   <span className="text-xs px-2 py-1 rounded-bledi-sm bg-cloud">{c.status}</span>
-                  {c.status === 'pending' && (
+                  {['pending', 'confirmed'].includes(c.status) && (
                     <button
-                      onClick={() => annuler.mutate(c.id)}
+                      onClick={() => setDemandeSur(c.id)}
                       className="text-xs flex items-center gap-1 border border-cloud px-2 py-1 rounded-bledi-sm hover:bg-cream"
                     >
-                      <X className="w-3 h-3" /> Annuler
+                      <CalendarX2 className="w-3 h-3" /> Annuler ou decaler
                     </button>
                   )}
                   {notable(c, 'client') && (
@@ -114,6 +119,14 @@ export default function ServiceOrders() {
 
       {aNoter && (
         <ServiceReviewModal prestation={aNoter} role="client" onClose={() => setANoter(null)} />
+      )}
+
+      {demandeSur && (
+        <ChangeRequestModal
+          scope="location"
+          reservationId={demandeSur}
+          onClose={() => setDemandeSur(null)}
+        />
       )}
       {sinistresDe && (
         <IncidentModal

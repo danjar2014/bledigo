@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ServicesModule } from './services/services.module';
 import { FavoritesModule } from './favorites/favorites.module';
+import { ChangeRequestsModule } from './change-requests/change-requests.module';
 import { CitiesAdminModule } from './cities/cities-admin.module';
 import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
@@ -50,6 +51,7 @@ import { InsuranceModule } from './insurance/insurance.module';
     ServicesModule,
     FavoritesModule,
     CitiesAdminModule,
+    ChangeRequestsModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

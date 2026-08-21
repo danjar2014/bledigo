@@ -6,12 +6,14 @@ import Image from 'next/image';
 import { useQuery } from '@tanstack/react-query';
 import {
   CalendarDays, Users, Lock, ShieldCheck, Star, CalendarPlus,
-  MessageCircle, Phone as PhoneIcon,
+  MessageCircle, Phone as PhoneIcon, CalendarX2,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import RequireAuth from '@/components/RequireAuth';
 import ValidationModal from '@/components/ValidationModal';
 import ExtensionModal from '@/components/ExtensionModal';
+import ChangeRequestModal from '@/components/ChangeRequestModal';
+import ChangeRequests from '@/components/ChangeRequests';
 import CarOffers from '@/components/CarOffers';
 import ServiceOrders from '@/components/ServiceOrders';
 import ReviewModal from '@/components/ReviewModal';
@@ -24,6 +26,7 @@ function Reservations() {
   const [validating, setValidating] = useState<any>(null);
   const [reviewing, setReviewing] = useState<any>(null);
   const [extending, setExtending] = useState<any>(null);
+  const [changing, setChanging] = useState<any>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['bookings', 'traveler'],
@@ -139,6 +142,25 @@ function Reservations() {
                             Laisser un avis
                           </button>
                         )}
+                        {/*
+                            Il n existait AUCUN bouton d annulation cote
+                            voyageur : la route existait, mais rien ne
+                            l appelait. On ne pouvait donc qu abandonner le
+                            sejour sans prevenir personne.
+
+                            Ouvert des `pending` : sur une demande jamais
+                            acceptee, le serveur la retire sans accord — il n y
+                            a personne a incommoder.
+                        */}
+                        {['pending', 'confirmed', 'checked_in'].includes(b.status) && (
+                          <button
+                            onClick={() => setChanging(b)}
+                            className="flex items-center gap-2 border border-cloud text-charcoal px-4 py-2 rounded-bledi-sm text-sm font-medium hover:border-bledi-red hover:text-bledi-red"
+                          >
+                            <CalendarX2 className="w-4 h-4" />
+                            Annuler ou decaler
+                          </button>
+                        )}
                         {canExtend && !b.extensionCheckOut && (
                           <button
                             onClick={() => setExtending(b)}
@@ -247,11 +269,22 @@ function Reservations() {
             disparaissait de la vue des qu on quittait la page, avec les
             coordonnees de l agence et la possibilite de la noter. */}
         <ServiceOrders />
+
+        {/* Les demandes d annulation et de report, dans les deux sens : ce que
+            j attends, et ce qui attend ma reponse. */}
+        <ChangeRequests />
       </div>
 
       {validating && <ValidationModal booking={validating} onClose={() => setValidating(null)} />}
       {reviewing && <ReviewModal booking={reviewing} onClose={() => setReviewing(null)} />}
       {extending && <ExtensionModal booking={extending} onClose={() => setExtending(null)} />}
+      {changing && (
+        <ChangeRequestModal
+          scope="sejour"
+          reservationId={changing.id}
+          onClose={() => setChanging(null)}
+        />
+      )}
     </main>
   );
 }

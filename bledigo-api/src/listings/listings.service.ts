@@ -25,6 +25,7 @@ const EDITABLE_FIELDS = [
   'bookingHorizonDays',
   'rentalProfile',
   'cancellationDeadlineDays',
+  'cancellationPolicy',
   'shortenSurchargePercent',
 ] as const;
 

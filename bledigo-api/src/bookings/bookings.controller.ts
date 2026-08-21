@@ -32,10 +32,15 @@ export class BookingsController {
     return this.bookingsService.confirm(me, id);
   }
 
-  @Post(':id/cancel')
-  cancel(@CurrentUser('id') me: string, @Param('id') id: string) {
-    return this.bookingsService.cancel(me, id);
-  }
+  /*
+   * PLUS DE ROUTE D ANNULATION DIRECTE.
+   *
+   * Elle annulait sans motif et sans que l hote puisse repondre : il
+   * l apprenait en consultant son calendrier. Tout passe desormais par
+   * POST /api/v1/demandes-changement, qui exige un motif et laisse
+   * 48 h a l autre partie — sauf sur une reservation jamais acceptee,
+   * que le demandeur retire seul puisque personne n a rien organise.
+   */
 
   @Get(':id/extension')
   @ApiOperation({

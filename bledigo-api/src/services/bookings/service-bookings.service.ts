@@ -498,17 +498,4 @@ export class ServiceBookingsService {
       data: { status: 'cancelled', cancelledAt: new Date(), cancelledBy: userId, note: motif },
     });
   }
-
-  /** Annulation par le demandeur, tant que la prestation n a pas eu lieu. */
-  async annuler(userId: string, id: string) {
-    const demande = await this.prisma.serviceBooking.findFirst({
-      where: { id, requesterId: userId },
-    });
-    if (!demande) throw new NotFoundException('Demande non trouvee');
-    if (demande.status === 'completed') throw new BadRequestException('Prestation deja effectuee');
-    return this.prisma.serviceBooking.update({
-      where: { id },
-      data: { status: 'cancelled', cancelledAt: new Date(), cancelledBy: userId },
-    });
-  }
 }

@@ -67,6 +67,7 @@ model User {
   serviceProvider     ServiceProvider?      @relation("ProviderAccount")
   serviceRequests     ServiceBooking[]      @relation("ServiceRequests")
   favorites           Favorite[]            @relation("UserFavorites")
+  changeRequests      ChangeRequest[]       @relation("ChangeRequests")
 
   @@index([email])
   @@index([role])
@@ -190,6 +191,14 @@ model Listing {
   rentalProfile            String    @default("court") @map("rental_profile")
   /// Annulation libre jusqu a X jours de l arrivee. null = libre jusqu au bout.
   cancellationDeadlineDays Int?      @map("cancellation_deadline_days")
+  /// Conditions d annulation en clair, redigees par l hote.
+  ///
+  /// Le delai dit QUAND on peut annuler librement, il ne dit pas ce qui se
+  /// passe ensuite. Le paiement etant de la main a la main, rien n est preleve
+  /// automatiquement : ces conditions valent SUR L HONNEUR, et c est ce que le
+  /// texte doit annoncer. Elles deviendront opposables en phase 2, quand le
+  /// paiement par carte permettra de les appliquer.
+  cancellationPolicy       String?   @map("cancellation_policy")
   /// Majoration exigee si le sejour est raccourci, en pourcentage des nuits
   /// retirees. null = aucune. Exigible seulement quand le paiement est allume.
   shortenSurchargePercent  Int?      @map("shorten_surcharge_percent")
@@ -310,6 +319,7 @@ model Booking {
   review         Review?
   conversation   Conversation?
   inventoryCheck InventoryCheck?
+  changeRequests ChangeRequest[]
 
   @@index([listingId])
   @@index([travelerId])
@@ -872,6 +882,17 @@ model Vehicle {
   deliveryAvailable Boolean @default(false) @map("delivery_available")
   deliveryFee       Float   @default(0) @map("delivery_fee")
 
+  /// --- Annulation, meme regle que pour un sejour ---
+  ///
+  /// Une agence n a pas les memes contraintes qu un hote : un vehicule immobilise
+  /// se reloue en une heure, un logement rarement. Le delai lui appartient donc,
+  /// au lieu d etre impose par la plateforme.
+  /// `null` = annulable librement jusqu au depart.
+  cancellationDeadlineDays Int?    @map("cancellation_deadline_days")
+  /// Conditions en clair. Sur l honneur tant que le paiement est de la main a
+  /// la main : voir Listing.cancellationPolicy.
+  cancellationPolicy       String? @map("cancellation_policy")
+
   /// active | maintenance | retire
   status    String    @default("active")
   createdAt DateTime  @default(now()) @map("created_at")
@@ -1138,11 +1159,12 @@ model ServiceBooking {
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
 
-  provider  ServiceProvider   @relation(fields: [providerId], references: [id])
-  vehicle   Vehicle?          @relation(fields: [vehicleId], references: [id])
-  requester User              @relation("ServiceRequests", fields: [requesterId], references: [id])
-  reviews   ServiceReview[]
-  incidents VehicleIncident[]
+  provider       ServiceProvider   @relation(fields: [providerId], references: [id])
+  vehicle        Vehicle?          @relation(fields: [vehicleId], references: [id])
+  requester      User              @relation("ServiceRequests", fields: [requesterId], references: [id])
+  reviews        ServiceReview[]
+  incidents      VehicleIncident[]
+  changeRequests ChangeRequest[]
 
   @@index([providerId])
   @@index([requesterId])
@@ -1175,4 +1197,90 @@ model ServiceReview {
   @@index([providerId])
   @@index([authorId])
   @@map("service_reviews")
+}
+
+/// Demande d annulation ou de changement de dates, soumise a l accord de
+/// l autre partie.
+///
+/// POURQUOI PASSER PAR UNE DEMANDE. L annulation etait jusqu ici immediate et
+/// unilaterale, au motif qu on n enferme personne dans un sejour qu il ne fera
+/// pas. C est vrai, mais cela laissait l hote decouvrir seul, un matin, que ses
+/// dates s etaient liberees — sans motif, sans preavis, et sans rien a opposer.
+/// La demande ne sert pas a retenir quelqu un de force : elle sert a ce que
+/// l autre partie soit prevenue, puisse repondre, et que le motif soit consigne.
+///
+/// UNE SEULE TABLE POUR LES DEUX METIERS ET LES DEUX GESTES. Annuler et
+/// decaler sont la meme conversation — « ce qui etait prevu ne l est plus » — et
+/// un sejour comme une location se traitent pareil. Quatre tables auraient
+/// quadruple le flux, l ecran et les tests pour une seule regle.
+///
+/// L UNE DES DEUX CLES ETRANGERES EST RENSEIGNEE, jamais les deux. Meme forme
+/// que ServiceBooking, qui porte deja bookingId/listingId/vehicleId nullables.
+model ChangeRequest {
+  id String @id @default(uuid())
+
+  /// annulation | modification_dates
+  kind  String
+  /// sejour | location — quelle table porte la reservation.
+  scope String
+
+  bookingId        String? @map("booking_id")
+  serviceBookingId String? @map("service_booking_id")
+
+  requestedById   String @map("requested_by_id")
+  /// voyageur | hote | prestataire, au moment de la demande. Fige, parce qu un
+  /// compte peut changer de casquette et qu on veut savoir qui a demande quoi.
+  requestedByRole String @map("requested_by_role")
+
+  /// --- Modification de dates uniquement ---
+  ///
+  /// Le prix est FIGE a la demande, exactement comme pour l extension de
+  /// sejour : le recalculer a l acceptation ferait payer un tarif que le
+  /// demandeur n a jamais eu sous les yeux.
+  newStartDate DateTime? @map("new_start_date")
+  newEndDate   DateTime? @map("new_end_date")
+  newPrice     Float?    @map("new_price")
+
+  /// --- Motif ---
+  ///
+  /// Code d une liste fermee (common/cancellation-reasons.ts). Le texte libre
+  /// est OBLIGATOIRE pour `autre` et facultatif ailleurs.
+  reasonCode String  @map("reason_code")
+  reasonText String? @map("reason_text")
+
+  /// pending | accepted | refused | expired | withdrawn
+  status String @default("pending")
+
+  /// Sans reponse passe cette date, la demande est reputee ACCEPTEE.
+  ///
+  /// Une validation sans echeance est un piege : il suffirait a l hote de se
+  /// taire pour immobiliser le voyageur indefiniment. Le silence profite donc
+  /// a celui qui demande, et l hote garde la main pendant tout le delai.
+  autoAcceptAt DateTime @map("auto_accept_at")
+
+  respondedAt   DateTime? @map("responded_at")
+  respondedById String?   @map("responded_by_id")
+  responseNote  String?   @map("response_note")
+
+  /// Les conditions TELLES QU ELLES ETAIENT au moment de la demande, en JSON.
+  ///
+  /// Un hote peut modifier son delai apres coup ; sans cette copie on ne
+  /// saurait plus ce qui a reellement ete oppose. Meme raison que le prix fige.
+  policySnapshot String? @map("policy_snapshot")
+  /// Demande passee APRES la limite d annulation libre. Calcule une fois, a la
+  /// demande, et conserve.
+  wasLate        Boolean @default(false) @map("was_late")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  booking        Booking?        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  serviceBooking ServiceBooking? @relation(fields: [serviceBookingId], references: [id], onDelete: Cascade)
+  requestedBy    User            @relation("ChangeRequests", fields: [requestedById], references: [id])
+
+  @@index([bookingId])
+  @@index([serviceBookingId])
+  @@index([requestedById])
+  @@index([status])
+  @@map("change_requests")
 }

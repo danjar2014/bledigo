@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/store/auth';
 import RequireAuth from '@/components/RequireAuth';
 import CleaningServices from '@/components/CleaningServices';
+import ChangeRequests from '@/components/ChangeRequests';
 import { Spinner, ErrorBox, Empty } from '@/components/ui';
 import { date, photoOf, BOOKING_STATUS, CERTIFICATIONS } from '@/lib/format';
 import { useMoney } from '@/store/preferences';
@@ -187,6 +188,11 @@ function Dashboard() {
             })}
           </div>
         )}
+
+        {/* Les demandes d annulation et de report passent AVANT le reste :
+            elles portent une echeance, et ce qui prend effet tout seul dans
+            48 h ne se decouvre pas en bas de page. */}
+        <ChangeRequests />
 
         {/* Le menage se demande depuis le tableau de bord et non depuis chaque
             annonce : un hote enchaine les interventions sur plusieurs logements

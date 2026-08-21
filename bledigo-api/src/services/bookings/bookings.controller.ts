@@ -127,10 +127,11 @@ export class ServicesController {
     return this.demandes.mesCommandes(me);
   }
 
-  @Post('mes-commandes/:id/annuler')
-  annuler(@CurrentUser('id') me: string, @Param('id') id: string) {
-    return this.demandes.annuler(me, id);
-  }
+  /*
+   * L annulation d une location passe par POST /api/v1/demandes-changement,
+   * comme celle d un sejour : meme motif obligatoire, meme accord de
+   * l agence, meme delai de 48 h. Voir change-requests/.
+   */
 
   @Post('mes-commandes/:id/contre-proposer')
   @ApiOperation({ summary: 'Repondre au tarif propose par le prestataire' })

@@ -100,6 +100,20 @@ export class VehicleDto {
   @IsOptional() @IsInt() @Min(0) @Type(() => Number) mileage?: number;
   @IsOptional() @IsInt() @Min(2) @Max(9) @Type(() => Number) doors?: number;
   @IsOptional() @IsString() @MaxLength(40) color?: string;
+
+  /**
+   * Annulation libre jusqu a X jours du depart. `null`/absent = libre jusqu au
+   * bout. Une agence releue un vehicule en une heure la ou un logement reste
+   * vide : le delai lui appartient, au lieu d etre impose par la plateforme.
+   */
+  @IsOptional() @IsInt() @Min(0) @Type(() => Number) cancellationDeadlineDays?: number;
+  /**
+   * Conditions d annulation en clair. SUR L HONNEUR tant que le paiement se
+   * fait de la main a la main : la plateforme ne tient aucun fonds, donc elle
+   * ne peut rien prelever. Le texte doit le dire, sans quoi il promettrait une
+   * retenue qui n aura pas lieu.
+   */
+  @IsOptional() @IsString() @MaxLength(2000) cancellationPolicy?: string;
 }
 
 /** Une photo de la galerie d un vehicule. */

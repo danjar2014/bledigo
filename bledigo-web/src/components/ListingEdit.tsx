@@ -69,6 +69,11 @@ export default function ListingEdit({
     // `undefined`, que Boolean() transformerait en false — elle se fermerait
     // aux familles a la premiere modification, sans que l hote l ait voulu.
     childrenAllowed: listing?.childrenAllowed ?? true,
+    // Vide = annulation libre jusqu au depart, ce qui reste le defaut. Ne pas
+    // mettre 0 : « 0 jour avant » et « pas de delai » ne disent pas la meme
+    // chose, et confondre les deux fermerait des annonces sans le vouloir.
+    cancellationDeadlineDays: listing?.cancellationDeadlineDays ?? '',
+    cancellationPolicy: listing?.cancellationPolicy ?? '',
     amenities: asArray(listing?.amenities),
     houseRules: asArray(listing?.houseRules),
     modificationReason: '',
@@ -128,6 +133,13 @@ export default function ListingEdit({
       serviceFee: Number(formData.serviceFee || 0),
       securityDeposit: Number(formData.securityDeposit || 0),
       maxNights: formData.maxNights ? Number(formData.maxNights) : undefined,
+      // Compare a la chaine vide, PAS a la faussete : 0 est une valeur legitime
+      // — « libre jusqu au jour de l arrivee » — que `x ? ... : undefined`
+      // transformerait silencieusement en « aucun delai ».
+      cancellationDeadlineDays:
+        formData.cancellationDeadlineDays === ''
+          ? undefined
+          : Number(formData.cancellationDeadlineDays),
     };
 
     try {
@@ -418,6 +430,63 @@ export default function ListingEdit({
               visible pour tous les autres voyageurs.
             </span>
           </label>
+        </div>
+
+        {/* ------------------------------------------- Annulation */}
+        <div className="p-4 bg-cream rounded-lg space-y-3">
+          <p className="font-medium text-sm text-charcoal">Conditions d annulation</p>
+
+          <div>
+            <label htmlFor="cancellationDeadlineDays" className="block text-sm mb-1">
+              Annulation libre jusqu a
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={0}
+                id="cancellationDeadlineDays"
+                value={formData.cancellationDeadlineDays}
+                onChange={(e) =>
+                  handleChange(
+                    'cancellationDeadlineDays',
+                    e.target.value === '' ? '' : Number(e.target.value),
+                  )
+                }
+                className="input-bledi w-24"
+                placeholder="—"
+              />
+              <span className="text-sm text-slate">jours avant l arrivee</span>
+            </div>
+            <p className="text-xs text-slate mt-1">
+              Laissez vide pour autoriser l annulation jusqu au dernier moment. Au-dela de ce
+              delai, la demande reste possible mais elle est enregistree comme tardive.
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="cancellationPolicy" className="block text-sm mb-1">
+              Vos conditions, en clair
+            </label>
+            <textarea
+              id="cancellationPolicy"
+              rows={3}
+              maxLength={2000}
+              value={formData.cancellationPolicy}
+              onChange={(e) => handleChange('cancellationPolicy', e.target.value)}
+              className="input-bledi"
+              placeholder="Ex : au-dela du delai, je demande la premiere nuit a titre de dedommagement."
+            />
+            {/*
+              Le dire ici plutot que de laisser l hote l apprendre a ses depens :
+              le reglement se fait de la main a la main, la plateforme ne tient
+              aucun fonds et ne peut donc rien retenir pour lui.
+            */}
+            <p className="text-xs text-slate mt-1">
+              Ce texte est montre au voyageur avant qu il reserve et avant qu il annule. Le
+              paiement se faisant directement entre vous, BlediGo ne preleve rien : ces
+              conditions valent sur l honneur jusqu a l arrivee du paiement par carte.
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-3 p-4 bg-cream rounded-lg">

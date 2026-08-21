@@ -124,6 +124,43 @@ export default function ListingPage() {
 
           <ListingFeatures listing={listing} />
 
+      {/*
+        CONDITIONS D ANNULATION, servies AVANT la reservation.
+
+        C est la meme regle que partout dans le projet : une condition
+        decouverte au moment d annuler n est pas une condition, c est une
+        mauvaise surprise. Le voyageur doit lire le delai la ou il decide.
+
+        La section s affiche meme sans delai declare : « annulation libre »
+        est une information, et son absence laisserait croire que l hote n a
+        rien prevu alors que c est le contraire.
+
+        Elle vit dans la PAGE et non dans ListingFeatures, qui se masque
+        entierement quand l annonce n a ni equipement ni regle : les conditions
+        d annulation, elles, existent toujours.
+      */}
+      <section>
+        <h2 className="font-display font-semibold text-xl mb-3">Annulation</h2>
+        <p className="text-charcoal text-sm">
+          {listing.cancellationDeadlineDays == null
+            ? 'Annulation libre jusqu au jour de l arrivee.'
+            : `Annulation libre jusqu a ${listing.cancellationDeadlineDays} jour${
+                listing.cancellationDeadlineDays > 1 ? 's' : ''
+              } avant l arrivee.`}
+        </p>
+        {listing.cancellationPolicy && (
+          <p className="text-slate text-sm leading-relaxed whitespace-pre-line mt-1">
+            {listing.cancellationPolicy}
+          </p>
+        )}
+        <p className="text-xs text-slate mt-2">
+          L annulation passe par une demande adressee a l hote, avec un motif. Sans reponse de sa
+          part sous 48 h, elle prend effet. Le reglement se faisant directement entre vous, BlediGo
+          ne preleve et ne rembourse aucun montant : ces conditions valent sur l honneur.
+        </p>
+      </section>
+
+
           <ReviewsSection
             listingId={listing.id}
             avgRating={reviews?.avgRating}

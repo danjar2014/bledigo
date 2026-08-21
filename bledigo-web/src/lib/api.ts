@@ -200,8 +200,6 @@ export const api = {
   booking: (id: string) => request<any>(`/api/v1/bookings/${id}`, { auth: true }),
   confirmBooking: (id: string) =>
     request<any>(`/api/v1/bookings/${id}/confirm`, { method: 'POST', auth: true }),
-  cancelBooking: (id: string) =>
-    request<any>(`/api/v1/bookings/${id}/cancel`, { method: 'POST', auth: true }),
   checkIn: (id: string) =>
     request<any>(`/api/v1/bookings/${id}/check-in`, { method: 'POST', auth: true }),
   validateStay: (id: string, dto: any) =>
@@ -236,6 +234,86 @@ export const api = {
     request<any>(`/api/v1/bookings/${id}/extension/accept`, { method: 'POST', auth: true }),
   refuseExtension: (id: string) =>
     request<any>(`/api/v1/bookings/${id}/extension/refuse`, { method: 'POST', auth: true }),
+
+  // --- demandes d annulation et de changement de dates ---
+  //
+  // Un seul jeu de routes pour les sejours ET les locations : le `scope` porte
+  // la difference. Les anciennes annulations directes ont ete retirees cote
+  // API — elles annulaient sans motif et sans que l autre partie puisse
+  // repondre.
+
+  /** Motifs proposables, liste fermee plus « autre ». */
+  changeReasons: (scope: 'sejour' | 'location') =>
+    request<{ code: string; label: string; metEnCause?: boolean }[]>(
+      `/api/v1/demandes-changement/motifs?scope=${scope}`,
+      { auth: true },
+    ),
+
+  /** Ce qui est opposable AVANT de demander : delai libre, texte de l hote. */
+  changeConditions: (scope: 'sejour' | 'location', id: string) =>
+    request<{
+      titre: string;
+      statut: string;
+      debut: string;
+      fin: string;
+      role: string;
+      modifiable: boolean;
+      annulation: {
+        delaiJours: number | null;
+        libreJusquA: string | null;
+        tardiveMaintenant: boolean;
+        conditions: string | null;
+        surLHonneur: boolean;
+      };
+      accordRequis: boolean;
+      heuresPourRepondre: number;
+      demandeEnCours: any | null;
+    }>(`/api/v1/demandes-changement/conditions/${scope}/${id}`, { auth: true }),
+
+  /** Devis de nouvelles dates : sert aussi de test de disponibilite. */
+  changeQuote: (scope: 'sejour' | 'location', id: string, debut: string, fin: string) =>
+    request<{
+      unites: number;
+      uniteLabel: string;
+      nouveauPrix: number;
+      ancienPrix: number;
+      devise: string;
+    }>(
+      `/api/v1/demandes-changement/devis/${scope}/${id}?debut=${encodeURIComponent(debut)}&fin=${encodeURIComponent(fin)}`,
+      { auth: true },
+    ),
+
+  myChangeRequests: () =>
+    request<{
+      envoyees: any[];
+      recues: any[];
+      aRepondre: number;
+      heuresPourRepondre: number;
+    }>('/api/v1/demandes-changement', { auth: true }),
+
+  requestChange: (dto: {
+    scope: 'sejour' | 'location';
+    reservationId: string;
+    kind: 'annulation' | 'modification_dates';
+    reasonCode: string;
+    reasonText?: string;
+    newStartDate?: string;
+    newEndDate?: string;
+  }) =>
+    request<{ applique: boolean; sansAccord: boolean; demande: any; reservation: any }>(
+      '/api/v1/demandes-changement',
+      { method: 'POST', auth: true, body: body(dto) },
+    ),
+
+  respondChange: (id: string, accepte: boolean, note?: string) =>
+    request<any>(`/api/v1/demandes-changement/${id}/repondre`, {
+      method: 'POST',
+      auth: true,
+      body: body({ accepte, note }),
+    }),
+
+  withdrawChange: (id: string) =>
+    request<any>(`/api/v1/demandes-changement/${id}/retirer`, { method: 'POST', auth: true }),
 
   // --- paiements ---
   payIntent: (bookingId: string) =>
@@ -633,8 +711,6 @@ export const api = {
     if (!envoi.ok) throw new Error("L envoi de l image a echoue");
     return publicUrl as string;
   },
-  cancelServiceOrder: (id: string) =>
-    request<any>(`/api/v1/services/mes-commandes/${id}/annuler`, { method: 'POST', auth: true }),
   /** Le sens de l avis se deduit de l appelant, il ne se choisit pas. */
   rateService: (id: string, rating: number, comment?: string) =>
     request<any>(`/api/v1/services/prestations/${id}/avis`, {

@@ -535,49 +535,6 @@ export class BookingsService {
     return new Date(new Date(checkIn).getTime() - delaiJours * 24 * 60 * 60 * 1000);
   }
 
-  async cancel(userId: string, id: string) {
-    const booking = await this.prisma.booking.findFirst({
-      where: { id, OR: [{ travelerId: userId }, { ownerId: userId }] },
-      include: { listing: true },
-    });
-    if (!booking) throw new NotFoundException('Reservation non trouvee');
-    if ([BookingStatus.completed, BookingStatus.disputed].includes(booking.status as BookingStatus)) {
-      throw new BadRequestException('Reservation non annulable a ce stade');
-    }
-
-    // L annulation n est jamais refusee : bloquer quelqu un dans un sejour qu il
-    // ne fera pas n arrange personne, et libere d autant plus tard les dates.
-    // Elle est en revanche datee, attribuee, et qualifiee de tardive ou non.
-    const limite = this.limiteAnnulation(booking.listing?.cancellationDeadlineDays, booking.checkIn);
-    const tardive = limite != null && new Date() > limite;
-    const parLeVoyageur = booking.travelerId === userId;
-
-    const annulee = await this.prisma.booking.update({
-      where: { id },
-      data: { status: BookingStatus.cancelled, cancelledAt: new Date(), cancelledBy: userId },
-    });
-
-    // Les dates se liberent d elles-memes : une reservation annulee est exclue
-    // du test de chevauchement. Rien a republier.
-    await this.prisma.auditLog.create({
-      data: {
-        userId,
-        action: tardive ? 'booking.annulation_tardive' : 'booking.annulation',
-        entityType: 'booking',
-        entityId: id,
-        details: toDbJson({
-          parLeVoyageur,
-          limite,
-          delaiJours: booking.listing?.cancellationDeadlineDays ?? null,
-        }),
-        ipAddress: 'system',
-        userAgent: 'system',
-      },
-    });
-
-    return { ...annulee, tardive, limiteAnnulation: limite };
-  }
-
   /**
    * Le voyageur declare son arrivee.
    *

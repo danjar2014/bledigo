@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BookingStatus, ReverseOfferStatus, ValidationStatus } from '../common/enums';
+import { libelleMotif } from '../common/cancellation-reasons';
 
 /**
  * Le flux de la cloche est DEDUIT de l etat courant, il n est pas stocke.
@@ -26,9 +27,11 @@ export type NotificationItem = {
     | 'counter_to_answer'
     | 'booking_to_confirm'
     | 'booking_confirmed'
-    | 'booking_cancelled';
+    | 'booking_cancelled'
+    | 'change_to_answer'
+    | 'change_answered';
   /** Le role concerne : permet a l interface de regrouper par casquette. */
-  audience: 'traveler' | 'owner';
+  audience: 'traveler' | 'owner' | 'provider';
   title: string;
   body: string;
   /** Route du front vers l evenement. */
@@ -44,7 +47,14 @@ export class NotificationFeedService {
   async feed(userId: string): Promise<{ items: NotificationItem[]; actionCount: number }> {
     const depuis = new Date(Date.now() - FENETRE_JOURS * 24 * 60 * 60 * 1000);
 
-    const [offresRecues, contrePropositions, aConfirmer, recentes] = await Promise.all([
+    const [
+      offresRecues,
+      contrePropositions,
+      aConfirmer,
+      recentes,
+      changementsARepondre,
+      changementsTraites,
+    ] = await Promise.all([
       // VOYAGEUR : offres qui attendent sa decision, sur ses propres demandes.
       this.prisma.reverseOffer.findMany({
         where: {
@@ -82,6 +92,44 @@ export class NotificationFeedService {
           updatedAt: { gte: depuis },
         },
         include: { listing: { select: { title: true, city: true } } },
+        orderBy: { updatedAt: 'desc' },
+        take: 20,
+      }),
+
+      // DEMANDES DE CHANGEMENT recues : annulation ou report soumis a l accord
+      // de cet utilisateur. C est le point de toute la fonctionnalite — sans
+      // cette entree, l hote n apprendrait la demande qu en ouvrant la page.
+      //
+      // On EXCLUT ses propres demandes : le demandeur n a rien a valider.
+      this.prisma.changeRequest.findMany({
+        where: {
+          status: 'pending',
+          requestedById: { not: userId },
+          OR: [
+            { booking: { OR: [{ travelerId: userId }, { ownerId: userId }] } },
+            { serviceBooking: { OR: [{ requesterId: userId }, { provider: { userId } }] } },
+          ],
+        },
+        include: {
+          booking: { select: { listingId: true, listing: { select: { title: true } } } },
+          serviceBooking: { select: { vehicle: { select: { brand: true, model: true } } } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 30,
+      }),
+
+      // Reponses recentes a SES demandes : le demandeur doit apprendre qu il
+      // est annule, ou que son report est refuse et que les dates tiennent.
+      this.prisma.changeRequest.findMany({
+        where: {
+          requestedById: userId,
+          status: { in: ['accepted', 'refused', 'expired'] },
+          updatedAt: { gte: depuis },
+        },
+        include: {
+          booking: { select: { listing: { select: { title: true } } } },
+          serviceBooking: { select: { vehicle: { select: { brand: true, model: true } } } },
+        },
         orderBy: { updatedAt: 'desc' },
         take: 20,
       }),
@@ -177,9 +225,112 @@ export class NotificationFeedService {
       });
     }
 
+    for (const d of changementsARepondre) {
+      const annulation = d.kind === 'annulation';
+      const quoi = this.intitule(d);
+      const reste = this.heuresRestantes(d.autoAcceptAt);
+
+      items.push({
+        id: `change:${d.id}`,
+        type: 'change_to_answer',
+        // Le destinataire est celui qui n a PAS demande, et son role se deduit
+        // de celui du demandeur. Supposer que c est toujours l agence enverrait
+        // le locataire sur l espace prestataire quand c est elle qui demande.
+        audience: this.destinataire(d),
+        title: annulation ? 'Demande d annulation' : 'Demande de nouvelles dates',
+        body: annulation
+          ? `${quoi} — motif : ${libelleMotif(d.reasonCode)}. Sans reponse de votre part, l annulation prend effet dans ${reste}.`
+          : `${quoi} — report demande du ${this.date(d.newStartDate!)} au ${this.date(d.newEndDate!)}. Motif : ${libelleMotif(d.reasonCode)}. Sans reponse, le report prend effet dans ${reste}.`,
+        link: this.pageDe(this.destinataire(d)),
+        actionRequired: true,
+        createdAt: d.createdAt,
+      });
+    }
+
+    for (const d of changementsTraites) {
+      const annulation = d.kind === 'annulation';
+      // Une echeance depassee vaut acceptation : le dire autrement laisserait
+      // croire que l autre partie a repondu, alors qu elle s est tue.
+      const parDefaut = d.status === 'expired';
+      const acceptee = d.status === 'accepted' || parDefaut;
+
+      items.push({
+        id: `change-answered:${d.id}`,
+        type: 'change_answered',
+        // C est SA demande : son role au moment ou il l a deposee, fige sur la
+        // demande, dit ou la reponse doit apparaitre.
+        audience: this.audienceDuRole(d.requestedByRole),
+        title: acceptee
+          ? annulation
+            ? 'Annulation acceptee'
+            : 'Nouvelles dates acceptees'
+          : annulation
+            ? 'Annulation refusee'
+            : 'Report refuse',
+        body: acceptee
+          ? `${this.intitule(d)} — ${parDefaut ? 'sans reponse dans le delai, votre demande a pris effet' : 'votre demande a ete acceptee'}.`
+          : `${this.intitule(d)} — refus.${d.responseNote ? ` Motif : ${d.responseNote}` : ''} Votre reservation reste en place ; contactez l autre partie si le desaccord persiste.`,
+        link: this.pageDe(this.audienceDuRole(d.requestedByRole)),
+        actionRequired: false,
+        createdAt: d.respondedAt ?? d.updatedAt,
+      });
+    }
+
     items.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
     return { items, actionCount: items.filter((i) => i.actionRequired).length };
+  }
+
+  /**
+   * Ou ce role consulte ses demandes.
+   *
+   * Un hote ne passe pas par /reservations, qui est la page du VOYAGEUR : l y
+   * envoyer lui montrerait ses propres sejours, pas les demandes a traiter.
+   * Chaque casquette a son tableau de bord, et le lien doit y mener.
+   */
+  private pageDe(audience: 'traveler' | 'owner' | 'provider'): string {
+    if (audience === 'owner') return '/proprietaire#demandes';
+    if (audience === 'provider') return '/prestataire#demandes';
+    return '/reservations#demandes';
+  }
+
+  /** Traduit le role fige sur la demande en audience du fil. */
+  private audienceDuRole(role: string): 'traveler' | 'owner' | 'provider' {
+    if (role === 'prestataire') return 'provider';
+    if (role === 'hote') return 'owner';
+    return 'traveler';
+  }
+
+  /**
+   * Qui doit repondre : l autre partie que le demandeur.
+   *
+   * Un sejour oppose voyageur et hote, une location voyageur et prestataire.
+   * Le role du demandeur suffit donc a designer le destinataire.
+   */
+  private destinataire(d: any): 'traveler' | 'owner' | 'provider' {
+    if (d.requestedByRole === 'voyageur') return d.scope === 'location' ? 'provider' : 'owner';
+    return 'traveler';
+  }
+
+  /** De quoi la demande parle, en une expression courte et reconnaissable. */
+  private intitule(d: any): string {
+    if (d.booking?.listing?.title) return d.booking.listing.title;
+    const v = d.serviceBooking?.vehicle;
+    if (v) return `${v.brand} ${v.model}`;
+    return 'Votre reservation';
+  }
+
+  /**
+   * Temps restant avant que le silence vaille acceptation.
+   *
+   * Affiche parce que c est l information qui decide : « repondez » sans
+   * echeance ne dit pas si l on a une heure ou deux jours.
+   */
+  private heuresRestantes(echeance: Date): string {
+    const h = Math.max(0, Math.round((new Date(echeance).getTime() - Date.now()) / 3600000));
+    if (h < 1) return 'moins d une heure';
+    if (h < 24) return `${h} h`;
+    return `${Math.round(h / 24)} jour(s)`;
   }
 
   private prix(valeur: unknown): string {

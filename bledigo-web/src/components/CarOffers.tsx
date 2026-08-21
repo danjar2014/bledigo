@@ -153,6 +153,17 @@ export default function CarOffers({ booking }: { booking: any }) {
                     Livraison possible{v.deliveryFee > 0 ? ` (${v.deliveryFee} TND)` : ' (offerte)'}
                   </li>
                 )}
+                {/* L annulation appartient a la meme famille que les autres
+                    conditions : elle se lit AVANT la demande, pas au moment ou
+                    l on cherche a se degager. */}
+                <li>
+                  {v.cancellationDeadlineDays == null
+                    ? 'Annulation libre jusqu au depart'
+                    : `Annulation libre jusqu a ${v.cancellationDeadlineDays} jour${
+                        v.cancellationDeadlineDays > 1 ? 's' : ''
+                      } avant`}
+                  {v.cancellationPolicy ? ` — ${v.cancellationPolicy}` : ''}
+                </li>
               </ul>
               <p className="text-xs text-slate mt-1 flex items-center gap-2 flex-wrap">
                 <span className="inline-flex items-center gap-1">

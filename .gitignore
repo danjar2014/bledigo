@@ -25,3 +25,6 @@ table-*.csv
 # Les migrations Prisma, elles, DOIVENT etre versionnees :
 # `prisma migrate deploy` s appuie dessus au demarrage sur Render.
 !bledigo-api/prisma/migrations/
+
+# Configuration locale de l outillage Claude Code (chemins et ports de la machine)
+.claude/

@@ -58,6 +58,13 @@ export class CreateListingDto {
   @IsOptional() @IsIn(['court', 'moyen', 'long']) rentalProfile?: string;
   /** Annulation libre jusqu a X jours de l arrivee. */
   @IsOptional() @IsInt() @Min(0) @Type(() => Number) cancellationDeadlineDays?: number;
+  /**
+   * Conditions d annulation en clair. SUR L HONNEUR tant que le paiement se
+   * fait de la main a la main : la plateforme ne tient aucun fonds, donc elle
+   * ne peut rien prelever. Le texte doit le dire, sans quoi il promettrait une
+   * retenue qui n aura pas lieu.
+   */
+  @IsOptional() @IsString() @MaxLength(2000) cancellationPolicy?: string;
   /** Majoration si sejour raccourci, en pourcentage des nuits retirees. */
   @IsOptional() @IsInt() @Min(0) @Max(100) @Type(() => Number) shortenSurchargePercent?: number;
 }
@@ -84,6 +91,13 @@ export class UpdateListingDto {
   @IsOptional() @IsIn(['court', 'moyen', 'long']) rentalProfile?: string;
   /** Annulation libre jusqu a X jours de l arrivee. */
   @IsOptional() @IsInt() @Min(0) @Type(() => Number) cancellationDeadlineDays?: number;
+  /**
+   * Conditions d annulation en clair. SUR L HONNEUR tant que le paiement se
+   * fait de la main a la main : la plateforme ne tient aucun fonds, donc elle
+   * ne peut rien prelever. Le texte doit le dire, sans quoi il promettrait une
+   * retenue qui n aura pas lieu.
+   */
+  @IsOptional() @IsString() @MaxLength(2000) cancellationPolicy?: string;
   /** Majoration si sejour raccourci, en pourcentage des nuits retirees. */
   @IsOptional() @IsInt() @Min(0) @Max(100) @Type(() => Number) shortenSurchargePercent?: number;
   /** Motif enregistre dans l historique de modification. */

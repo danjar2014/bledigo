@@ -17,6 +17,7 @@ import ServiceReviewModal from '@/components/ServiceReviewModal';
 import ClientProfile from '@/components/ClientProfile';
 import PriceNegotiation from '@/components/PriceNegotiation';
 import IncidentModal from '@/components/IncidentModal';
+import ChangeRequests from '@/components/ChangeRequests';
 import { notable, maNote } from '@/lib/prestations';
 
 /**
@@ -142,6 +143,11 @@ function EspacePrestataire() {
             pas : sa disponibilite se gere vehicule par vehicule, dans le
             calendrier de chacun. */}
         {!estLoueur && <ProviderAvailability />}
+
+        {/* Annulations et reports demandes par les locataires. En tete, comme
+            cote hote : une demande qui prend effet seule au bout de 48 h ne se
+            decouvre pas apres avoir fait defiler la page. */}
+        <ChangeRequests />
 
         {/* ------------------------------------------------------ Demandes */}
         <section className="mb-10">
@@ -409,6 +415,10 @@ function FormulaireVehicule({
     pickupLocation: '',
     deliveryAvailable: false,
     deliveryFee: '',
+    // Vide = annulation libre jusqu au depart. Une agence releue un vehicule en
+    // une heure la ou un logement reste vide : le delai lui appartient.
+    cancellationDeadlineDays: '',
+    cancellationPolicy: '',
   });
   const [conditionsOuvertes, setConditionsOuvertes] = useState(false);
 
@@ -455,6 +465,12 @@ function FormulaireVehicule({
     pickupLocation: form.pickupLocation || undefined,
     deliveryAvailable: form.deliveryAvailable,
     deliveryFee: form.deliveryFee ? Number(form.deliveryFee) : undefined,
+    // Compare a la chaine vide, PAS a la faussete : 0 veut dire « libre jusqu au
+    // jour du depart », que `x ? ... : undefined` transformerait en « aucun
+    // delai » — l inverse de ce que l agence a saisi.
+    cancellationDeadlineDays:
+      form.cancellationDeadlineDays === '' ? undefined : Number(form.cancellationDeadlineDays),
+    cancellationPolicy: form.cancellationPolicy || undefined,
   });
 
   return (
@@ -656,6 +672,34 @@ function FormulaireVehicule({
               value={form.deposit}
               onChange={(e) => set({ deposit: e.target.value })}
             />
+          </label>
+          <label className="text-sm">
+            Annulation libre jusqu a
+            <input
+              className="input-bledi w-full mt-1"
+              type="number"
+              min={0}
+              placeholder="jours avant (vide = jusqu au bout)"
+              value={form.cancellationDeadlineDays}
+              onChange={(e) => set({ cancellationDeadlineDays: e.target.value })}
+            />
+          </label>
+          <label className="text-sm md:col-span-2">
+            Conditions d annulation
+            <textarea
+              className="input-bledi w-full mt-1"
+              rows={2}
+              maxLength={2000}
+              placeholder="Montrees au locataire avant qu il reserve et avant qu il annule."
+              value={form.cancellationPolicy}
+              onChange={(e) => set({ cancellationPolicy: e.target.value })}
+            />
+            {/* Le paiement se faisant de la main a la main, la plateforme ne
+                tient aucun fonds : annoncer une retenue qu elle ne peut pas
+                operer tromperait le locataire comme l agence. */}
+            <span className="text-xs text-slate">
+              Sur l honneur : le reglement se fait directement entre vous, BlediGo ne preleve rien.
+            </span>
           </label>
           <label className="text-sm">
             Lieu de prise en charge
