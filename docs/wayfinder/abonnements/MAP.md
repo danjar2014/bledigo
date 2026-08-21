@@ -1,3 +1,23 @@
+> **CARTE EN SOMMEIL — la monetisation est reportee.**
+>
+> Arbitrage de l'utilisateur : on garde tout en l'etat, SANS aucun paiement en
+> ligne. Le reglement se fait en especes a l'arrivee pour un sejour, a la remise
+> du vehicule pour une location. Le menage reste sans frais. Ni commission, ni
+> abonnement, ni credits payants.
+>
+> **Condition de reveil** : « une fois que le site cartonne et reussi ». Enoncee
+> telle quelle, elle n'est pas verifiable — c'est exactement le flou que le
+> ticket C8 reprochait a l'ancienne « phase 2 ». La rendre mesurable (un nombre
+> de reservations abouties par mois, un nombre d'hotes actifs) est le premier
+> travail a faire si l'on rouvre ces cartes.
+>
+> **Ce qui reste vrai et resservira** : l'etat reel du code, l'impossibilite pour
+> Stripe de reverser vers la Tunisie, et le fait que la solution devra
+> probablement etre double — un rail europeen ET un rail tunisien.
+>
+> Rien n'est supprime. Ces cartes sont un point de depart, pas un chantier en
+> cours.
+
 > **CARTE CADUQUE — remplacee par [Commission voyageur](../commission-voyageur/MAP.md).**
 >
 > Le payeur a change. Cette carte supposait que le professionnel tunisien payait

@@ -5,7 +5,6 @@ import { Check, Crown } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/store/auth';
 import { Spinner, ErrorBox } from '@/components/ui';
-import { useMoney } from '@/store/preferences';
 
 const LABELS: Record<string, string> = {
   owner_pro: 'Pro',
@@ -14,7 +13,6 @@ const LABELS: Record<string, string> = {
 };
 
 export default function AbonnementsPage() {
-  const money = useMoney();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -55,8 +53,20 @@ export default function AbonnementsPage() {
                   <Crown className="w-5 h-5 text-bledi-red" />
                   <span className="font-display font-bold text-xl">{LABELS[plan.type] || plan.type}</span>
                 </div>
+                {/*
+                  PAS `money()` ici : il formate un montant STOCKE EN TND et le
+                  convertit vers la devise d affichage. Les plans sont libelles
+                  en EUR par l API — les passer dedans affichait 29 EUR comme
+                  29 TND, soit 8,41 EUR pour un visiteur en euros (taux 0,29), et
+                  « 29 DT » pour un visiteur en dinars, trois fois trop peu.
+
+                  On affiche donc le montant avec SA propre devise, sans
+                  conversion. Reste que des prix en EUR contredisent la regle
+                  « tout se calcule en TND » : c est un arbitrage a rendre, pas
+                  un defaut d affichage.
+                */}
                 <div className="font-accent font-bold text-3xl text-charcoal mb-4">
-                  {money(plan.price)}
+                  {plan.price} {plan.currency || 'EUR'}
                   <span className="text-base text-slate font-body font-normal"> / mois</span>
                 </div>
                 <ul className="space-y-2 mb-6 text-sm text-slate">

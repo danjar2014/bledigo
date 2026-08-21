@@ -252,7 +252,7 @@ export default function ListingEdit({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
             <label htmlFor="pricePerNight" className="block text-sm font-medium mb-2">
-              Prix/nuit
+              Prix/nuit (TND)
             </label>
             <input
               id="pricePerNight"
@@ -268,7 +268,7 @@ export default function ListingEdit({
           </div>
           <div>
             <label htmlFor="cleaningFee" className="block text-sm font-medium mb-2">
-              Frais menage
+              Frais menage (TND)
             </label>
             <input
               id="cleaningFee"
@@ -281,7 +281,7 @@ export default function ListingEdit({
           </div>
           <div>
             <label htmlFor="serviceFee" className="block text-sm font-medium mb-2">
-              Frais service
+              Frais service (TND)
             </label>
             <input
               id="serviceFee"
@@ -294,7 +294,7 @@ export default function ListingEdit({
           </div>
           <div>
             <label htmlFor="securityDeposit" className="block text-sm font-medium mb-2">
-              Caution
+              Caution (TND)
             </label>
             <input
               id="securityDeposit"

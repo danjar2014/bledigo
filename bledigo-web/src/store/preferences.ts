@@ -113,8 +113,22 @@ function pick(state: PreferencesState): Stored {
 
 /**
  * Formateur de montant abonne a la devise choisie.
- * A utiliser dans les composants a la place de `money` de lib/format,
- * qui est fige en TND et ne declenche pas de rendu au changement de devise.
+ *
+ * A utiliser dans les composants a la place de `money` de lib/format, qui est
+ * fige en TND et ne declenche pas de rendu au changement de devise.
+ *
+ * INVARIANT — L ARGUMENT EST TOUJOURS EN TND, jamais dans une autre devise.
+ *
+ * Le dinar est la monnaie de REGLEMENT du projet : tout se calcule en TND, tout
+ * se paie en TND, et l euro comme le dollar ne servent qu a montrer
+ * l equivalent au voyageur etranger. Rien de ce que cette fonction rend ne doit
+ * repartir vers l API ni etre saisi dans un champ : c est de l affichage.
+ *
+ * Passer un montant deja libelle en EUR le fait traiter comme des dinars, puis
+ * reconvertir. Le bogue est SILENCIEUX — il rend un nombre plausible — et il
+ * s est produit : les plans d abonnement, libelles en EUR, s affichaient a 29 %
+ * de leur valeur pour un visiteur en euros — 29 EUR rendus « 8,41 EUR ». Si un montant n est pas
+ * en TND, affichez-le avec sa propre devise sans passer par ici.
  */
 export function useMoney() {
   const currency = usePreferences((s) => s.currency);
