@@ -1,3 +1,20 @@
+> **CARTE CADUQUE — remplacee par [Commission voyageur](../commission-voyageur/MAP.md).**
+>
+> Le payeur a change. Cette carte supposait que le professionnel tunisien payait
+> un abonnement. Le ticket T3 a SOULEVE — sans jamais etre resolu — que le controle
+> des changes le lui interdit en pratique ; l'utilisateur a confirme le point de sa
+> propre experience et refait le modele : c'est le VOYAGEUR, diaspora ou touriste,
+> donc porteur d'une carte etrangere, qui paie une commission.
+>
+> Le fait lui-meme n'est donc PAS verifie a la source. Il n'a plus a l'etre pour le
+> modele actuel, ou aucun professionnel tunisien ne paie ; il devra l'etre si l'on
+> revient un jour a les faire payer.
+>
+> Rien n'est supprime : les faits etablis ici restent valables et resservent. En
+> particulier l'etat reel du code (abonnements entierement simules, aucun verrou,
+> credits offerts) et l'impossibilite pour Stripe de reverser vers la Tunisie, qui
+> redevient centrale des que l'etape A sera engagee.
+
 # Carte — Monétisation par abonnement
 
 `wayfinder:map` · traqueur : Markdown local (aucun traqueur configuré ; `/setup-matt-pocock-skills` n'a pas tourné sur ce dépôt)
