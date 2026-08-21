@@ -483,8 +483,9 @@ export default function ListingEdit({
             */}
             <p className="text-xs text-slate mt-1">
               Ce texte est montre au voyageur avant qu il reserve et avant qu il annule. Le
-              paiement se faisant directement entre vous, BlediGo ne preleve rien : ces
-              conditions valent sur l honneur jusqu a l arrivee du paiement par carte.
+              reglement se faisant en especes a l arrivee, BlediGo ne preleve et ne rembourse
+              aucun montant : ces conditions valent sur l honneur, et c est a vous de les faire
+              respecter.
             </p>
           </div>
         </div>

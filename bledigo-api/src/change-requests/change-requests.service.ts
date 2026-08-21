@@ -47,9 +47,14 @@ const TERMINAUX = ['completed', 'cancelled', 'disputed'];
  * penalite appliquee, meme sur une annulation tardive. Le paiement se fait de
  * la main a la main : la plateforme ne tient aucun fonds, donc elle ne peut
  * rien prelever, et annoncer une penalite qu on ne peut pas appliquer serait
- * mentir. Le retard est CONSIGNE — date, motif, conditions opposees — pour etre
- * exploitable en phase 2, quand le paiement par carte rendra ces conditions
- * reellement opposables.
+ * mentir. Le retard est CONSIGNE quand meme — date, motif, conditions opposees —
+ * parce qu une recurrence reste une information utile a l administration, et
+ * parce que la trace ne coute rien a ecrire alors qu elle serait impossible a
+ * reconstituer apres coup.
+ *
+ * Ne pas y lire une promesse d opposabilite future. La monetisation est reportee
+ * sans echeance : ces conditions valent sur l honneur, et rien ne dit qu elles
+ * cesseront de le faire.
  */
 @Injectable()
 export class ChangeRequestsService {

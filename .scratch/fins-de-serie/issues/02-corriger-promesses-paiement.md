@@ -25,15 +25,42 @@ opposabilite future sont vises.
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** DONE
 
-- [ ] Plus aucun texte affiche a l'utilisateur ne promet une opposabilite future
+- [x] Plus aucun texte affiche a l'utilisateur ne promet une opposabilite future
       liee au paiement par carte
-- [ ] Les commentaires de `ai/scoring.service.ts` et `ai/features.service.ts`
+- [x] Les commentaires de `ai/scoring.service.ts` et `ai/features.service.ts`
       sont INTACTS : ils parlent d'autre chose
-- [ ] Les emplois legitimes de « opposable » hors promesse sont conserves
-- [ ] `common/mode-plateforme.ts` decrit le mode reellement en vigueur, sans
+- [x] Les emplois legitimes de « opposable » hors promesse sont conserves
+- [x] `common/mode-plateforme.ts` decrit le mode reellement en vigueur, sans
       annoncer une bascule datee
-- [ ] Le texte cote hote (formulaire d'annonce) dit ce qui s'applique vraiment
+- [x] Le texte cote hote (formulaire d'annonce) dit ce qui s'applique vraiment
       quand il redige ses conditions
-- [ ] `npx jest` vert, les deux builds verts
+- [x] `npx jest` vert, les deux builds verts
+
+## Fait
+
+Le perimetre etait plus etroit et le piege plus large que le ticket ne le disait.
+
+PLUS ETROIT : un SEUL texte vu par l utilisateur promettait quelque chose —
+`ListingEdit.tsx`, « valent sur l honneur jusqu a l arrivee du paiement par
+carte ». Les deux autres textes decrivaient deja le reel. Ma formulation
+« les textes annoncent partout » etait une exageration.
+
+PLUS LARGE : « phase 2 » a TROIS sens dans ce depot, pas deux. Le paiement, le
+modele appris de l IA, et — dans `CLAUDE.md` — l ouverture des comptes
+prestataires par abonnement, elle aussi en sommeil depuis le report de la
+monetisation. Corrigee au passage.
+
+Verifie plutot qu affirme : les fichiers de l IA ne figurent pas dans
+`git diff --name-only`, et sur onze emplois du mot « opposable » exactement un a
+disparu, celui qui promettait.
+
+AJOUT ASSUME : `mode-plateforme.ts` porte desormais un avertissement de danger.
+`PAIEMENT_EN_LIGNE=true` n allume pas un systeme complet mais un systeme qui
+encaisse et ne reverse jamais — aucun champ IBAN, aucune ligne de transfert, et
+un hote tunisien ne peut pas etre un compte connecte Stripe. Poser cette variable
+debiterait des voyageurs sans moyen de payer les hotes.
+
+Une garde d execution serait plus solide qu un commentaire : elle merite son
+propre ticket, elle n etait pas dans celui-ci.

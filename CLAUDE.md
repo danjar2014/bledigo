@@ -216,8 +216,10 @@ volontairement hors de `SELF_ASSIGNABLE_ROLES` : en phase 1, l'administration
 crée le compte après avoir constaté le statut d'agence, et le mot de passe
 initial n'est affiché **qu'une fois**. Ce détour existe parce que ni l'envoi
 d'email ni la réinitialisation ne sont branchés — d'où `regenererMotDePasse`,
-seule voie de récupération. La phase 2 (abonnement, vérification automatique)
-remplacera la porte d'entrée sans toucher au modèle. Un compte `pending` peut
+seule voie de récupération. Une ouverture par abonnement et vérification
+automatique remplacerait cette porte d'entrée sans toucher au modèle, mais elle
+est **en sommeil** : la monétisation est reportée sans échéance, et ce détour
+manuel est donc le fonctionnement durable, pas un provisoire. Un compte `pending` peut
 se connecter mais ne peut rien publier.
 
 **Un sinistre se constate, il ne sanctionne pas.** Une agence qui déclare un
