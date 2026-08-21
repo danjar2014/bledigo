@@ -11,14 +11,33 @@ mouvement : elle expose des signaux d'anti-fraude et porte la meme garde.
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** DONE
 
-- [ ] Un compte authentifie qui n'est ni proprietaire de l'annonce ni
+- [x] Un compte authentifie qui n'est ni proprietaire de l'annonce ni
       administrateur recoit un refus sur `/ai/listings/:id/score`
-- [ ] Le proprietaire de l'annonce continue d'y acceder sans changement
-- [ ] Un administrateur continue d'y acceder
-- [ ] La route `/ai/listings/:id/fraud` a ete examinee et traitee de la meme
+- [x] Le proprietaire de l'annonce continue d'y acceder sans changement
+- [x] Un administrateur continue d'y acceder
+- [x] La route `/ai/listings/:id/fraud` a ete examinee et traitee de la meme
       facon, ou une raison ecrite explique pourquoi elle reste ouverte
-- [ ] Un test couvre le refus du tiers, pas seulement l'acces autorise :
+- [x] Un test couvre le refus du tiers, pas seulement l'acces autorise :
       c'est le refus qui est la regle nouvelle
-- [ ] `npx jest` vert, `nest build` vert
+- [x] `npx jest` vert, `nest build` vert
+
+## Fait
+
+Garde posee dans le SERVICE et non dans le controleur : le droit se lit sur
+l ANNONCE, et aucun role ne dit a lui seul si ce compte-ci possede celle-la.
+`/fraud` a ete traitee de la meme facon — elle est meme plus sensible, ses
+signaux portant sur la personne du proprietaire.
+
+Verifie contre l API reelle et pas seulement en unitaire : hote 201/200 sur ses
+propres annonces, tiers connecte 403 sur les deux routes, sans fuite de contenu.
+8 tests, 172 au total.
+
+`GET /ai/price-suggestion` reste PUBLIQUE, deliberement : elle rend des moyennes
+de marche par ville, pas des donnees d annonce. Hors perimetre de ce ticket.
+
+La revue a trouve un defaut dans le commentaire, pas dans le code : j avais ecrit
+que l ordre des controles empechait de distinguer une annonce absente d une
+annonce interdite, alors qu il fait l inverse. Le commentaire dit desormais ce
+que le code fait, et pourquoi c est acceptable.

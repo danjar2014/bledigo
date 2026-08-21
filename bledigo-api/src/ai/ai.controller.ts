@@ -1,7 +1,8 @@
 import { Controller, Get, Post, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { AiService } from './ai.service';
+import { AiService, Appelant } from './ai.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @ApiTags('ai')
 @Controller('api/v1/ai')
@@ -11,16 +12,23 @@ export class AiController {
   @Post('listings/:id/score')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Recalculer le score de confiance d une annonce' })
-  score(@Param('id') id: string) {
-    return this.service.scoreListing(id);
+  @ApiOperation({
+    summary:
+      'Recalculer le score de confiance d une annonce. Reserve a son proprietaire et a l administration.',
+  })
+  score(@Param('id') id: string, @CurrentUser() moi: Appelant) {
+    return this.service.scoreListing(id, moi);
   }
 
   @Get('listings/:id/fraud')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  fraud(@Param('id') id: string) {
-    return this.service.detectFraud(id);
+  @ApiOperation({
+    summary:
+      'Signaux d anti-fraude d une annonce. Reserve a son proprietaire et a l administration : ils portent sur la personne du proprietaire.',
+  })
+  fraud(@Param('id') id: string, @CurrentUser() moi: Appelant) {
+    return this.service.detectFraud(id, moi);
   }
 
   @Get('price-suggestion')

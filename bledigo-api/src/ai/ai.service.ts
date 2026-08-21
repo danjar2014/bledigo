@@ -1,5 +1,18 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { UserRole } from '../common/enums';
+
+/**
+ * L appelant, tel que le jeton le decrit.
+ *
+ * On prend l utilisateur ENTIER et non son seul identifiant : le droit d analyser
+ * une annonce depend de la propriete ET du role, et ne passer que l id obligerait
+ * le service a relire l utilisateur en base a chaque appel.
+ */
+export type Appelant = { id: string; role?: string };
+
+/** L administration voit tout : c est sa fonction, elle arbitre les litiges. */
+const ROLES_ADMINISTRATION: string[] = [UserRole.admin, UserRole.support];
 
 /**
  * Moteur de scoring BlediGo (heuristique deterministe, sans dependance externe).
@@ -11,13 +24,44 @@ const CERTIF_POINTS = { none: 0, bronze: 5, silver: 10, gold: 15, diamond: 20 };
 export class AiService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Seuls le proprietaire de l annonce et l administration l analysent.
+   *
+   * Ces deux routes ne rendent pas des donnees publiques. Le score expose les
+   * criteres echoues et les axes d amelioration ; la detection de fraude expose
+   * des signaux sur la PERSONNE du proprietaire — identite non verifiee, prix
+   * anormalement bas. Ouvertes a tout compte connecte, elles offraient a un
+   * concurrent le diagnostic de son voisin, et a n importe qui un soupcon
+   * documente sur un tiers.
+   *
+   * La garde est ici et non dans le controleur, parce que le droit se lit sur
+   * l ANNONCE : aucun role ne dit a lui seul si ce compte-ci possede
+   * celle-la.
+   */
+  private verifierAcces(listing: { ownerId: string } | null, appelant: Appelant) {
+    // Une annonce absente rend `null` sans passer par la garde, faute de
+    // proprietaire a qui la comparer.
+    //
+    // CE QUE CELA REVELE, ET POURQUOI C EST ACCEPTE : un tiers recoit donc 403
+    // sur une annonce qui existe et `null` sur une qui n existe pas, ce qui lui
+    // apprend lesquelles existent. L information n est pas confidentielle — les
+    // annonces sont publiquement cherchables — et uniformiser les deux reponses
+    // couterait un mensonge au proprietaire legitime, a qui l on dirait
+    // « non trouvee » pour une annonce bien presente.
+    if (!listing) return;
+    if (ROLES_ADMINISTRATION.includes(appelant?.role ?? '')) return;
+    if (listing.ownerId === appelant?.id) return;
+    throw new ForbiddenException('Vous n etes pas le proprietaire de cette annonce');
+  }
+
   /** Score de confiance d'un logement : 0-100 */
-  async scoreListing(listingId: string) {
+  async scoreListing(listingId: string, appelant: Appelant) {
     const listing = await this.prisma.listing.findUnique({
       where: { id: listingId },
       include: { photos: true, reviews: true, passport: true, certifications: true },
     });
     if (!listing) return null;
+    this.verifierAcces(listing, appelant);
 
     const reviews = listing.reviews || [];
     const avg = reviews.length ? reviews.reduce((s: number, r: any) => s + r.rating, 0) / reviews.length : 0;
@@ -48,12 +92,13 @@ export class AiService {
   }
 
   /** Detection de fraude sur une annonce : signaux + niveau de risque */
-  async detectFraud(listingId: string) {
+  async detectFraud(listingId: string, appelant: Appelant) {
     const listing = await this.prisma.listing.findUnique({
       where: { id: listingId },
       include: { photos: true, owner: true, bookings: true },
     });
     if (!listing) return null;
+    this.verifierAcces(listing, appelant);
 
     const signals: string[] = [];
     const marketAvg = await this.prisma.listing.aggregate({
