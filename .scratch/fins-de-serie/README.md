@@ -9,10 +9,10 @@ Traqueur en fichiers locaux, faute de traqueur configure sur ce depot
 
 | # | Ticket | Risque | Bloque par |
 |---|---|---|---|
-| [01](issues/01-restreindre-notation-annonce.md) | Restreindre l'acces a la notation d'annonce | faible | rien |
-| [02](issues/02-corriger-promesses-paiement.md) | Corriger les promesses de paiement devenues fausses | faible | rien |
+| ~~[01](issues/01-restreindre-notation-annonce.md)~~ | ~~Restreindre l'acces a la notation d'annonce~~ | faible | **FAIT** |
+| ~~[02](issues/02-corriger-promesses-paiement.md)~~ | ~~Corriger les promesses de paiement devenues fausses~~ | faible | **FAIT** |
 | [03](issues/03-photos-supabase.md) | Raccorder le stockage des photos a Supabase | faible | action humaine |
-| [04](issues/04-migrations-reconstructibles.md) | Rendre les migrations reconstructibles a neuf | **eleve** | rien |
+| [04](issues/04-migrations-reconstructibles.md) | Rendre les migrations reconstructibles a neuf | **eleve** | **CLOS PARTIELLEMENT** : une base neuve se construit, le renommage attend une base d'essai |
 
 L'ordre est celui du risque croissant, pas d'une dependance. Le 04 est le seul
 qui puisse casser la production s'il est traite a la legere : sa contrainte est

@@ -28,3 +28,9 @@ table-*.csv
 
 # Configuration locale de l outillage Claude Code (chemins et ports de la machine)
 .claude/
+
+# Base de reference des migrations : se REGENERE, ne se conserve pas.
+# Un instantane se perime des que le schema bouge, et construirait alors une
+# base fausse sans rien signaler. Voir CLAUDE.md, « Construire une base neuve ».
+baseline.sql
+**/baseline.sql

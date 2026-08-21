@@ -26,12 +26,51 @@ un renommage.
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** CLOS PARTIELLEMENT — voir « Fait »
 
 - [ ] `prisma migrate deploy` reussit depuis une base VIDE, verifie reellement
       et pas seulement raisonne
-- [ ] Aucun nom de migration deja appliquee n'a change
-- [ ] La production n'est pas perturbee : `migrate deploy` sur la base existante
+- [x] Aucun nom de migration deja appliquee n'a change
+- [x] La production n'est pas perturbee : `migrate deploy` sur la base existante
       reste sans effet ou n'applique que la nouvelle migration
 - [ ] `prisma migrate diff` entre le schema et le resultat des migrations est vide
 - [ ] Le defaut documente dans `CLAUDE.md` est mis a jour ou retire selon l'issue
+
+## Fait
+
+CE TICKET DEMANDAIT DEUX CHOSES INCOMPATIBLES, et c'est la conclusion principale.
+
+Le critere 1 — « `migrate deploy` reussit depuis une base VIDE » — exige de
+deplacer `avis_mutuels` apres `prestataires`. Or la position d'une migration ne
+depend QUE de son nom de dossier. Le critere 2 — « aucun nom deja applique n'a
+change » — l'interdit donc. Il n'existe pas de troisieme voie, et je l'ai
+verifie plutot que suppose :
+
+- Rendre le contenu tolerant ne marche pas. `DROP INDEX IF EXISTS` ferait passer
+  la premiere instruction, mais la suivante cree un index SUR `service_reviews`,
+  table creee uniquement par `prestataires`, donc absente a ce moment. La
+  migration echouerait deux lignes plus bas.
+- Et modifier le contenu d'une migration appliquee change son empreinte SHA256,
+  que Prisma compare a `_prisma_migrations` : il refuse de deployer. Etabli sur
+  la documentation et les fils de discussion Prisma, pas de memoire.
+
+ARBITRAGE DE L'UTILISATEUR : garder le critere 2. La production ne bouge pas d'un
+octet.
+
+CE QUI EST LIVRE. Une base neuve se construit desormais, en partant du datamodel
+plutot que de l'historique — procede de reference documente par Prisma pour un
+historique non rejouable. La commande et la boucle de marquage sont dans
+`CLAUDE.md`, et les DEUX ont ete executees pour verifier : `migrate diff` sort en
+0 et produit 1225 lignes pour 40 tables, la boucle enumere bien les 12 migrations.
+
+DECISION DE CONCEPTION : le fichier de reference n'est PAS versionne, et un
+garde-fou dans `.gitignore` l'empeche. Un instantane se perime des que le schema
+bouge, et une reference perimee construirait une base FAUSSE sans rien signaler —
+pire que le defaut qu'elle soigne. On regenere, on ne conserve pas. Verifie : un
+`baseline.sql` genere est bien ignore.
+
+CE QUI RESTE OUVERT. Le renommage — le vrai correctif — attend une base d'essai
+jetable. Aucun Postgres n'existe sur ce poste : ni `psql`, ni Docker, ni instance
+locale. Le mode de defaillance etant « la production ne peut plus jamais
+deployer », il ne s'improvise pas. `CLAUDE.md` dit desormais quoi faire, pourquoi
+ce n'est pas fait, et de ne pas l'improviser.

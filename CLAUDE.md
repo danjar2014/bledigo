@@ -56,15 +56,56 @@ dérive le schéma du datamodel sans rejouer l'historique) suivi d'une copie de
 `_prisma_migrations`. Le schéma obtenu est exact : `migrate diff` entre le
 datamodel et la base renvoie une migration vide.
 
-**Le vrai correctif reste à faire** : renommer les dossiers pour qu'ils trient
-correctement. Impossible tant qu'une base porte les anciens noms — un rename les
-ferait passer pour de nouvelles migrations, `migrate deploy` échouerait, et
-l'API ne démarrerait plus puisque cette commande précède `node dist/main` dans
-le `startCommand`. À faire au prochain changement de base, en corrigeant
-`migration_name` dans la foulée.
+**Rendre la migration tolérante ne marche pas**, et c'est la première idée qui
+vient. Mettre `DROP INDEX IF EXISTS` ferait passer la première instruction, mais
+la suivante crée un index **sur `service_reviews`**, table qui n'existe pas
+encore à ce moment-là : la migration échouerait deux lignes plus bas. Et de toute
+façon, modifier le contenu d'une migration déjà appliquée change son empreinte
+SHA256, que Prisma compare à celle enregistrée dans `_prisma_migrations` — il
+refuse alors de déployer. **Les deux voies « contenu » sont donc fermées.**
 
-Règle à tenir en attendant : **nommer toute nouvelle migration de façon qu'elle
-trie après toutes celles dont elle dépend.** Un horodatage complet suffit.
+**Le vrai correctif reste le renommage**, et lui seul : la position d'une
+migration ne dépend que de son nom de dossier. Renommer `20260814_avis_mutuels`
+en `20260815_avis_mutuels` laisse le contenu — donc l'empreinte — intact, mais
+casse l'appariement par nom : la production porte l'ancien nom, `migrate deploy`
+verrait une migration inconnue et une migration disparue, échouerait, et l'API ne
+démarrerait plus puisque cette commande précède `node dist/main` dans le
+`startCommand`. Il faut donc renommer **et** corriger `migration_name` dans
+`_prisma_migrations` avant le déploiement suivant.
+
+**Pourquoi ce n'est pas fait** : le mode de défaillance est « la production ne
+peut plus jamais déployer », et il n'existe aucun Postgres sur le poste de
+travail — ni `psql`, ni Docker, ni instance locale — pour le vérifier avant de
+pousser. La correction attend une base d'essai jetable. Ne pas l'improviser.
+
+#### Construire une base neuve aujourd'hui
+
+L'historique n'est pas rejouable, mais une base neuve se construit très bien en
+partant du **datamodel** plutôt que de l'historique. C'est le procédé de
+référence documenté par Prisma pour un historique non rejouable.
+
+```bash
+npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.postgres.prisma --script > baseline.sql
+```
+
+Appliquer `baseline.sql` sur la base vide, puis marquer chaque migration comme
+appliquée pour que les déploiements suivants repartent de l'état courant :
+
+```bash
+for m in prisma/migrations/2026*; do npx prisma migrate resolve --applied "$(basename "$m")" --schema=prisma/schema.postgres.prisma; done
+```
+
+Le fichier n'est **volontairement pas versionné** : un instantané se périme dès
+que le schéma bouge, et une référence périmée construirait une base fausse sans
+rien signaler — pire que le défaut qu'elle soigne. On régénère, on ne conserve
+pas.
+
+Vérification : `migrate diff` entre le datamodel et la base obtenue doit rendre
+une migration vide. C'est ce qui a été constaté lors de la migration vers
+Supabase.
+
+Règle à tenir : **nommer toute nouvelle migration de façon qu'elle trie après
+toutes celles dont elle dépend.** Un horodatage complet suffit.
 
 ### La région se choisit à la création, et ne se change jamais
 
