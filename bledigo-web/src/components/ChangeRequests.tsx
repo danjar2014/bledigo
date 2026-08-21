@@ -14,6 +14,7 @@ import {
 import { api } from '@/lib/api';
 import { date } from '@/lib/format';
 import { Spinner } from '@/components/ui';
+import { useMoney } from '@/store/preferences';
 
 /**
  * Demandes d annulation et de report : celles a traiter, et les siennes.
@@ -24,6 +25,7 @@ import { Spinner } from '@/components/ui';
  */
 export default function ChangeRequests() {
   const queryClient = useQueryClient();
+  const money = useMoney();
   const [note, setNote] = useState<Record<string, string>>({});
 
   const { data, isLoading } = useQuery({
@@ -51,6 +53,18 @@ export default function ChangeRequests() {
     if (h < 1) return 'moins d une heure';
     if (h < 24) return `${h} h`;
     return `${Math.round(h / 24)} jour(s)`;
+  };
+
+  /**
+   * Le montant actuel de la reservation, pour la comparaison.
+   *
+   * Il vit sur `totalPrice` cote sejour et sur `price` cote location : deux
+   * tables, deux noms. `null` quand la relation n a pas ete chargee, auquel cas
+   * on montre le nouveau prix seul plutot qu une comparaison fausse.
+   */
+  const ancienPrix = (d: any): number | null => {
+    const v = d.booking?.totalPrice ?? d.serviceBooking?.price;
+    return v == null ? null : Number(v);
   };
 
   const Entete = ({ d }: { d: any }) => (
@@ -81,6 +95,33 @@ export default function ChangeRequests() {
       </p>
       {d.reasonText && (
         <p className="text-sm text-slate italic mt-0.5">« {d.reasonText} »</p>
+      )}
+      {/*
+        LE NOUVEAU PRIX, sans quoi on accepte un montant qu on n a jamais vu.
+
+        Les tarifs sont lus nuit par nuit dans le calendrier de l hote ou de
+        l agence : deplacer un sejour sur une periode de haute saison peut le
+        rencherir fortement, et c est precisement ce que celui qui accepte doit
+        savoir avant de cliquer. Le montant est fige depuis la demande — il ne
+        bougera plus, meme si le calendrier change entre-temps.
+      */}
+      {d.kind === 'modification_dates' && d.newPrice != null && (
+        <p className="text-sm mt-1">
+          <span className="text-slate">Nouveau total : </span>
+          <span className="font-accent font-bold text-charcoal">{money(Number(d.newPrice))}</span>
+          {ancienPrix(d) != null && Number(d.newPrice) !== ancienPrix(d) && (
+            <span className="text-slate">
+              {' '}au lieu de {money(ancienPrix(d)!)}
+              <span className={Number(d.newPrice) > ancienPrix(d)! ? 'text-amber-800' : 'text-emerald-700'}>
+                {' '}({Number(d.newPrice) > ancienPrix(d)! ? '+' : ''}
+                {money(Number(d.newPrice) - ancienPrix(d)!)})
+              </span>
+            </span>
+          )}
+          <span className="block text-xs text-slate">
+            Tarifs du calendrier pour les nouvelles dates. Montant fige depuis la demande.
+          </span>
+        </p>
       )}
       {/*
         Les conditions FIGEES au moment de la demande, pas celles d aujourd hui :

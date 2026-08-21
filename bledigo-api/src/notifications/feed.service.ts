@@ -111,8 +111,10 @@ export class NotificationFeedService {
           ],
         },
         include: {
-          booking: { select: { listingId: true, listing: { select: { title: true } } } },
-          serviceBooking: { select: { vehicle: { select: { brand: true, model: true } } } },
+          booking: { select: { listingId: true, totalPrice: true, currency: true, listing: { select: { title: true } } } },
+          serviceBooking: {
+            select: { price: true, currency: true, vehicle: { select: { brand: true, model: true } } },
+          },
         },
         orderBy: { createdAt: 'desc' },
         take: 30,
@@ -240,7 +242,11 @@ export class NotificationFeedService {
         title: annulation ? 'Demande d annulation' : 'Demande de nouvelles dates',
         body: annulation
           ? `${quoi} — motif : ${libelleMotif(d.reasonCode)}. Sans reponse de votre part, l annulation prend effet dans ${reste}.`
-          : `${quoi} — report demande du ${this.date(d.newStartDate!)} au ${this.date(d.newEndDate!)}. Motif : ${libelleMotif(d.reasonCode)}. Sans reponse, le report prend effet dans ${reste}.`,
+          : // Le montant est dit ICI, pas seulement dans l ecran de reponse : les
+            // tarifs se lisent nuit par nuit dans le calendrier, et un report sur
+            // une periode de haute saison change le total. Le decouvrir apres
+            // avoir accepte, c est exactement ce que le projet refuse partout.
+            `${quoi} — report demande du ${this.date(d.newStartDate!)} au ${this.date(d.newEndDate!)}${this.ecartPrix(d)} — motif : ${libelleMotif(d.reasonCode)}. Sans reponse, le report prend effet dans ${reste}.`,
         link: this.pageDe(this.destinataire(d)),
         actionRequired: true,
         createdAt: d.createdAt,
@@ -310,6 +316,24 @@ export class NotificationFeedService {
   private destinataire(d: any): 'traveler' | 'owner' | 'provider' {
     if (d.requestedByRole === 'voyageur') return d.scope === 'location' ? 'provider' : 'owner';
     return 'traveler';
+  }
+
+  /**
+   * Le nouveau total et son ecart, quand il y en a un.
+   *
+   * Chaine vide si le montant ne bouge pas : annoncer « 778 TND au lieu de
+   * 778 TND » n apprend rien et alourdit une notification qui doit se lire d un
+   * coup d oeil.
+   */
+  private ecartPrix(d: any): string {
+    if (d.newPrice == null) return '';
+    const avant = d.booking?.totalPrice ?? d.serviceBooking?.price;
+    const devise = d.booking?.currency ?? d.serviceBooking?.currency ?? 'TND';
+    const neuf = Math.round(Number(d.newPrice));
+    if (avant == null) return `, pour ${neuf} ${devise}`;
+    const vieux = Math.round(Number(avant));
+    if (neuf === vieux) return `, pour le meme montant (${neuf} ${devise})`;
+    return `, pour ${neuf} ${devise} au lieu de ${vieux}`;
   }
 
   /** De quoi la demande parle, en une expression courte et reconnaissable. */
