@@ -70,14 +70,20 @@ export class MediaService {
       };
     }
 
-    // URL d envoi signee : elle autorise UN televersement, sur CE chemin, pour
-    // une duree courte. La cle de service ne quitte jamais le serveur.
+    // URL d envoi signee : elle autorise UN televersement, sur CE chemin, et pour
+    // la duree que Supabase decide. La cle de service ne quitte jamais le serveur.
+    //
+    // CORPS VIDE, comme le fait le client officiel `storage-js`. On y envoyait
+    // `{ expiresIn: 600 }`, ce qui melangeait deux choses : `expiresIn` est une
+    // option des URL de TELECHARGEMENT signees, pas d envoi. Au mieux le serveur
+    // l ignorait et le nombre mentait ; au pire il rejetait un champ inattendu,
+    // et l envoi n aurait jamais marche du premier coup.
     const reponse = await fetch(
       `${this.url}/storage/v1/object/upload/sign/${this.bucket}/${cheminSur}`,
       {
         method: 'POST',
         headers: { Authorization: `Bearer ${this.cle}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ expiresIn: 600 }),
+        body: '{}',
       },
     );
 

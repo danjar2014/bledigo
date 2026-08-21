@@ -1,0 +1,4 @@
+# Les scripts shell doivent garder des fins de ligne LF.
+# Sous Windows, core.autocrlf les convertirait en CRLF au checkout et bash
+# echouerait sur un «  » invisible — panne deroutante s il en est.
+*.sh text eol=lf
